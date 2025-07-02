@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Xml;
 using RCLayoutPreview.Helpers;
 
+
 namespace RCLayoutPreview
 {
     public partial class MainWindow : Window
@@ -19,9 +20,12 @@ namespace RCLayoutPreview
         private string currentLayoutPath = null;
         private string currentJsonPath = null;
         private RaceData currentData = null;
+        private bool IsDiagnosticsMode => DebugToggle.IsChecked == true;
+
 
         public MainWindow()
         {
+            
             var themeDict = new ResourceDictionary
             {
                 Source = new Uri("pack://application:,,,/ThemeDictionary.xaml")
@@ -140,9 +144,12 @@ namespace RCLayoutPreview
         }
 
 
-        private FrameworkElement LoadLayoutFromText(string xaml)
+
+        private FrameworkElement LoadLayoutFromText(string rawXaml)
         {
-            using (var reader = new StringReader(xaml))
+            string fixedXaml = XamlFixer.Preprocess(rawXaml);
+
+            using (var reader = new StringReader(fixedXaml))
             using (var xml = XmlReader.Create(reader))
             {
                 object root = XamlReader.Load(xml);
@@ -205,80 +212,63 @@ namespace RCLayoutPreview
 
         private void InjectStubData(FrameworkElement layout, RaceData data)
         {
-            bool debug = DebugModeToggle != null && DebugModeToggle.IsChecked == true;
+            if (layout == null || data == null)
+                return;
 
             foreach (var block in GetAllNamedTextBlocks(layout))
             {
-                string name = block.Name;
+                string fieldName = block.Tag as string ?? block.Name;
 
-                if (debug)
+                // Use your parser that outputs a FieldNameParser instance
+                FieldNameParser parsed;
+                if (!FieldNameParser.TryParse(fieldName, out parsed))
                 {
-                    block.Text = "[" + name + "]";
-                    block.Foreground = Brushes.Yellow;
-                    block.Background = Brushes.DarkRed;
-                    block.FontWeight = FontWeights.Bold;
-                    block.Opacity = 1;
-                    block.Visibility = Visibility.Visible;
-                    Panel.SetZIndex(block, 999);
+                    if (IsDiagnosticsMode)
+                    {
+                        block.Text = $"⚠️ Unknown field: {fieldName}";
+                        block.Background = Brushes.DarkRed;
+                        block.Foreground = Brushes.White;
+                    }
+                    else
+                    {
+                        block.Text = string.Empty;
+                        block.Background = null;
+                        block.Foreground = null;
+                    }
                     continue;
                 }
 
-                FieldNameParser parsed;
-                if (FieldNameParser.TryParse(name, out parsed))
+                string field = parsed.FieldType;
+                int index = parsed.InstanceIndex;
+                string value = null;
+
+                if (parsed.IsGeneric)
                 {
-                    if (parsed.IsGeneric && data.GenericData != null)
+                    var prop = data.GenericData?.GetType().GetProperty(field);
+                    value = prop?.GetValue(data.GenericData)?.ToString();
+                }
+                else
+                {
+                    int racerIndex = index - 1;
+                    if (racerIndex >= 0 && racerIndex < data.Racers.Count)
                     {
-                        string value = null;
-
-                        if (parsed.FieldType.Equals("NextHeatNumber", StringComparison.Ordinal))
-                            value = data.GenericData.NextHeatNumber;
-                        else if (parsed.FieldType.Equals("RaceName", StringComparison.Ordinal))
-                            value = data.GenericData.RaceName;
-                        else if (parsed.FieldType.Equals("TrackName", StringComparison.Ordinal))
-                            value = data.GenericData.TrackName;
-                        else if (parsed.FieldType.Equals("EventName", StringComparison.Ordinal))
-                            value = data.GenericData.EventName;
-                        else if (parsed.FieldType.Equals("Weather", StringComparison.Ordinal))
-                            value = data.GenericData.Weather;
-
-                        if (!string.IsNullOrEmpty(value))
-                        {
-                            block.Text = value;
-                            continue;
-                        }
+                        var racer = data.Racers[racerIndex];
+                        var prop = racer.GetType().GetProperty(field);
+                        value = prop?.GetValue(racer)?.ToString();
                     }
+                }
 
-                    int slotIndex = parsed.InstanceIndex - 1;
-                    if (string.IsNullOrEmpty(parsed.Context) && slotIndex >= 0 && slotIndex < data.Racers.Count)
-                    {
-                        Racer racer = data.Racers[slotIndex];
-                        string value = null;
-
-                        if (parsed.FieldType.Equals("NextHeatNickname", StringComparison.Ordinal) || parsed.FieldType.Equals("HeatNickname", StringComparison.Ordinal))
-                            value = racer.Name;
-                        else if (parsed.FieldType.Equals("Gap", StringComparison.Ordinal))
-                            value = racer.GapLeader;
-                        else if (parsed.FieldType.Equals("Lap", StringComparison.Ordinal))
-                            value = racer.Lap.ToString();
-                        else if (parsed.FieldType.Equals("BestLap", StringComparison.Ordinal))
-                            value = racer.BestLapTime;
-                        else if (parsed.FieldType.Equals("Fuel", StringComparison.Ordinal))
-                            value = racer.FuelPercent + "%";
-                        else if (parsed.FieldType.Equals("ReactionTime", StringComparison.Ordinal))
-                            value = racer.ReactionTime;
-                        else if (parsed.FieldType.Equals("Car", StringComparison.Ordinal))
-                            value = racer.CarModel;
-                        else if (parsed.FieldType.Equals("Tire", StringComparison.Ordinal))
-                            value = racer.TireChoice;
-                        else if (parsed.FieldType.Equals("Pit", StringComparison.Ordinal))
-                            value = racer.PitStops.ToString();
-
-                        if (value != null)
-                        {
-                            block.Text = value;
-                            continue;
-                        }
-                    }
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    block.Text = IsDiagnosticsMode ? $"{field} (no value)" : string.Empty;
+                    block.Background = IsDiagnosticsMode ? Brushes.DarkOrange : null;
+                    block.Foreground = IsDiagnosticsMode ? Brushes.White : null;
+                }
+                else
+                {
+                    block.Text = $"{field} ({value})";
+                    block.Background = null;
+                    block.Foreground = null;
                 }
             }
         }
