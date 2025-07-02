@@ -1,0 +1,28 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <DataTemplate x:Key="DriverRowTemplate">
+        <Grid Margin="0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="1.5*" />
+                <ColumnDefinition Width="1.5*" />
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" />
+            <TextBlock Grid.Column="1" Text="{Binding Lap}" HorizontalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding BestLapTime}" HorizontalAlignment="Center" />
+            <TextBlock Grid.Column="3" Text="{Binding GapLeader}" HorizontalAlignment="Right" />
+            <TextBlock Grid.Column="4" Text="{Binding CarModel}" HorizontalAlignment="Left" Foreground="LightGray" />
+        </Grid>
+    </DataTemplate>
+
+    <StackPanel x:Key="LayoutRoot" Background="#222" Margin="20">
+        <TextBlock Text="{Binding GenericData.RaceName}" FontSize="24" Foreground="LightGreen" Margin="0 0 0 10" />
+        <TextBlock Text="{Binding GenericData.TrackName}" FontSize="14" Foreground="Yellow" Margin="0 0 0 20" />
+        <ItemsControl ItemsSource="{Binding Racers}" ItemTemplate="{StaticResource DriverRowTemplate}" />
+    </StackPanel>
+
+</ResourceDictionary>

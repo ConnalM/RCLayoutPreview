@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+                    xmlns:local="clr-namespace:RaceCoordinator">
+  
+    <LinearGradientBrush x:Key="RSWindowBackground" StartPoint="0.5,0" EndPoint="0.5,1" SpreadMethod="Pad" ColorInterpolationMode="SRgbLinearInterpolation">
+      <GradientStop Color="#FF181616" Offset="0" />
+      <GradientStop Color="#FF000000" Offset="1" />
+      <GradientStop Color="#FF2DADD6" Offset="0.5" />
+    </LinearGradientBrush>
+
+    <Brush x:Key="RSHeaderColor">WHITE</Brush>
+    <Brush x:Key="RSHeaderColor1">WHITE</Brush>
+    <Brush x:Key="RSHeaderColor2">WHITE</Brush>
+    <Brush x:Key="RSHeaderColor3">WHITE</Brush>
+    <Brush x:Key="RSLabelColor">White</Brush>
+    <Brush x:Key="RSLabelColorAlt">#00FF05</Brush>
+    <Brush x:Key="RSPenaltyColor">#FF8BC63F</Brush>
+    <Brush x:Key="RSValueColor">White</Brush>
+    <Brush x:Key="RSBorderBrush">#FF000000</Brush>
+
+    <LinearGradientBrush x:Key="RSTopGridBackground" StartPoint="0.5,0" EndPoint="0.5,1" SpreadMethod="Pad" Opacity="1.0" ColorInterpolationMode="SRgbLinearInterpolation">
+        <GradientStop Color="#00FFFFFF" Offset="0" />
+        <GradientStop Color="#20FFFFFF" Offset="0.5" />
+        <GradientStop Color="#40FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <Brush x:Key="RSTableLabelBackground">Transparent</Brush>
+    <Brush x:Key="RSTableCellBackground">Black</Brush>
+
+    <LinearGradientBrush x:Key="RSListRowBackground" StartPoint="0.5,0" EndPoint="0.5,1" SpreadMethod="Pad" Opacity="1.0" ColorInterpolationMode="SRgbLinearInterpolation">
+        <GradientStop Color="#40FFFFFF" Offset="0" />
+        <GradientStop Color="#20FFFFFF" Offset="0.5" />
+        <GradientStop Color="#00FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+    <Style x:Key="RSListboxStyle">
+        <Style.Resources>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#608BC63F" />
+        </Style.Resources>
+    </Style>
+</ResourceDictionary>
