@@ -54,9 +54,8 @@
                 <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
                     <ContentControl x:Name="PreviewHost">
                         <StackPanel>
-                            <TextBlock Text="{Binding GenericData.RaceName}" />
+                            <TextBlock x:Name="RaceName" Text="{Binding GenericData.RaceName}" />
                             <TextBlock Text="{Binding GenericData.TrackName}" />
-                            <TextBlock Text="{Binding GenericData.NextHeatNumber}" />
                             <TextBlock Text="{Binding Racers[0].Name}" />
                             <TextBlock Text="{Binding Racers[0].Lap}" />
                             <TextBlock Text="{Binding Racers[0].BestLapTime}" />

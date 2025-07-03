@@ -139,10 +139,10 @@ namespace RCLayoutPreview
                 };
 
                 // Only inject stub data in diagnostics mode
-                //if (IsDiagnosticsMode)
-                //{
-                //    InjectStubData(layout, currentData);
-                //}
+                if (IsDiagnosticsMode)
+                {
+                    InjectStubData(layout, currentData);
+                }
 
                 var overlayContainer = new Grid();
                 overlayContainer.Children.Add(wrapper);
@@ -296,74 +296,74 @@ namespace RCLayoutPreview
             };
         }
 
-        //private void InjectStubData(FrameworkElement layout, RaceData data)
-        //{
-        //    if (layout == null || data == null)
-        //        return;
+        private void InjectStubData(FrameworkElement layout, RaceData data)
+        {
+            if (layout == null || data == null)
+                return;
 
-        //    foreach (var block in GetAllNamedTextBlocks(layout))
-        //    {
-        //        string fieldName = block.Tag as string ?? block.Name;
-        //        Console.WriteLine($"🧪 Block: {block.Name}, Tag: {fieldName}");
+            foreach (var block in GetAllNamedTextBlocks(layout))
+            {
+                string fieldName = block.Tag as string ?? block.Name;
+                Console.WriteLine($"🧪 Block: {block.Name}, Tag: {fieldName}");
 
-        //        // Use your parser that outputs a FieldNameParser instance
-        //        FieldNameParser parsed;
-        //        if (!FieldNameParser.TryParse(fieldName, out parsed))
-        //        {
-        //            if (IsDiagnosticsMode)
-        //            {
-        //                block.Text = $"⚠️ Unknown field: {fieldName}";
-        //                block.Background = Brushes.DarkRed;
-        //                block.Foreground = Brushes.White;
-        //            }
-        //            else
-        //            {
-        //                block.Text = string.Empty;
-        //                block.Background = null;
-        //                block.Foreground = null;
-        //            }
-        //            continue;
-        //        }
+                // Use your parser that outputs a FieldNameParser instance
+                FieldNameParser parsed;
+                if (!FieldNameParser.TryParse(fieldName, out parsed))
+                {
+                    if (IsDiagnosticsMode)
+                    {
+                        block.Text = $"⚠️ Unknown field: {fieldName}";
+                        block.Background = Brushes.DarkRed;
+                        block.Foreground = Brushes.White;
+                    }
+                    else
+                    {
+                        block.Text = string.Empty;
+                        block.Background = null;
+                        block.Foreground = null;
+                    }
+                    continue;
+                }
 
-        //        string field = parsed.FieldType;
-        //        int index = parsed.InstanceIndex;
-        //        string value = null;
+                string field = parsed.FieldType;
+                int index = parsed.InstanceIndex;
+                string value = null;
 
-        //        if (parsed.IsGeneric)
-        //        {
-        //            var prop = data.GenericData?.GetType().GetProperty(field);
-        //            var valueObj = prop?.GetValue(data.GenericData);
-        //            Console.WriteLine($"➡️ Looking for: {field} → Found: {valueObj}");
-        //            value = valueObj?.ToString();
+                if (parsed.IsGeneric)
+                {
+                    var prop = data.GenericData?.GetType().GetProperty(field);
+                    var valueObj = prop?.GetValue(data.GenericData);
+                    Console.WriteLine($"➡️ Looking for: {field} → Found: {valueObj}");
+                    value = valueObj?.ToString();
 
 
-        //        }
-        //        else
-        //        {
-        //            int racerIndex = index - 1;
-        //            if (racerIndex >= 0 && racerIndex < data.Racers.Count)
-        //            {
-        //                var racer = data.Racers[racerIndex];
-        //                var prop = racer.GetType().GetProperty(field);
-        //                value = prop?.GetValue(racer)?.ToString();
-        //            }
-        //        }
+                }
+                else
+                {
+                    int racerIndex = index - 1;
+                    if (racerIndex >= 0 && racerIndex < data.Racers.Count)
+                    {
+                        var racer = data.Racers[racerIndex];
+                        var prop = racer.GetType().GetProperty(field);
+                        value = prop?.GetValue(racer)?.ToString();
+                    }
+                }
 
-        //        if (string.IsNullOrWhiteSpace(value))
-        //        {
-        //            block.Text = IsDiagnosticsMode ? $"{field} (no value)" : string.Empty;
-        //            block.Background = IsDiagnosticsMode ? Brushes.DarkOrange : null;
-        //            block.Foreground = IsDiagnosticsMode ? Brushes.White : null;
-        //        }
-        //        else
-        //        {
-        //            block.Text = $" ({value})";
-        //            block.Background = null;
-        //            block.Foreground = null;
-        //        }
-        //        Console.WriteLine($"✅ Injected into block: {block.Name} → {block.Text}");
-        //    }
-        //}
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    block.Text = IsDiagnosticsMode ? $"{field} (no value)" : string.Empty;
+                    block.Background = IsDiagnosticsMode ? Brushes.DarkOrange : null;
+                    block.Foreground = IsDiagnosticsMode ? Brushes.White : null;
+                }
+                else
+                {
+                    block.Text = $" ({value})";
+                    block.Background = null;
+                    block.Foreground = null;
+                }
+                Console.WriteLine($"✅ Injected into block: {block.Name} → {block.Text}");
+            }
+        }
 
         private IEnumerable<TextBlock> GetAllNamedTextBlocks(DependencyObject parent)
         {
@@ -455,30 +455,30 @@ namespace RCLayoutPreview
     public class GenericData
     {
         public string RaceName { get; set; }
+        public string EventName { get; set; }
         public string TrackName { get; set; }
         public string NextHeatNumber { get; set; }
-
-        // ⬇️ Add these two lines
-        public string EventName { get; set; }
+        public string TotalHeats { get; set; }
+        public string HeatDuration { get; set; }
         public string Weather { get; set; }
+        public string RaceFormat { get; set; }
     }
 
     public class Racer
     {
+        public int Lane { get; set; }
         public string Name { get; set; }
+        public int Position { get; set; }
         public int Lap { get; set; }
         public string BestLapTime { get; set; }
         public string GapLeader { get; set; }
         public string CarModel { get; set; }
-        public string Avatar { get; set; }
-        public string LaneColor { get; set; }
-        public int FuelPercent { get; set; }
-        public string ReactionTime { get; set; }
-        public bool IsLeader { get; set; }
-        public int Lane { get; set; }
         public string TireChoice { get; set; }
         public int PitStops { get; set; }
-        //public string NextHeatNumber { get; set; }
-
+        public int FuelPercent { get; set; }
+        public string ReactionTime { get; set; }
+        public string Avatar { get; set; }
+        public string LaneColor { get; set; }
+        public bool IsLeader { get; set; }
     }
 }
