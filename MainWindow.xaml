@@ -5,33 +5,38 @@
         Height="800"
         Width="1200"
         FontFamily="Segoe UI">
-    <DockPanel>
+    <DockPanel LastChildFill="True">
         <!-- Top toolbar -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5" HorizontalAlignment="Left">
-            <Button x:Name="LoadLayoutButton" Content="Load Layout" Margin="0,0,10,0" Click="LoadLayout_Click"/>
-            <Button x:Name="LoadJsonButton" Content="Load JSON" Margin="0,0,10,0" Click="LoadJson_Click"/>
-            <Button x:Name="PreviewButton" Content="Preview" Margin="0,0,10,0" Click="Preview_Click"/>
-            <Button x:Name="SaveButton" Content="Save Layout" Margin="0,0,10,0" Click="SaveLayout_Click"/>
-            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Margin="10,0,0,0" />
+        <StackPanel Orientation="Horizontal"
+                    Margin="10"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    DockPanel.Dock="Top">
+            <Button Content="Load Layout" Click="LoadLayout_Click" Margin="0,0,8,0"/>
+            <Button Content="Load JSON" Click="LoadJson_Click" Margin="0,0,8,0"/>
+            <Button Content="Preview" Click="Preview_Click" Margin="0,0,8,0"/>
+            <Button Content="Save Layout" Click="SaveLayout_Click" Margin="0,0,8,0"/>
             <CheckBox x:Name="DebugModeToggle"
-              Content="Show Field Names"
-              Margin="10,0"
-              VerticalAlignment="Center"
-              IsChecked="True"
-              Checked="DebugModeToggle_Changed"
-              Unchecked="DebugModeToggle_Changed"/>
+                      Content="Diagnostics Mode"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center"
+                      Checked="DebugModeToggle_Changed"
+                      Unchecked="DebugModeToggle_Changed"/>
+            <TextBlock x:Name="StatusLabel"
+               Text="Ready"
+               Foreground="Gray"
+               Margin="10,4,0,4"
+               VerticalAlignment="Center"/>
         </StackPanel>
-            
+
         <!-- Main content split between editor and preview -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="5" />
-                <!-- Separator -->
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- XAML editor -->
             <TextBox x:Name="Editor"
                      Grid.Column="0"
                      AcceptsReturn="True"
@@ -43,13 +48,21 @@
                      TextWrapping="NoWrap"
                      Margin="5" />
 
-            <!-- Separator -->
             <Rectangle Grid.Column="1" Fill="LightGray" Width="1" />
 
-            <!-- Live preview -->
             <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="5">
                 <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
-                    <ContentControl x:Name="PreviewHost" />
+                    <ContentControl x:Name="PreviewHost">
+                        <StackPanel>
+                            <TextBlock Text="{Binding GenericData.RaceName}" />
+                            <TextBlock Text="{Binding GenericData.TrackName}" />
+                            <TextBlock Text="{Binding GenericData.NextHeatNumber}" />
+                            <TextBlock Text="{Binding Racers[0].Name}" />
+                            <TextBlock Text="{Binding Racers[0].Lap}" />
+                            <TextBlock Text="{Binding Racers[0].BestLapTime}" />
+                            <TextBlock Text="{Binding Racers[0].GapLeader}" />
+                        </StackPanel>
+                    </ContentControl>
                 </Border>
             </ScrollViewer>
         </Grid>
