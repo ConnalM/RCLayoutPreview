@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using RCLayoutPreview.Data;
 using RCLayoutPreview.Helpers;
 using System;
 using System.Collections.Generic;
@@ -11,6 +13,8 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Xml;
+using static RCLayoutPreview.Data.StubDataBuilder;
+using static RCLayoutPreview.Helpers.RacerHelpers;
 
 namespace RCLayoutPreview
 {
@@ -41,6 +45,7 @@ namespace RCLayoutPreview
                     SetStatus($"Failed to auto-load stubdata.json: {ex.Message}");
                 }
             }
+            Preview_Click(null, null);
             RCLayoutPreview.Helpers.XamlFixer.TestXamlFixer();
         }
 
@@ -109,22 +114,72 @@ namespace RCLayoutPreview
                         tb.Foreground = Brushes.White;
                 }
 
-                // Always reload JSON if a path is set, so changes in stubdata.json are picked up
                 if (!string.IsNullOrWhiteSpace(currentJsonPath) && File.Exists(currentJsonPath))
                 {
                     try
                     {
                         var json = File.ReadAllText(currentJsonPath);
                         currentData = JsonConvert.DeserializeObject<RaceData>(json);
+                        var patch = StubDataBuilder.GenerateFromLayout(layout);
+                        StubDataBuilder.PatchMissingFields(currentData, patch);
+
+                        // Top-up missing fields using layout-driven patch
+                        foreach (var patchRacer in patch.Racers)
+                        {
+                            var target = GetRacerByQualifier("Lane", patchRacer.Lane, currentData.Racers);
+                            if (target == null) continue;
+
+                            foreach (var kvp in patchRacer.Extras)
+                            {
+                                target.Extras ??= new Dictionary<string, JToken>();
+                                if (!target.Extras.ContainsKey(kvp.Key))
+                                    target.Extras[kvp.Key] = kvp.Value;
+                            }
+                        }
+
+                        foreach (var kvp in patch.GenericData?.GetType().GetProperties())
+                        {
+                            var value = kvp.GetValue(patch.GenericData);
+                            var prop = currentData.GenericData?.GetType().GetProperty(kvp.Name);
+                            if (prop?.GetValue(currentData.GenericData) == null)
+                                prop?.SetValue(currentData.GenericData, value);
+                        }
+
+                        PrintFieldOriginSummary(currentData, patch);
+
+                        SetStatus("Stub JSON loaded and patched with layout fields.");
                     }
                     catch (Exception ex)
                     {
                         SetStatus($"Failed to load JSON: {ex.Message}");
-                        currentData = null;
+                        currentData = StubDataBuilder.GenerateFromLayout(layout); // fallback
                     }
                 }
+                else
+                {
+                    currentData = StubDataBuilder.GenerateFromLayout(layout);
+                    SetStatus("No stub JSON found. Created stub data from layout.");
+                }
+
+                // After generating or updating currentData, call DumpAllRacerExtras.
                 if (currentData == null)
                     currentData = GenerateFakeData();
+
+                // Add this line to verify injected fields:
+                RCLayoutPreview.Data.StubDataBuilder.DumpAllRacerExtras(currentData);
+
+                // After calling DumpAllRacerExtras, add this check to log missing expected fields:
+                var expectedFields = new[] { "NextHeatNickname1", /* add other expected fields here */ };
+                foreach (var racer in currentData.Racers)
+                {
+                    foreach (var field in expectedFields)
+                    {
+                        if (racer.Extras == null || !racer.Extras.ContainsKey(field))
+                        {
+                            Console.WriteLine($"❌ Missing field '{field}' in Racer.Lane={racer.Lane}");
+                        }
+                    }
+                }
 
                 layout.DataContext = currentData;
 
@@ -296,6 +351,21 @@ namespace RCLayoutPreview
             };
         }
 
+        private Racer GetRacerByQualifier(string qualifier, int index, List<Racer> racers)
+        {
+            if (racers == null || index < 1) return null;
+
+            return qualifier switch
+            {
+                "Lane" => racers.FirstOrDefault(r => r.Lane == index),
+                "Position" => racers.OrderBy(r => r.Position).Skip(index - 1).FirstOrDefault(),
+                "RaceLeader" => racers.OrderBy(r => r.IsLeader ? 0 : 1).Skip(index - 1).FirstOrDefault(),
+                "GroupLeader" => racers.Skip(index - 1).FirstOrDefault(), // Stub: no group logic yet
+                "TeamLeader" => racers.Skip(index - 1).FirstOrDefault(), // Stub: no team logic yet
+                _ => null
+            };
+        }
+
         private void InjectStubData(FrameworkElement layout, RaceData data)
         {
             if (layout == null || data == null)
@@ -307,8 +377,8 @@ namespace RCLayoutPreview
                 Console.WriteLine($"🧪 Block: {block.Name}, Tag: {fieldName}");
 
                 // Use your parser that outputs a FieldNameParser instance
-                FieldNameParser parsed;
-                if (!FieldNameParser.TryParse(fieldName, out parsed))
+                ParsedField parsed;
+                if (!FieldNameParserUtility.TryParse(fieldName, out parsed))
                 {
                     if (IsDiagnosticsMode)
                     {
@@ -325,7 +395,7 @@ namespace RCLayoutPreview
                     continue;
                 }
 
-                string field = parsed.FieldType;
+                string field = parsed.BaseName;
                 int index = parsed.InstanceIndex;
                 string value = null;
 
@@ -335,18 +405,10 @@ namespace RCLayoutPreview
                     var valueObj = prop?.GetValue(data.GenericData);
                     Console.WriteLine($"➡️ Looking for: {field} → Found: {valueObj}");
                     value = valueObj?.ToString();
-
-
                 }
                 else
                 {
-                    int racerIndex = index - 1;
-                    if (racerIndex >= 0 && racerIndex < data.Racers.Count)
-                    {
-                        var racer = data.Racers[racerIndex];
-                        var prop = racer.GetType().GetProperty(field);
-                        value = prop?.GetValue(racer)?.ToString();
-                    }
+                    var racer = GetRacerByQualifier(parsed.QualifierType, parsed.QualifierIndex ?? 1, data.Racers);
                 }
 
                 if (string.IsNullOrWhiteSpace(value))
@@ -417,17 +479,17 @@ namespace RCLayoutPreview
                 var tag = block.Tag as string ?? block.Name;
                 string value = null;
 
-                if (FieldNameParser.TryParse(tag, out var parsed))
+                if (FieldNameParserUtility.TryParse(tag, out var parsed))
                 {
                     if (parsed.IsGeneric)
                     {
-                        var prop = data.GenericData?.GetType().GetProperty(parsed.FieldType);
+                        var prop = data.GenericData?.GetType().GetProperty(parsed.BaseName);
                         value = prop?.GetValue(data.GenericData)?.ToString();
                     }
                     else
                     {
                         var racer = data.Racers?.ElementAtOrDefault(parsed.InstanceIndex - 1);
-                        var prop = racer?.GetType().GetProperty(parsed.FieldType);
+                        var prop = racer?.GetType().GetProperty(parsed.BaseName);
                         value = prop?.GetValue(racer)?.ToString();
                     }
                 }
@@ -480,5 +542,9 @@ namespace RCLayoutPreview
         public string Avatar { get; set; }
         public string LaneColor { get; set; }
         public bool IsLeader { get; set; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JToken> Extras { get; set; }
+
     }
 }

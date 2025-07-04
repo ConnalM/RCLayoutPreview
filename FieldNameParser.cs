@@ -1,30 +1,73 @@
 using System.Text.RegularExpressions;
 
-namespace YourNamespaceHere // 🔁 Replace with your actual namespace
+namespace RCLayoutPreview.Helpers
 {
-    public class FieldNameParser
+    public class ParsedField
     {
-        public string FieldType { get; private set; }
-        public string Context { get; private set; } // e.g. Lane2, Position1, etc.
-        public int InstanceIndex { get; private set; } = 1;
+        public string BaseName { get; set; }             // e.g. LapTime
+        public string QualifierType { get; set; }        // e.g. Lane, Position, RaceLeader
+        public int? QualifierIndex { get; set; }         // e.g. 2
+        public int InstanceIndex { get; set; } = 1;      // Default to 1
+        public bool IsGeneric => QualifierType == null;
+    }
 
-        public bool IsGeneric => string.IsNullOrEmpty(Context);
-
-        public static bool TryParse(string rawName, out FieldNameParser parsed)
+    public static class FieldNameParserUtility
+    {
+        public static bool TryParse(string tag, out ParsedField result)
         {
-            parsed = null;
+            result = null;
+            if (string.IsNullOrWhiteSpace(tag)) return false;
 
-            var match = Regex.Match(rawName, @"^(?<field>\w+?)(_(?<context>\w+?))?(_(?<index>\d+))?$");
-            if (!match.Success) return false;
+            var parts = tag.Split('_');
+            if (parts.Length < 1 || parts.Length > 3) return false;
 
-            parsed = new FieldNameParser
+            var baseName = parts[0];
+            string qualifierType = null;
+            int? qualifierIndex = null;
+            int instanceIndex = 1;
+
+            // Handle qualifier (e.g. Lane2)
+            if (parts.Length >= 2 && TrySplitQualifier(parts[1], out var qType, out var qIndex))
             {
-                FieldType = match.Groups["field"].Value,
-                Context = match.Groups["context"].Success ? match.Groups["context"].Value : null,
-                InstanceIndex = match.Groups["index"].Success ? int.Parse(match.Groups["index"].Value) : 1
+                qualifierType = qType;
+                qualifierIndex = qIndex;
+            }
+            else if (parts.Length == 2 && int.TryParse(parts[1], out var indexOnly))
+            {
+                instanceIndex = indexOnly;
+            }
+
+            // Handle instance index
+            if (parts.Length == 3 && int.TryParse(parts[2], out var idx))
+            {
+                instanceIndex = idx;
+            }
+
+            result = new ParsedField
+            {
+                BaseName = baseName,
+                QualifierType = qualifierType,
+                QualifierIndex = qualifierIndex,
+                InstanceIndex = instanceIndex
             };
 
             return true;
+        }
+
+        private static bool TrySplitQualifier(string input, out string type, out int index)
+        {
+            type = null;
+            index = 0;
+
+            var match = Regex.Match(input, @"^([A-Za-z]+)(\d+)$");
+            if (match.Success)
+            {
+                type = match.Groups[1].Value;
+                index = int.Parse(match.Groups[2].Value);
+                return true;
+            }
+
+            return false;
         }
     }
 }
