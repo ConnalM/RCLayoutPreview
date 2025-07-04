@@ -59,6 +59,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Data\RaceData.cs" />
     <Compile Include="Helpers\RacerHelpers.cs" />
     <Compile Include="StubDataBuilder.cs" />
     <Page Include="GroupLeaderBoard.xaml">

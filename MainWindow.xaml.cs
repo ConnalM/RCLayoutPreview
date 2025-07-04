@@ -161,6 +161,16 @@ namespace RCLayoutPreview
                     SetStatus("No stub JSON found. Created stub data from layout.");
                 }
 
+                // Ensure NextHeatNickname1 is present in Extras for every racer
+                foreach (var racer in currentData.Racers)
+                {
+                    racer.Extras ??= new Dictionary<string, JToken>();
+                    if (!racer.Extras.ContainsKey("NextHeatNickname1"))
+                    {
+                        racer.Extras["NextHeatNickname1"] = "DefaultNickname"; // Set your desired default value here
+                    }
+                }
+
                 // After generating or updating currentData, call DumpAllRacerExtras.
                 if (currentData == null)
                     currentData = GenerateFakeData();
@@ -181,6 +191,23 @@ namespace RCLayoutPreview
                     }
                 }
 
+                foreach (var racer in currentData.Racers)
+                {
+                    if (racer.Extras != null && racer.Extras.ContainsKey("NextHeatNickname1"))
+                    {
+                        Console.WriteLine($"Lane {racer.Lane}: NextHeatNickname1 = {racer.Extras["NextHeatNickname1"]}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Lane {racer.Lane}: NextHeatNickname1 not found in Extras.");
+                    }
+                }
+
+                //MessageBox.Show(string.Join("\n", currentData.Racers.Select(r =>
+                //    r.Extras != null && r.Extras.ContainsKey("NextHeatNickname1")
+                //        ? $"Lane {r.Lane}: {r.Extras["NextHeatNickname1"]}"
+                //        : $"Lane {r.Lane}: Not found")));
+
                 layout.DataContext = currentData;
 
                 // Wrap the layout in a border for consistent padding/background
@@ -193,11 +220,8 @@ namespace RCLayoutPreview
                     Child = layout
                 };
 
-                // Only inject stub data in diagnostics mode
-                if (IsDiagnosticsMode)
-                {
-                    InjectStubData(layout, currentData);
-                }
+                // Always inject stub data so TextBlocks are updated
+                InjectStubData(layout, currentData);
 
                 var overlayContainer = new Grid();
                 overlayContainer.Children.Add(wrapper);
@@ -374,56 +398,47 @@ namespace RCLayoutPreview
             foreach (var block in GetAllNamedTextBlocks(layout))
             {
                 string fieldName = block.Tag as string ?? block.Name;
-                Console.WriteLine($"🧪 Block: {block.Name}, Tag: {fieldName}");
+                string value = null;
 
-                // Use your parser that outputs a FieldNameParser instance
+                // Try to parse the field name using RC conventions
                 ParsedField parsed;
-                if (!FieldNameParserUtility.TryParse(fieldName, out parsed))
+                if (FieldNameParserUtility.TryParse(fieldName, out parsed))
                 {
-                    if (IsDiagnosticsMode)
+                    if (parsed.IsGeneric)
                     {
-                        block.Text = $"⚠️ Unknown field: {fieldName}";
-                        block.Background = Brushes.DarkRed;
-                        block.Foreground = Brushes.White;
+                        // Generic data (e.g., NextHeatNumber_1)
+                        var prop = data.GenericData?.GetType().GetProperty(parsed.BaseName);
+                        value = prop?.GetValue(data.GenericData)?.ToString();
                     }
                     else
                     {
-                        block.Text = string.Empty;
-                        block.Background = null;
-                        block.Foreground = null;
+                        // Racer data (e.g., Name_Lane1, Lap_Position2, etc.)
+                        var racer = GetRacerByQualifier(parsed.QualifierType, parsed.QualifierIndex ?? parsed.InstanceIndex, data.Racers);
+                        if (racer != null)
+                        {
+                            var prop = racer.GetType().GetProperty(parsed.BaseName);
+                            value = prop?.GetValue(racer)?.ToString();
+                            // Fallback to Extras if not found as a property
+                            if (string.IsNullOrWhiteSpace(value) && racer.Extras != null && racer.Extras.TryGetValue(parsed.BaseName, out var extraVal))
+                                value = extraVal?.ToString();
+                        }
                     }
-                    continue;
-                }
-
-                string field = parsed.BaseName;
-                int index = parsed.InstanceIndex;
-                string value = null;
-
-                if (parsed.IsGeneric)
-                {
-                    var prop = data.GenericData?.GetType().GetProperty(field);
-                    var valueObj = prop?.GetValue(data.GenericData);
-                    Console.WriteLine($"➡️ Looking for: {field} → Found: {valueObj}");
-                    value = valueObj?.ToString();
                 }
                 else
                 {
-                    var racer = GetRacerByQualifier(parsed.QualifierType, parsed.QualifierIndex ?? 1, data.Racers);
+                    // Fallback: try to find the field in any racer's Extras
+                    foreach (var racer in data.Racers)
+                    {
+                        if (racer.Extras != null && racer.Extras.TryGetValue(fieldName, out var extraVal))
+                        {
+                            value = extraVal?.ToString();
+                            break;
+                        }
+                    }
                 }
 
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    block.Text = IsDiagnosticsMode ? $"{field} (no value)" : string.Empty;
-                    block.Background = IsDiagnosticsMode ? Brushes.DarkOrange : null;
-                    block.Foreground = IsDiagnosticsMode ? Brushes.White : null;
-                }
-                else
-                {
-                    block.Text = $" ({value})";
-                    block.Background = null;
-                    block.Foreground = null;
-                }
-                Console.WriteLine($"✅ Injected into block: {block.Name} → {block.Text}");
+                // Set the Text property for the block
+                block.Text = value ?? string.Empty;
             }
         }
 
@@ -485,12 +500,48 @@ namespace RCLayoutPreview
                     {
                         var prop = data.GenericData?.GetType().GetProperty(parsed.BaseName);
                         value = prop?.GetValue(data.GenericData)?.ToString();
+
+                        // If not found in GenericData, check all Racers' Extras
+                        if (string.IsNullOrWhiteSpace(value) && data.Racers != null)
+                        {
+                            foreach (var racer in data.Racers)
+                            {
+                                if (racer.Extras != null && racer.Extras.TryGetValue(parsed.BaseName, out var extraVal))
+                                {
+                                    value = extraVal?.ToString();
+                                    break;
+                                }
+                            }
+                        }
                     }
                     else
                     {
                         var racer = data.Racers?.ElementAtOrDefault(parsed.InstanceIndex - 1);
-                        var prop = racer?.GetType().GetProperty(parsed.BaseName);
-                        value = prop?.GetValue(racer)?.ToString();
+                        if (racer != null)
+                        {
+                            if (racer.Extras != null && racer.Extras.TryGetValue(parsed.BaseName, out var extraVal))
+                                value = extraVal?.ToString();
+                            else
+                            {
+                                var prop = racer.GetType().GetProperty(parsed.BaseName);
+                                value = prop?.GetValue(racer)?.ToString();
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // If parsing fails, look for the full tag in Extras
+                    if (data.Racers != null)
+                    {
+                        foreach (var racer in data.Racers)
+                        {
+                            if (racer.Extras != null && racer.Extras.TryGetValue(tag, out var extraVal))
+                            {
+                                value = extraVal?.ToString();
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -505,46 +556,5 @@ namespace RCLayoutPreview
 
             return panel;
         }
-
-    }
-
-    public class RaceData
-    {
-        public GenericData GenericData { get; set; }
-        public List<Racer> Racers { get; set; }
-    }
-
-    public class GenericData
-    {
-        public string RaceName { get; set; }
-        public string EventName { get; set; }
-        public string TrackName { get; set; }
-        public string NextHeatNumber { get; set; }
-        public string TotalHeats { get; set; }
-        public string HeatDuration { get; set; }
-        public string Weather { get; set; }
-        public string RaceFormat { get; set; }
-    }
-
-    public class Racer
-    {
-        public int Lane { get; set; }
-        public string Name { get; set; }
-        public int Position { get; set; }
-        public int Lap { get; set; }
-        public string BestLapTime { get; set; }
-        public string GapLeader { get; set; }
-        public string CarModel { get; set; }
-        public string TireChoice { get; set; }
-        public int PitStops { get; set; }
-        public int FuelPercent { get; set; }
-        public string ReactionTime { get; set; }
-        public string Avatar { get; set; }
-        public string LaneColor { get; set; }
-        public bool IsLeader { get; set; }
-
-        [JsonExtensionData]
-        public Dictionary<string, JToken> Extras { get; set; }
-
     }
 }

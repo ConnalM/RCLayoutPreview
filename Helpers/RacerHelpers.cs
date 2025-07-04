@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using RCLayoutPreview; // Or wherever your Racer class lives
+using RCLayoutPreview.Data; // Correct namespace for Racer
 
 namespace RCLayoutPreview.Helpers
 {
