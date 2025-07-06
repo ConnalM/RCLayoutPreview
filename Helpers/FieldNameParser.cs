@@ -3,6 +3,15 @@ using System.Diagnostics; // Ensure this is added
 
 namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
 {
+    public class ParsedField
+    {
+        public string BaseName { get; set; }
+        public string QualifierType { get; set; }
+        public int? QualifierIndex { get; set; }
+        public int InstanceIndex { get; set; }
+        public bool IsGeneric { get; set; }
+    }
+
     public class FieldNameParser
     {
         public string FieldType { get; private set; }
@@ -11,42 +20,36 @@ namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
         public bool IsGeneric { get; private set; }
         public string BaseName => FieldType; // Add this for compatibility
 
-        public static bool TryParse(string rawName, out FieldNameParser parsed)
+        public static bool TryParse(string rawName, out ParsedField parsed)
         {
             parsed = null;
 
             if (string.IsNullOrWhiteSpace(rawName))
                 return false;
 
-            // Enhanced regex: handles FieldName, FieldName1, FieldName_Context, FieldName1_Context, FieldName_Context_1, etc.
-            var match = Regex.Match(rawName, @"^(?<field>[A-Za-z_]+?)(?<num>\d+)?(_(?<context>[A-Za-z]+))?(_(?<index>\d+))?$");
+            // Updated regex to correctly parse names like "NextHeatNickname1_1"
+            string pattern = @"^(?<field>[A-Za-z]+?(?:\d+)?)(?:_(?<qualifier>[A-Za-z]+)(?<qualifierIndex>\d*))?(?:_(?<instanceIndex>\d+))?$";
+            var match = Regex.Match(rawName, pattern);
+
             if (match.Success)
             {
-                // Compose the base field name (e.g., NextHeatNickname1)
                 string field = match.Groups["field"].Value;
-                string num = match.Groups["num"].Success ? match.Groups["num"].Value : "";
-                string baseName = field + num;
+                string qualifier = match.Groups["qualifier"].Value;
+                string qualifierIndex = match.Groups["qualifierIndex"].Value;
+                string instanceIndex = match.Groups["instanceIndex"].Value;
 
-                parsed = new FieldNameParser
+                parsed = new ParsedField
                 {
-                    FieldType = baseName,
-                    Context = match.Groups["context"].Success ? match.Groups["context"].Value : null,
-                    InstanceIndex = match.Groups["index"].Success ? int.Parse(match.Groups["index"].Value) : 1,
-                    IsGeneric = string.IsNullOrEmpty(match.Groups["context"].Value)
+                    BaseName = field,
+                    QualifierType = qualifier,
+                    QualifierIndex = string.IsNullOrEmpty(qualifierIndex) ? null : int.Parse(qualifierIndex),
+                    InstanceIndex = string.IsNullOrEmpty(instanceIndex) ? 1 : int.Parse(instanceIndex),
+                    IsGeneric = string.IsNullOrEmpty(qualifier) && string.IsNullOrEmpty(qualifierIndex)
                 };
                 return true;
             }
 
-            // Fallback: treat entire string as a generic field
-            parsed = new FieldNameParser
-            {
-                FieldType = rawName,
-                Context = null,
-                InstanceIndex = 1,
-                IsGeneric = true
-            };
-
-            return true;
+            return false;
         }
 
         // Add a simple test method to verify parsing logic
@@ -56,8 +59,9 @@ namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
             if (TryParse(test, out var parsed))
             {
                 Debug.WriteLine($"Raw: {test}");
-                Debug.WriteLine($"FieldType: {parsed.FieldType}");
-                Debug.WriteLine($"Context: {parsed.Context}");
+                Debug.WriteLine($"BaseName: {parsed.BaseName}");
+                Debug.WriteLine($"QualifierType: {parsed.QualifierType}");
+                Debug.WriteLine($"QualifierIndex: {parsed.QualifierIndex}");
                 Debug.WriteLine($"InstanceIndex: {parsed.InstanceIndex}");
                 Debug.WriteLine($"IsGeneric: {parsed.IsGeneric}");
             }

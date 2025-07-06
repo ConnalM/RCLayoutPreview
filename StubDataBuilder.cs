@@ -27,7 +27,7 @@ namespace RCLayoutPreview.Data
             foreach (var element in GetAllNamedElements(layout))
             {
                 string tagOrName = element.Tag as string ?? element.Name;
-                if (!FieldNameParserUtility.TryParse(tagOrName, out var parsed)) continue;
+                if (!FieldNameParser.TryParse(tagOrName, out var parsed)) continue;
 
                 // Use the full parsed.BaseName (e.g., "NextHeatNickname1") as the field name
                 string field = parsed.BaseName;

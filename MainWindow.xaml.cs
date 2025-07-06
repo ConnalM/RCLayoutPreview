@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -203,11 +204,6 @@ namespace RCLayoutPreview
                     }
                 }
 
-                //MessageBox.Show(string.Join("\n", currentData.Racers.Select(r =>
-                //    r.Extras != null && r.Extras.ContainsKey("NextHeatNickname1")
-                //        ? $"Lane {r.Lane}: {r.Extras["NextHeatNickname1"]}"
-                //        : $"Lane {r.Lane}: Not found")));
-
                 layout.DataContext = currentData;
 
                 // Wrap the layout in a border for consistent padding/background
@@ -359,7 +355,6 @@ namespace RCLayoutPreview
                     Lane = i,
                     TireChoice = (i % 2 == 0) ? "Soft" : "Hard",
                     PitStops = i / 2,
-                    //NextHeatNumber = "7"
                 });
             }
 
@@ -402,7 +397,7 @@ namespace RCLayoutPreview
 
                 // Try to parse the field name using RC conventions
                 ParsedField parsed;
-                if (FieldNameParserUtility.TryParse(fieldName, out parsed))
+                if (FieldNameParser.TryParse(fieldName, out parsed))
                 {
                     if (parsed.IsGeneric)
                     {
@@ -413,13 +408,10 @@ namespace RCLayoutPreview
                     else
                     {
                         // Racer data (e.g., Name_Lane1, Lap_Position2, etc.)
-                        var racer = GetRacerByQualifier(parsed.QualifierType, parsed.QualifierIndex ?? parsed.InstanceIndex, data.Racers);
+                        var racer = data.Racers?.ElementAtOrDefault(parsed.InstanceIndex - 1);
                         if (racer != null)
                         {
-                            var prop = racer.GetType().GetProperty(parsed.BaseName);
-                            value = prop?.GetValue(racer)?.ToString();
-                            // Fallback to Extras if not found as a property
-                            if (string.IsNullOrWhiteSpace(value) && racer.Extras != null && racer.Extras.TryGetValue(parsed.BaseName, out var extraVal))
+                            if (racer.Extras != null && racer.Extras.TryGetValue(parsed.BaseName, out var extraVal))
                                 value = extraVal?.ToString();
                         }
                     }
@@ -494,7 +486,7 @@ namespace RCLayoutPreview
                 var tag = block.Tag as string ?? block.Name;
                 string value = null;
 
-                if (FieldNameParserUtility.TryParse(tag, out var parsed))
+                if (FieldNameParser.TryParse(tag, out var parsed))
                 {
                     if (parsed.IsGeneric)
                     {
@@ -556,5 +548,68 @@ namespace RCLayoutPreview
 
             return panel;
         }
+    }
+
+    public static class FieldNameParser
+    {
+        public static bool TryParse(string rawName, out ParsedField parsed)
+        {
+            parsed = null;
+
+            if (string.IsNullOrWhiteSpace(rawName))
+                return false;
+
+            // Regex: FieldName(_QualifierTypeQualifierIndex)?(_InstanceIndex)?
+            // e.g. NextHeatNickname1_1, Name_Lane2, Lap_Position1_2
+            string pattern = @"^(?<field>[A-Za-z0-9]+?)(?:_(?<qualifier>[A-Za-z]+)?(?<qualifierIndex>\d+))?(?:_(?<instanceIndex>\d+))?$";
+            var match = Regex.Match(rawName, pattern);
+
+            if (match.Success)
+            {
+                string field = match.Groups["field"].Value;
+                string qualifier = match.Groups["qualifier"].Success ? match.Groups["qualifier"].Value : null;
+                string qualifierIndex = match.Groups["qualifierIndex"].Success ? match.Groups["qualifierIndex"].Value : null;
+                string instanceIndex = match.Groups["instanceIndex"].Success ? match.Groups["instanceIndex"].Value : null;
+
+                // Default values
+                string qualifierType = qualifier;
+                int? qIndex = string.IsNullOrEmpty(qualifierIndex) ? (int?)null : int.Parse(qualifierIndex);
+                int iIndex = string.IsNullOrEmpty(instanceIndex) ? 1 : int.Parse(instanceIndex);
+                bool isGeneric = string.IsNullOrEmpty(qualifierType) && !qIndex.HasValue;
+
+                // Fallback: infer Lane if pattern is like SomeField1_1 (no qualifier, but numeric suffix)
+                if (string.IsNullOrEmpty(qualifierType) && !qIndex.HasValue && rawName.Contains("_"))
+                {
+                    var parts = rawName.Split('_');
+                    if (parts.Length == 2 && int.TryParse(parts[1], out int laneIdx))
+                    {
+                        qualifierType = "Lane";
+                        qIndex = laneIdx;
+                        isGeneric = false;
+                    }
+                }
+
+                parsed = new ParsedField
+                {
+                    BaseName = field,
+                    QualifierType = qualifierType,
+                    QualifierIndex = qIndex,
+                    InstanceIndex = iIndex,
+                    IsGeneric = isGeneric
+                };
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    public class ParsedField
+    {
+        public string BaseName { get; set; }
+        public string QualifierType { get; set; }
+        public int? QualifierIndex { get; set; }
+        public int InstanceIndex { get; set; }
+        public bool IsGeneric { get; set; }
     }
 }
