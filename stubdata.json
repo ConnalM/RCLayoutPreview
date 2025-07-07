@@ -11,6 +11,7 @@
 		"GapPosition_Lane1": "-0.300",
 		"CarImage_Lane1": "\\\\images\\\\GT40_1.jpg",
 		"Avatar_Lane1": "\\\\images\\\\P_1.jpg",
+		"NextHeatNickname1_Lane1": "Speedster1-Next",
 
 		"Name_Position1": "Driver 1",
 		"Nickname_Position1": "Speedster1",
@@ -45,7 +46,6 @@
 		"Standing_TeamLeader1": "1st",
 		"CarImage_TeamLeader1": "\\\\images\\\\GT40_1.jpg",
 		"Avatar_TeamLeader1": "\\\\images\\\\P_1.jpg",
-
 
 		"Name_Lane2": "Driver 2",
 		"Nickname_Lane2": "Speedster2",
@@ -93,7 +93,6 @@
 		"CarImage_TeamLeader2": "\\\\images\\\\GT40_2.jpg",
 		"Avatar_TeamLeader2": "\\\\images\\\\P_2.jpg",
 
-
 		"Name_Lane3": "Driver 3",
 		"Nickname_Lane3": "Speedster3",
 		"Lap_Lane3": 18,
@@ -140,7 +139,6 @@
 		"CarImage_TeamLeader3": "\\\\images\\\\GT40_3.jpg",
 		"Avatar_TeamLeader3": "\\\\images\\\\P_3.jpg",
 
-
 		"Name_Lane4": "Driver 4",
 		"Nickname_Lane4": "Speedster4",
 		"Lap_Lane4": 18,
@@ -185,8 +183,7 @@
 		"Lap_TeamLeader4": 70,
 		"Standing_TeamLeader4": "4th",
 		"CarImage_TeamLeader4": "\\\\images\\\\GT40_4.jpg",
-		"Avatar_TeamLeader4": "\\\\images\\\\P_4.jpg"
-
+		"Avatar_TeamLeader4": "\\\\images\\\\P_4.jpg",
 
 		"Name_Lane5": "Driver 5",
 		"Nickname_Lane5": "Speedster5",
@@ -213,225 +210,4 @@
 		"Avatar_Position5": "\\\\images\\\\P_5.jpg",
 
 		"Name_RaceLeader5": "Driver 5",
-		"Nickname_RaceLeader5": "Speedster5",
-		"Lap_RaceLeader5": 18,
-		"BestLapTime_RaceLeader5": "24.400",
-		"Standing_RaceLeader5": "5th",
-		"CarImage_RaceLeader5": "\\\\images\\\\GT40_5.jpg",
-		"Avatar_RaceLeader5": "\\\\images\\\\P_5.jpg",
-
-		"Name_GroupLeader5": "Driver 5",
-		"Nickname_GroupLeader5": "Speedster5",
-		"Lap_GroupLeader5": 18,
-		"Standing_GroupLeader5": "5th",
-		"CarImage_GroupLeader5": "\\\\images\\\\GT40_5.jpg",
-		"Avatar_GroupLeader5": "\\\\images\\\\P_5.jpg",
-
-		"Name_TeamLeader5": "Team Epsilon",
-		"Nickname_TeamLeader5": "Nitro Pulse",
-		"Lap_TeamLeader5": 69,
-		"Standing_TeamLeader5": "5th",
-		"CarImage_TeamLeader5": "\\\\images\\\\GT40_5.jpg",
-		"Avatar_TeamLeader5": "\\\\images\\\\P_5.jpg",
-
-
-		"Name_Lane6": "Driver 6",
-		"Nickname_Lane6": "Speedster6",
-		"Lap_Lane6": 18,
-		"LapTime_Lane6": "24.666",
-		"ReactionTime_Lane6": "0.606",
-		"AverageTime_Lane6": "25.206",
-		"BestLapTime_Lane6": "24.500",
-		"GapLeader_Lane6": "+0.606",
-		"GapPosition_Lane6": "+0.200",
-		"CarImage_Lane6": "\\\\images\\\\GT40_6.jpg",
-		"Avatar_Lane6": "\\\\images\\\\P_6.jpg",
-
-		"Name_Position6": "Driver 6",
-		"Nickname_Position6": "Speedster6",
-		"Lap_Position6": 18,
-		"LapTime_Position6": "24.666",
-		"ReactionTime_Position6": "0.606",
-		"AverageTime_Position6": "25.206",
-		"BestLapTime_Position6": "24.500",
-		"GapLeader_Position6": "+0.606",
-		"GapPosition_Position6": "+0.200",
-		"CarImage_Position6": "\\\\images\\\\GT40_6.jpg",
-		"Avatar_Position6": "\\\\images\\\\P_6.jpg",
-
-		"Name_RaceLeader6": "Driver 6",
-		"Nickname_RaceLeader6": "Speedster6",
-		"Lap_RaceLeader6": 18,
-		"BestLapTime_RaceLeader6": "24.500",
-		"Standing_RaceLeader6": "6th",
-		"CarImage_RaceLeader6": "\\\\images\\\\GT40_6.jpg",
-		"Avatar_RaceLeader6": "\\\\images\\\\P_6.jpg",
-
-		"Name_GroupLeader6": "Driver 6",
-		"Nickname_GroupLeader6": "Speedster6",
-		"Lap_GroupLeader6": 18,
-		"Standing_GroupLeader6": "6th",
-		"CarImage_GroupLeader6": "\\\\images\\\\GT40_6.jpg",
-		"Avatar_GroupLeader6": "\\\\images\\\\P_6.jpg",
-
-		"Name_TeamLeader6": "Team Foxtrot",
-		"Nickname_TeamLeader6": "Velocity Union",
-		"Lap_TeamLeader6": 70,
-		"Standing_TeamLeader6": "6th",
-		"CarImage_TeamLeader6": "\\\\images\\\\GT40_6.jpg",
-		"Avatar_TeamLeader6": "\\\\images\\\\P_6.jpg",
-
-
-		"Name_Lane7": "Driver 7",
-		"Nickname_Lane7": "Speedster7",
-		"Lap_Lane7": 18,
-		"LapTime_Lane7": "24.777",
-		"ReactionTime_Lane7": "0.607",
-		"AverageTime_Lane7": "25.207",
-		"BestLapTime_Lane7": "24.600",
-		"GapLeader_Lane7": "+0.707",
-		"GapPosition_Lane7": "+0.300",
-		"CarImage_Lane7": "\\\\images\\\\GT40_7.jpg",
-		"Avatar_Lane7": "\\\\images\\\\P_7.jpg",
-
-		"Name_Position7": "Driver 7",
-		"Nickname_Position7": "Speedster7",
-		"Lap_Position7": 18,
-		"LapTime_Position7": "24.777",
-		"ReactionTime_Position7": "0.607",
-		"AverageTime_Position7": "25.207",
-		"BestLapTime_Position7": "24.600",
-		"GapLeader_Position7": "+0.707",
-		"GapPosition_Position7": "+0.300",
-		"CarImage_Position7": "\\\\images\\\\GT40_7.jpg",
-		"Avatar_Position7": "\\\\images\\\\P_7.jpg",
-
-		"Name_RaceLeader7": "Driver 7",
-		"Nickname_RaceLeader7": "Speedster7",
-		"Lap_RaceLeader7": 18,
-		"BestLapTime_RaceLeader7": "24.600",
-		"Standing_RaceLeader7": "7th",
-		"CarImage_RaceLeader7": "\\\\images\\\\GT40_7.jpg",
-		"Avatar_RaceLeader7": "\\\\images\\\\P_7.jpg",
-
-		"Name_GroupLeader7": "Driver 7",
-		"Nickname_GroupLeader7": "Speedster7",
-		"Lap_GroupLeader7": 18,
-		"Standing_GroupLeader7": "7th",
-		"CarImage_GroupLeader7": "\\\\images\\\\GT40_7.jpg",
-		"Avatar_GroupLeader7": "\\\\images\\\\P_7.jpg",
-
-		"Name_TeamLeader7": "Team Golf",
-		"Nickname_TeamLeader7": "Octane Hive",
-		"Lap_TeamLeader7": 70,
-		"Standing_TeamLeader7": "7th",
-		"CarImage_TeamLeader7": "\\\\images\\\\GT40_7.jpg",
-		"Avatar_TeamLeader7": "\\\\images\\\\P_7.jpg",
-
-
-		"Name_Lane8": "Driver 8",
-		"Nickname_Lane8": "Speedster8",
-		"Lap_Lane8": 18,
-		"LapTime_Lane8": "24.888",
-		"ReactionTime_Lane8": "0.608",
-		"AverageTime_Lane8": "25.208",
-		"BestLapTime_Lane8": "24.700",
-		"GapLeader_Lane8": "+0.808",
-		"GapPosition_Lane8": "+0.400",
-		"CarImage_Lane8": "\\\\images\\\\GT40_8.jpg",
-		"Avatar_Lane8": "\\\\images\\\\P_8.jpg",
-
-		"Name_Position8": "Driver 8",
-		"Nickname_Position8": "Speedster8",
-		"Lap_Position8": 18,
-		"LapTime_Position8": "24.888",
-		"ReactionTime_Position8": "0.608",
-		"AverageTime_Position8": "25.208",
-		"BestLapTime_Position8": "24.700",
-		"GapLeader_Position8": "+0.808",
-		"GapPosition_Position8": "+0.400",
-		"CarImage_Position8": "\\\\images\\\\GT40_8.jpg",
-		"Avatar_Position8": "\\\\images\\\\P_8.jpg",
-
-		"Name_RaceLeader8": "Driver 8",
-		"Nickname_RaceLeader8": "Speedster8",
-		"Lap_RaceLeader8": 18,
-		"BestLapTime_RaceLeader8": "24.700",
-		"Standing_RaceLeader8": "8th",
-		"CarImage_RaceLeader8": "\\\\images\\\\GT40_8.jpg",
-		"Avatar_RaceLeader8": "\\\\images\\\\P_8.jpg",
-
-		"Name_GroupLeader8": "Driver 8",
-		"Nickname_GroupLeader8": "Speedster8",
-		"Lap_GroupLeader8": 18,
-		"Standing_GroupLeader8": "8th",
-		"CarImage_GroupLeader8": "\\\\images\\\\GT40_8.jpg",
-		"Avatar_GroupLeader8": "\\\\images\\\\P_8.jpg",
-
-		"Name_TeamLeader8": "Team Hotel",
-		"Nickname_TeamLeader8": "Torque Syndicate",
-		"Lap_TeamLeader8": 70,
-		"Standing_TeamLeader8": "8th",
-		"CarImage_TeamLeader8": "\\\\images\\\\GT40_8.jpg",
-		"Avatar_TeamLeader8": "\\\\images\\\\P_8.jpg"
-	},
-
-
-	"GenericData": {
-		"RaceName": "Grand Prix Invitational",
-		"TrackName": "Silverline Speedway",
-		"RaceTime": "03:24",
-		"RaceLaps": "18",
-		"HeatNumber": "4",
-		"NumHeats": "8",
-		"StatusLabel": "Heat 4 of 8",
-		"RaceStateImage": "green_flag.png",
-		"TrackImage": "\\\\images\\\\RC_logo.png",
-		"BestHeatTime": "23.817",
-		"BestHeatName": "Driver 3",
-		"BestHeatNickname": "Blitz",
-		"SegmentTimeLabel1": "S1",
-		"SegmentTimeLabel2": "S2",
-		"SegmentTimeLabel3": "S3",
-		"SegmentTimeLabel4": "S4",
-		"SegmentTimeLabel5": "S5",
-		"SegmentTimeLabel6": "S6",
-		"SegmentTimeLabel7": "S7",
-		"SegmentTimeLabel8": "S8"
-	}
-
-	"Actions": {
-	  "Start": "Enabled",
-	  "Pause": "Enabled",
-	  "Save": "Available",
-	  "SaveAs": "Available",
-	  "SkipHeat": "Visible",
-	  "SkipRace": "Hidden",
-	  "NextHeat": "Ready",
-	  "RestartHeat": "Ready",
-	  "ClearLane": "0",
-	  "LapEditor": "Open",
-	  "ViewHeats": "Visible",
-	  "VideoTest": "Ready",
-	  "ModifyHeats": "Available",
-	  "PreviewHost": "Active",
-	  "PowerOn": "System Ready",
-	  "PowerOff": "Standby"
-	}
-	
-	"LayoutFlags": {
-	  "Editor": "Editing",
-	  "DriverLB": "Showing",
-	  "LapLB": "Visible",
-	  "Window": "RaceControl.xaml",
-	  "Dialog": "ConfirmFinish.xaml",
-	  "menu1": "Main",
-	  "grid1": "Shown",
-	  "stackPanel1": "Visible",
-	  "StartLamp1": "start_red_on.png",
-	  "StartLamp2": "start_red_on.png",
-	  "StartLamp3": "start_red_on.png",
-	  "StartLamp4": "start_red_on.png",
-	  "StartLamp5": "start_red_on.png"
-	}
-}
+		"Nickname_RaceLeader5": "Speed

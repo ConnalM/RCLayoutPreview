@@ -59,9 +59,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Data\GenericData.cs" />
     <Compile Include="Data\RaceData.cs" />
+    <Compile Include="Data\Racer.cs" />
     <Compile Include="Helpers\RacerHelpers.cs" />
-    <Compile Include="StubDataBuilder.cs" />
     <Page Include="GroupLeaderBoard.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -81,6 +82,9 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="TestLayout.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Resource Include="ThemeDictionary.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -112,12 +116,16 @@
     <None Include="stubdata.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="stubdata4.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="FieldNames.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="FieldNames_Unique.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild">

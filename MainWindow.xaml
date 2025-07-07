@@ -53,12 +53,13 @@
                 <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
                     <ContentControl x:Name="PreviewHost">
                         <StackPanel>
-                            <TextBlock x:Name="RaceName" Text="{Binding GenericData.RaceName}" />
-                            <TextBlock Text="{Binding GenericData.TrackName}" />
-                            <TextBlock Text="{Binding Racers[0].Name}" />
-                            <TextBlock Text="{Binding Racers[0].Lap}" />
-                            <TextBlock Text="{Binding Racers[0].BestLapTime}" />
-                            <TextBlock Text="{Binding Racers[0].GapLeader}" />
+                            <!-- Changed bindings to named TextBlocks -->
+                            <TextBlock x:Name="RaceName_1" FontWeight="Bold" />
+                            <TextBlock x:Name="TrackName_1" />
+                            <TextBlock x:Name="Name_Position1" />
+                            <TextBlock x:Name="Lap_Position1" />
+                            <TextBlock x:Name="BestLapTime_Position1" />
+                            <TextBlock x:Name="GapLeader_Position1" />
                         </StackPanel>
                     </ContentControl>
                 </Border>
