@@ -1,70 +1,253 @@
-﻿using Newtonsoft.Json;
+﻿using Newtonsoft.Json.Linq;
 using RCLayoutPreview.Helpers;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Markup;
-using System.Windows.Media;
-using System.Xml;
+using System.Windows.Threading;
 
 namespace RCLayoutPreview
 {
     public partial class MainWindow : Window
     {
-        private bool isPreviewing = false;
-        private string currentLayoutPath = null;
-        private string currentJsonPath = null;
-        private RaceData currentData = null;
-        private bool IsDiagnosticsMode => DebugModeToggle?.IsChecked == true;
+        private string currentJsonPath;
+        private JObject jsonData;
+        private DispatcherTimer previewTimer;
+        private string lastEditorContent = string.Empty;
+        private TextBlock statusLabel;
 
         public MainWindow()
         {
             InitializeComponent();
-            // Auto-load stubdata.json if it exists in the app directory
-            var stubPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stubdata.json");
-            if (File.Exists(stubPath))
+
+            // Initialize UI elements
+            statusLabel = FindName("StatusLabel") as TextBlock;
+            HideButton("Load JSON");
+            HideButton("Preview");
+
+            // Load JSON data automatically
+            LoadStubData();
+
+            // Clear the preview area initially
+            var previewHost = FindName("PreviewHost") as ContentControl;
+            if (previewHost != null)
+            {
+                previewHost.Content = null;
+            }
+
+            // Set up timer for automatic preview
+            previewTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            previewTimer.Tick += AutoPreviewTick;
+            previewTimer.Start();
+        }
+
+        private void HideButton(string buttonContent)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(this))
+            {
+                if (child is DockPanel dockPanel)
+                {
+                    foreach (var dockChild in LogicalTreeHelper.GetChildren(dockPanel))
+                    {
+                        if (dockChild is StackPanel stackPanel)
+                        {
+                            foreach (var stackChild in LogicalTreeHelper.GetChildren(stackPanel))
+                            {
+                                if (stackChild is Button button && button.Content.ToString() == buttonContent)
+                                {
+                                    button.Visibility = Visibility.Collapsed;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void AutoPreviewTick(object sender, EventArgs e)
+        {
+            var editor = FindName("Editor") as TextBox;
+            if (editor != null)
+            {
+                string currentContent = editor.Text;
+                if (currentContent != lastEditorContent && !string.IsNullOrWhiteSpace(currentContent))
+                {
+                    lastEditorContent = currentContent;
+                    TryPreviewXaml(currentContent);
+                }
+            }
+        }
+
+        private void TryPreviewXaml(string xamlContent)
+        {
+            if (string.IsNullOrWhiteSpace(xamlContent))
+            {
+                LogStatus("XAML content is empty or null.");
+                return;
+            }
+
+            try
+            {
+                var previewHost = FindName("PreviewHost") as ContentControl;
+                if (previewHost == null)
+                {
+                    LogStatus("Preview host is not found.");
+                    return;
+                }
+
+                // Clear the preview host before updating
+                previewHost.Content = null;
+
+                string processedXaml = XamlFixer.Preprocess(xamlContent);
+                LogStatus("XAML processed for preview");
+
+                object element = System.Windows.Markup.XamlReader.Parse(processedXaml);
+                if (element is Window window)
+                {
+                    LogStatus("XAML contains a Window element. Extracting content.");
+                    element = window.Content;
+                }
+
+                if (element is FrameworkElement frameworkElement)
+                {
+                    if (jsonData == null)
+                    {
+                        LogStatus("JSON data is null. Cannot bind values.");
+                        return;
+                    }
+
+                    // Apply JSON data to the DataContext
+                    frameworkElement.DataContext = jsonData;
+
+                    // Log the structure of the parsed XAML
+                    LogStatus("Logging structure of parsed XAML:");
+                    foreach (var child in LogicalTreeHelper.GetChildren(frameworkElement))
+                    {
+                        if (child is TextBlock textBlock)
+                        {
+                            LogStatus($"Found TextBlock: Name={textBlock.Name}, Text={textBlock.Text}");
+                        }
+                        else
+                        {
+                            LogStatus($"Found element: {child.GetType().Name}");
+                        }
+                    }
+
+                    // Directly set values for TextBlock elements based on their names
+                    foreach (var child in LogicalTreeHelper.GetChildren(frameworkElement))
+                    {
+                        if (child is TextBlock textBlock && !string.IsNullOrEmpty(textBlock.Name))
+                        {
+                            if (jsonData.TryGetValue(textBlock.Name, out var value))
+                            {
+                                textBlock.Text = value.ToString();
+                                LogStatus($"Field: {textBlock.Name}, Content: {value}");
+                            }
+                            else
+                            {
+                                LogStatus($"Field: {textBlock.Name}, Content: Not Found in JSON");
+                            }
+                        }
+                    }
+
+                    previewHost.Content = frameworkElement;
+                    LogStatus("Preview updated successfully.");
+                }
+                else
+                {
+                    LogStatus("Parsed XAML does not contain a valid FrameworkElement.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"Preview error: {ex.Message}");
+            }
+        }
+
+        private void LoadStubData()
+        {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            LogStatus($"Base directory: {baseDirectory}");
+
+            string jsonPath = Path.Combine(baseDirectory, "stubdata4.json");
+            LogStatus($"Checking path: {jsonPath}");
+
+            if (File.Exists(jsonPath))
             {
                 try
                 {
-                    currentJsonPath = stubPath;
-                    var json = File.ReadAllText(stubPath);
-                    currentData = JsonConvert.DeserializeObject<RaceData>(json);
-                    SetStatus($"Auto-loaded: {Path.GetFileName(stubPath)}");
+                    currentJsonPath = jsonPath;
+                    string jsonContent = File.ReadAllText(jsonPath);
+
+                    // Debugging log to verify raw JSON content
+                    Console.WriteLine("Raw JSON Content:");
+                    Console.WriteLine(jsonContent);
+
+                    jsonData = JObject.Parse(jsonContent);
+                    LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
+
+                    // Debugging log to verify parsed JSON structure
+                    Console.WriteLine("Parsed JSON Structure:");
+                    foreach (var property in jsonData.Properties())
+                    {
+                        Console.WriteLine($"- {property.Name}: {property.Value}");
+                    }
+
+                    return;
                 }
                 catch (Exception ex)
                 {
-                    SetStatus($"Failed to auto-load stubdata.json: {ex.Message}");
+                    LogStatus($"Error parsing JSON file: {ex.Message}");
                 }
             }
-            RCLayoutPreview.Helpers.XamlFixer.TestXamlFixer();
+            else
+            {
+                LogStatus($"File does not exist: {jsonPath}");
+            }
+
+            LogStatus("No JSON data files found.");
         }
 
-        private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
+        private void LogStatus(string message)
         {
-            if (!IsLoaded || isPreviewing)
-                return;
-            Preview_Click(null, null); // Re-render with new debug state
+            if (statusLabel != null)
+            {
+                statusLabel.Text = message;
+            }
+            Console.WriteLine($"Status: {message}");
         }
 
         private void LoadLayout_Click(object sender, RoutedEventArgs e)
         {
-            SetStatus(IsDiagnosticsMode ? "Diagnostics: ON" : "Diagnostics: OFF");
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "XAML Layout (*.xaml)|*.xaml",
                 Title = "Select Layout XAML"
             };
-            SetStatus($"Layout loaded: {currentLayoutPath}");
+
             if (dlg.ShowDialog() == true)
             {
-                currentLayoutPath = dlg.FileName;
-                Editor.Text = File.ReadAllText(currentLayoutPath);
-                SetStatus($"Loaded: {System.IO.Path.GetFileName(currentLayoutPath)}");
+                var editor = FindName("Editor") as TextBox;
+                if (editor != null)
+                {
+                    try
+                    {
+                        string xamlContent = File.ReadAllText(dlg.FileName);
+                        editor.Text = xamlContent;
+                        LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
+
+                        // Force an immediate preview
+                        TryPreviewXaml(xamlContent);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogStatus($"Error loading layout: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -73,412 +256,77 @@ namespace RCLayoutPreview
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
                 Filter = "JSON Data (*.json)|*.json",
-                Title = "Select Stub Data"
+                Title = "Select JSON Data",
+                FileName = "stubdata4.json" // Default to stubdata4.json
             };
 
             if (dlg.ShowDialog() == true)
             {
-                currentJsonPath = dlg.FileName;
-                currentData = JsonConvert.DeserializeObject<RaceData>(File.ReadAllText(currentJsonPath));
-                SetStatus($"Loaded: {System.IO.Path.GetFileName(currentJsonPath)}");
+                try
+                {
+                    currentJsonPath = dlg.FileName;
+                    string json = File.ReadAllText(dlg.FileName);
+                    jsonData = JObject.Parse(json);
+
+                    LogStatus($"Loaded: {Path.GetFileName(dlg.FileName)}");
+
+                    // Update preview with new data
+                    var editor = FindName("Editor") as TextBox;
+                    if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
+                    {
+                        TryPreviewXaml(editor.Text);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogStatus($"Error loading JSON: {ex.Message}");
+                }
             }
         }
 
         private void Preview_Click(object sender, RoutedEventArgs e)
         {
-            if (!IsLoaded || Editor == null || isPreviewing)
-                return;
-
-            try
+            var editor = FindName("Editor") as TextBox;
+            if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
             {
-                isPreviewing = true;
-
-                FrameworkElement layout = LoadLayoutFromText(Editor.Text);
-                SetStatus("Previewing layout");
-
-                if (layout is Panel panel)
-                    panel.Background = Brushes.Black;
-                else if (layout is Border border)
-                    border.Background = Brushes.Black;
-                else if (layout is Control control)
-                    control.Background = Brushes.Black;
-
-                foreach (var tb in GetAllNamedTextBlocks(layout))
-                {
-                    if (tb.Foreground == null || tb.Foreground == Brushes.Black)
-                        tb.Foreground = Brushes.White;
-                }
-
-                // Always reload JSON if a path is set, so changes in stubdata.json are picked up
-                if (!string.IsNullOrWhiteSpace(currentJsonPath) && File.Exists(currentJsonPath))
-                {
-                    try
-                    {
-                        var json = File.ReadAllText(currentJsonPath);
-                        currentData = JsonConvert.DeserializeObject<RaceData>(json);
-                    }
-                    catch (Exception ex)
-                    {
-                        SetStatus($"Failed to load JSON: {ex.Message}");
-                        currentData = null;
-                    }
-                }
-                if (currentData == null)
-                    currentData = GenerateFakeData();
-
-                layout.DataContext = currentData;
-
-                // Wrap the layout in a border for consistent padding/background
-                var wrapper = new Border
-                {
-                    Background = Brushes.Black,
-                    Padding = new Thickness(10),
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Child = layout
-                };
-
-                // Only inject stub data in diagnostics mode
-                if (IsDiagnosticsMode)
-                {
-                    InjectStubData(layout, currentData);
-                }
-
-                var overlayContainer = new Grid();
-                overlayContainer.Children.Add(wrapper);
-
-                var overlay = BuildDiagnosticsOverlay(GetAllNamedTextBlocks(layout), currentData);
-                overlayContainer.Children.Add(overlay);
-
-                var diagnosticsToggle = new CheckBox
-                {
-                    Content = "Diagnostics Mode",
-                    IsChecked = IsDiagnosticsMode,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(10),
-                    Foreground = Brushes.White,
-                    Background = Brushes.Black,
-                    Opacity = 0.8,
-                    Width = 150,
-                    Height = 30,
-                    BorderBrush = Brushes.Red,
-                    BorderThickness = new Thickness(2)
-                };
-                Grid.SetZIndex(diagnosticsToggle, 1000);
-                diagnosticsToggle.Checked += DebugModeToggle_Changed;
-                diagnosticsToggle.Unchecked += DebugModeToggle_Changed;
-                overlayContainer.Children.Add(diagnosticsToggle);
-
-                Console.WriteLine("Diagnostics checkbox added to overlayContainer.");
-
-                PreviewHost.Content = overlayContainer;
-
-                HookBlockClickHandlers(layout);
-                SetStatus("Preview updated");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Preview error:\n" + ex.Message);
-                SetStatus("Failed to preview layout");
-            }
-            finally
-            {
-                isPreviewing = false;
-            }
-        }
-
-        private void SetStatus(string message)
-        {
-            StatusLabel.Text = message; // Update the UI element or log the message.
-        }
-
-        private void HookBlockClickHandlers(FrameworkElement layout)
-        {
-            foreach (var block in GetAllNamedTextBlocks(layout))
-            {
-                block.MouseLeftButtonDown -= OnDebugBlockClicked; // prevent stacking events
-                block.MouseLeftButtonDown += OnDebugBlockClicked;
-            }
-        }
-
-        private void OnDebugBlockClicked(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is TextBlock block)
-            {
-                // Add visual adorner outline
-                var adornerLayer = AdornerLayer.GetAdornerLayer(block);
-                if (adornerLayer != null)
-                {
-                    adornerLayer.Add(new DebugFieldSelector(block));
-                }
-
-                // Optional: Immediate visual feedback
-                block.Background = Brushes.DeepSkyBlue;
-                block.Foreground = Brushes.White;
-                block.FontWeight = FontWeights.Bold;
-
-                // Optional: show field name in tooltip
-                block.ToolTip = block.Name;
-            }
-        }
-
-        private FrameworkElement CloneVisual(FrameworkElement original)
-        {
-            if (original == null)
-                throw new ArgumentNullException(nameof(original));
-
-            string xaml = XamlWriter.Save(original);
-            using (var reader = new StringReader(xaml))
-            using (var xml = XmlReader.Create(reader))
-                return (FrameworkElement)XamlReader.Load(xml);
-        }
-
-        private FrameworkElement LoadLayoutFromText(string rawXaml)
-        {
-            string fixedXaml = XamlFixer.Preprocess(rawXaml);
-
-            using (var reader = new StringReader(fixedXaml))
-            using (var xml = XmlReader.Create(reader))
-            {
-                object root = XamlReader.Load(xml);
-
-                switch (root)
-                {
-                    case ResourceDictionary rd when rd.Contains("LayoutRoot"):
-                        return CloneVisual(rd["LayoutRoot"] as FrameworkElement);
-
-                    case FrameworkElement fe when fe.GetType().Name != "Window":
-                        return CloneVisual(fe);
-
-                    case Window win when win.Content is FrameworkElement inner:
-                        return CloneVisual(inner);
-
-                    default:
-                        throw new InvalidOperationException("Unsupported XAML structure.");
-                }
-            }
-        }
-
-        private RaceData GenerateFakeData()
-        {
-            var list = new List<Racer>();
-            for (int i = 1; i <= 6; i++)
-            {
-                list.Add(new Racer
-                {
-                    Name = $"Racer {i}",
-                    Lap = 12 + i,
-                    BestLapTime = $"{20.5 + i:0.000}",
-                    GapLeader = i == 1 ? "0.000" : $"+{0.4 * i:0.000}",
-                    CarModel = $"Car {i}",
-                    Avatar = "🤖",
-                    LaneColor = "#FF00FF",
-                    FuelPercent = 95 - i * 6,
-                    ReactionTime = $"{0.6 - i * 0.03:0.000}s",
-                    IsLeader = i == 1,
-                    Lane = i,
-                    TireChoice = (i % 2 == 0) ? "Soft" : "Hard",
-                    PitStops = i / 2,
-                    //NextHeatNumber = "7"
-                });
-            }
-
-            return new RaceData
-            {
-                GenericData = new GenericData
-                {
-                    RaceName = "Spring Showdown",
-                    TrackName = "Kirkwood Circuit",
-                    NextHeatNumber = "7"
-                },
-                Racers = list
-            };
-        }
-
-        private void InjectStubData(FrameworkElement layout, RaceData data)
-        {
-            if (layout == null || data == null)
-                return;
-
-            foreach (var block in GetAllNamedTextBlocks(layout))
-            {
-                string fieldName = block.Tag as string ?? block.Name;
-                Console.WriteLine($"🧪 Block: {block.Name}, Tag: {fieldName}");
-
-                // Use your parser that outputs a FieldNameParser instance
-                FieldNameParser parsed;
-                if (!FieldNameParser.TryParse(fieldName, out parsed))
-                {
-                    if (IsDiagnosticsMode)
-                    {
-                        block.Text = $"⚠️ Unknown field: {fieldName}";
-                        block.Background = Brushes.DarkRed;
-                        block.Foreground = Brushes.White;
-                    }
-                    else
-                    {
-                        block.Text = string.Empty;
-                        block.Background = null;
-                        block.Foreground = null;
-                    }
-                    continue;
-                }
-
-                string field = parsed.FieldType;
-                int index = parsed.InstanceIndex;
-                string value = null;
-
-                if (parsed.IsGeneric)
-                {
-                    var prop = data.GenericData?.GetType().GetProperty(field);
-                    var valueObj = prop?.GetValue(data.GenericData);
-                    Console.WriteLine($"➡️ Looking for: {field} → Found: {valueObj}");
-                    value = valueObj?.ToString();
-
-
-                }
-                else
-                {
-                    int racerIndex = index - 1;
-                    if (racerIndex >= 0 && racerIndex < data.Racers.Count)
-                    {
-                        var racer = data.Racers[racerIndex];
-                        var prop = racer.GetType().GetProperty(field);
-                        value = prop?.GetValue(racer)?.ToString();
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    block.Text = IsDiagnosticsMode ? $"{field} (no value)" : string.Empty;
-                    block.Background = IsDiagnosticsMode ? Brushes.DarkOrange : null;
-                    block.Foreground = IsDiagnosticsMode ? Brushes.White : null;
-                }
-                else
-                {
-                    block.Text = $" ({value})";
-                    block.Background = null;
-                    block.Foreground = null;
-                }
-                Console.WriteLine($"✅ Injected into block: {block.Name} → {block.Text}");
-            }
-        }
-
-        private IEnumerable<TextBlock> GetAllNamedTextBlocks(DependencyObject parent)
-        {
-            if (parent == null) yield break;
-
-            int count = VisualTreeHelper.GetChildrenCount(parent);
-            for (int i = 0; i < count; i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-
-                if (child is TextBlock tb && !string.IsNullOrWhiteSpace(tb.Name))
-                    yield return tb;
-
-                foreach (var descendant in GetAllNamedTextBlocks(child))
-                    yield return descendant;
+                TryPreviewXaml(editor.Text);
             }
         }
 
         private void SaveLayout_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(currentLayoutPath))
+            var editor = FindName("Editor") as TextBox;
+            if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
             {
-                MessageBox.Show("No layout file loaded.");
-                return;
-            }
-
-            try
-            {
-                File.WriteAllText(currentLayoutPath, Editor.Text);
-                SetStatus($"Saved: {System.IO.Path.GetFileName(currentLayoutPath)}");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Save error:\n" + ex.Message);
-            }
-        }
-
-        private StackPanel BuildDiagnosticsOverlay(IEnumerable<TextBlock> blocks, RaceData data)
-        {
-            var panel = new StackPanel
-            {
-                Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
-                Orientation = Orientation.Vertical,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(10)
-            };
-
-            foreach (var block in blocks)
-            {
-                var tag = block.Tag as string ?? block.Name;
-                string value = null;
-
-                if (FieldNameParser.TryParse(tag, out var parsed))
+                var dlg = new Microsoft.Win32.SaveFileDialog
                 {
-                    if (parsed.IsGeneric)
-                    {
-                        var prop = data.GenericData?.GetType().GetProperty(parsed.FieldType);
-                        value = prop?.GetValue(data.GenericData)?.ToString();
-                    }
-                    else
-                    {
-                        var racer = data.Racers?.ElementAtOrDefault(parsed.InstanceIndex - 1);
-                        var prop = racer?.GetType().GetProperty(parsed.FieldType);
-                        value = prop?.GetValue(racer)?.ToString();
-                    }
+                    Filter = "XAML Layout (*.xaml)|*.xaml",
+                    Title = "Save Layout XAML"
+                };
+
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllText(dlg.FileName, editor.Text);
+                    LogStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
                 }
-
-                panel.Children.Add(new TextBlock
-                {
-                    Text = $"{tag}: {(string.IsNullOrWhiteSpace(value) ? "[missing]" : value)}",
-                    Foreground = Brushes.White,
-                    FontSize = 14,
-                    Margin = new Thickness(4, 2, 4, 2)
-                });
             }
-
-            return panel;
+            else
+            {
+                LogStatus("Nothing to save. Editor is empty.");
+            }
         }
 
-    }
+        private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            var debugMode = (sender as CheckBox)?.IsChecked == true;
+            LogStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
 
-    public class RaceData
-    {
-        public GenericData GenericData { get; set; }
-        public List<Racer> Racers { get; set; }
-    }
-
-    public class GenericData
-    {
-        public string RaceName { get; set; }
-        public string EventName { get; set; }
-        public string TrackName { get; set; }
-        public string NextHeatNumber { get; set; }
-        public string TotalHeats { get; set; }
-        public string HeatDuration { get; set; }
-        public string Weather { get; set; }
-        public string RaceFormat { get; set; }
-    }
-
-    public class Racer
-    {
-        public int Lane { get; set; }
-        public string Name { get; set; }
-        public int Position { get; set; }
-        public int Lap { get; set; }
-        public string BestLapTime { get; set; }
-        public string GapLeader { get; set; }
-        public string CarModel { get; set; }
-        public string TireChoice { get; set; }
-        public int PitStops { get; set; }
-        public int FuelPercent { get; set; }
-        public string ReactionTime { get; set; }
-        public string Avatar { get; set; }
-        public string LaneColor { get; set; }
-        public bool IsLeader { get; set; }
+            // Update the preview if we have content
+            var editor = FindName("Editor") as TextBox;
+            if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
+            {
+                TryPreviewXaml(editor.Text);
+            }
+        }
     }
 }

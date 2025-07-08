@@ -54,12 +54,12 @@
                 <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
                     <ContentControl x:Name="PreviewHost">
                         <StackPanel>
-                            <TextBlock x:Name="RaceName" Text="{Binding GenericData.RaceName}" />
-                            <TextBlock Text="{Binding GenericData.TrackName}" />
-                            <TextBlock Text="{Binding Racers[0].Name}" />
-                            <TextBlock Text="{Binding Racers[0].Lap}" />
-                            <TextBlock Text="{Binding Racers[0].BestLapTime}" />
-                            <TextBlock Text="{Binding Racers[0].GapLeader}" />
+                            <TextBlock x:Name="RaceName" Text="" />
+                            <TextBlock x:Name="TrackName" Text="" />
+                            <TextBlock x:Name="RacerName" Text="" />
+                            <TextBlock x:Name="Lap" Text="" />
+                            <TextBlock x:Name="BestLapTime" Text="" />
+                            <TextBlock x:Name="GapLeader" Text="" />
                         </StackPanel>
                     </ContentControl>
                 </Border>

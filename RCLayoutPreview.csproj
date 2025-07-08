@@ -71,6 +71,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data\RaceData.cs" />
     <Compile Include="FieldNameParser.cs" />
     <Compile Include="Helpers\DebugFieldSelector.cs" />
     <Compile Include="Helpers\FieldNameParser.cs" />
@@ -107,9 +108,7 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <None Include="stubdata.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="stubdata4.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

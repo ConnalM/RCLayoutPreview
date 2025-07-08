@@ -3,6 +3,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Windows;
+using System.Windows.Controls; // Added for TextBlock
+using Newtonsoft.Json.Linq;
 
 namespace RCLayoutPreview.Helpers
 {
@@ -93,6 +95,36 @@ namespace RCLayoutPreview.Helpers
                 Console.WriteLine("-----");
             }
         }
+
+        public static void ProcessNamedFields(FrameworkElement rootElement, JObject jsonData, bool debugMode)
+        {
+            if (rootElement == null || jsonData == null)
+                throw new ArgumentNullException("Root element or JSON data cannot be null.");
+
+            foreach (var child in LogicalTreeHelper.GetChildren(rootElement))
+            {
+                if (child is FrameworkElement element && !string.IsNullOrEmpty(element.Name))
+                {
+                    if (jsonData.TryGetValue(element.Name, out var value))
+                    {
+                        if (element is TextBlock textBlock)
+                        {
+                            textBlock.Text = value.ToString();
+                        }
+                        else if (element is ContentControl contentControl)
+                        {
+                            contentControl.Content = value.ToString();
+                        }
+                        // Add more element type handling as needed
+                    }
+
+                    if (debugMode)
+                    {
+                        // Highlight the element in debug mode
+                        element.ToolTip = $"Bound to: {element.Name}";
+                    }
+                }
+            }
+        }
     }
 }
-
