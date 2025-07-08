@@ -72,7 +72,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Data\RaceData.cs" />
-    <Compile Include="FieldNameParser.cs" />
     <Compile Include="Helpers\DebugFieldSelector.cs" />
     <Compile Include="Helpers\FieldNameParser.cs" />
     <Compile Include="Helpers\XamlFixer.cs" />

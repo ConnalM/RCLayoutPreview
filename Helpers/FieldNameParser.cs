@@ -1,43 +1,37 @@
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
 {
     public class FieldNameParser
     {
         public string FieldType { get; private set; }
-        public string Context { get; private set; }
-        public int InstanceIndex { get; private set; }
-        public bool IsGeneric { get; private set; }
+        public int InstanceIndex { get; private set; } = 1;
 
         public static bool TryParse(string rawName, out FieldNameParser parsed)
         {
             parsed = null;
 
-            if (string.IsNullOrWhiteSpace(rawName))
-                return false;
+            // Log the rawName for debugging purposes
+            Debug.WriteLine($"[FieldNameParser] Raw field name: {rawName}");
 
-            // ?? Try standard pattern first
-            var match = Regex.Match(rawName, @"^(?<field>\w+?)(_(?<context>\w+?))?(_(?<index>\d+))?$");
-            if (match.Success)
+            if (string.IsNullOrWhiteSpace(rawName) || rawName.Length <= 2)
             {
-                parsed = new FieldNameParser
-                {
-                    FieldType = match.Groups["field"].Value,
-                    Context = match.Groups["context"].Success ? match.Groups["context"].Value : null,
-                    InstanceIndex = match.Groups["index"].Success ? int.Parse(match.Groups["index"].Value) : 1,
-                    IsGeneric = string.IsNullOrEmpty(match.Groups["context"].Value)
-                };
-                return true;
+                Debug.WriteLine($"[FieldNameParser] Invalid field name: {rawName}");
+                return false;
             }
 
-            // ?? Fallback: treat entire string as a generic field
+            // Remove the last two characters to get the FieldType
+            string fieldType = rawName.Substring(0, rawName.Length - 2);
+
             parsed = new FieldNameParser
             {
-                FieldType = rawName,
-                Context = null,
-                InstanceIndex = 1,
-                IsGeneric = true
+                FieldType = fieldType,
+                InstanceIndex = 1 // Default instance index
             };
+
+            // Log the parsed FieldType for debugging purposes
+            Debug.WriteLine($"[FieldNameParser] Parsed field type: {parsed.FieldType}");
 
             return true;
         }

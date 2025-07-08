@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using System.Windows;
 using System.Windows.Controls; // Added for TextBlock
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 
 namespace RCLayoutPreview.Helpers
 {
@@ -101,30 +102,61 @@ namespace RCLayoutPreview.Helpers
             if (rootElement == null || jsonData == null)
                 throw new ArgumentNullException("Root element or JSON data cannot be null.");
 
+            Debug.WriteLine("[ProcessNamedFields] Starting field processing...");
+
             foreach (var child in LogicalTreeHelper.GetChildren(rootElement))
             {
-                if (child is FrameworkElement element && !string.IsNullOrEmpty(element.Name))
-                {
-                    if (jsonData.TryGetValue(element.Name, out var value))
-                    {
-                        if (element is TextBlock textBlock)
-                        {
-                            textBlock.Text = value.ToString();
-                        }
-                        else if (element is ContentControl contentControl)
-                        {
-                            contentControl.Content = value.ToString();
-                        }
-                        // Add more element type handling as needed
-                    }
+                Debug.WriteLine($"[ProcessNamedFields] Found child of type: {child.GetType().Name}");
 
-                    if (debugMode)
+                if (child is FrameworkElement element)
+                {
+                    Debug.WriteLine($"[ProcessNamedFields] Found FrameworkElement: {element.Name ?? "(Unnamed)"}");
+
+                    if (!string.IsNullOrEmpty(element.Name))
                     {
-                        // Highlight the element in debug mode
-                        element.ToolTip = $"Bound to: {element.Name}";
+                        // Parse the field name using FieldNameParser
+                        if (FieldNameParser.TryParse(element.Name, out var parsedField))
+                        {
+                            Debug.WriteLine($"[ProcessNamedFields] Parsed FieldType: {parsedField.FieldType}, InstanceIndex: {parsedField.InstanceIndex}");
+
+                            // Use the parsed FieldType for JSON lookup
+                            if (jsonData.TryGetValue(parsedField.FieldType, out var value))
+                            {
+                                Debug.WriteLine($"[ProcessNamedFields] JSON value found for {parsedField.FieldType}: {value}");
+
+                                if (element is TextBlock textBlock)
+                                {
+                                    textBlock.Text = value.ToString();
+                                }
+                                else if (element is ContentControl contentControl)
+                                {
+                                    contentControl.Content = value.ToString();
+                                }
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[ProcessNamedFields] No JSON value found for {parsedField.FieldType}");
+                            }
+
+                            if (debugMode)
+                            {
+                                // Highlight the element in debug mode
+                                element.ToolTip = $"Bound to: {parsedField.FieldType}";
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[ProcessNamedFields] Failed to parse field name: {element.Name}");
+                        }
                     }
                 }
+                else
+                {
+                    Debug.WriteLine($"[ProcessNamedFields] Skipping non-FrameworkElement child of type: {child.GetType().Name}");
+                }
             }
+
+            Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
         }
     }
 }

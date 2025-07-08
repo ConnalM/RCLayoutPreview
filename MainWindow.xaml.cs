@@ -123,36 +123,8 @@ namespace RCLayoutPreview
                     // Apply JSON data to the DataContext
                     frameworkElement.DataContext = jsonData;
 
-                    // Log the structure of the parsed XAML
-                    LogStatus("Logging structure of parsed XAML:");
-                    foreach (var child in LogicalTreeHelper.GetChildren(frameworkElement))
-                    {
-                        if (child is TextBlock textBlock)
-                        {
-                            LogStatus($"Found TextBlock: Name={textBlock.Name}, Text={textBlock.Text}");
-                        }
-                        else
-                        {
-                            LogStatus($"Found element: {child.GetType().Name}");
-                        }
-                    }
-
-                    // Directly set values for TextBlock elements based on their names
-                    foreach (var child in LogicalTreeHelper.GetChildren(frameworkElement))
-                    {
-                        if (child is TextBlock textBlock && !string.IsNullOrEmpty(textBlock.Name))
-                        {
-                            if (jsonData.TryGetValue(textBlock.Name, out var value))
-                            {
-                                textBlock.Text = value.ToString();
-                                LogStatus($"Field: {textBlock.Name}, Content: {value}");
-                            }
-                            else
-                            {
-                                LogStatus($"Field: {textBlock.Name}, Content: Not Found in JSON");
-                            }
-                        }
-                    }
+                    // Use XamlFixer to process named fields
+                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode: true);
 
                     previewHost.Content = frameworkElement;
                     LogStatus("Preview updated successfully.");
@@ -183,19 +155,8 @@ namespace RCLayoutPreview
                     currentJsonPath = jsonPath;
                     string jsonContent = File.ReadAllText(jsonPath);
 
-                    // Debugging log to verify raw JSON content
-                    Console.WriteLine("Raw JSON Content:");
-                    Console.WriteLine(jsonContent);
-
                     jsonData = JObject.Parse(jsonContent);
                     LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
-
-                    // Debugging log to verify parsed JSON structure
-                    Console.WriteLine("Parsed JSON Structure:");
-                    foreach (var property in jsonData.Properties())
-                    {
-                        Console.WriteLine($"- {property.Name}: {property.Value}");
-                    }
 
                     return;
                 }
