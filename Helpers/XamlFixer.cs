@@ -130,15 +130,33 @@ namespace RCLayoutPreview.Helpers
                         {
                             textBlock.Text = value.ToString();
 
-                            // Assign dummy colors based on the field name
-                            if (parsedField.FieldType.Contains("Lane1"))
-                                textBlock.Background = new SolidColorBrush(Colors.Red);
-                            else if (parsedField.FieldType.Contains("Lane2"))
-                                textBlock.Background = new SolidColorBrush(Colors.White);
-                            else if (parsedField.FieldType.Contains("Lane3"))
-                                textBlock.Background = new SolidColorBrush(Colors.Blue);
-                            else if (parsedField.FieldType.Contains("Lane4"))
-                                textBlock.Background = new SolidColorBrush(Colors.Yellow);
+                            // Assign dummy colors dynamically
+                            SolidColorBrush backgroundColor = null;
+                            switch (parsedField.FieldType)
+                            {
+                                case "NextHeatNickname1":
+                                    backgroundColor = new SolidColorBrush(Colors.Red);
+                                    break;
+                                case "NextHeatNickname2":
+                                    backgroundColor = new SolidColorBrush(Colors.White);
+                                    break;
+                                case "NextHeatNickname3":
+                                    backgroundColor = new SolidColorBrush(Colors.Blue);
+                                    break;
+                                case "NextHeatNickname4":
+                                    backgroundColor = new SolidColorBrush(Colors.Yellow);
+                                    break;
+                            }
+
+                            if (backgroundColor != null)
+                            {
+                                textBlock.Background = backgroundColor;
+                                Debug.WriteLine($"[ProcessNamedFields] Background color set for {parsedField.FieldType}: {backgroundColor.Color}");
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[ProcessNamedFields] No background color assigned for {parsedField.FieldType}");
+                            }
                         }
                         else if (element is ContentControl contentControl)
                         {
