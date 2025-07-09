@@ -60,6 +60,8 @@
                             <TextBlock x:Name="Lap" Text="" />
                             <TextBlock x:Name="BestLapTime" Text="" />
                             <TextBlock x:Name="GapLeader" Text="" />
+                            <TextBlock FontSize="20" Name="NextHeatNickname1_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
+                            <TextBlock FontSize="20" Name="NextHeatNickname2_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
                         </StackPanel>
                     </ContentControl>
                 </Border>

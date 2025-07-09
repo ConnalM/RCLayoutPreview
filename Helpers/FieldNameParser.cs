@@ -12,7 +12,6 @@ namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
         {
             parsed = null;
 
-            // Log the rawName for debugging purposes
             Debug.WriteLine($"[FieldNameParser] Raw field name: {rawName}");
 
             if (string.IsNullOrWhiteSpace(rawName) || rawName.Length <= 2)
@@ -30,7 +29,6 @@ namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
                 InstanceIndex = 1 // Default instance index
             };
 
-            // Log the parsed FieldType for debugging purposes
             Debug.WriteLine($"[FieldNameParser] Parsed field type: {parsed.FieldType}");
 
             return true;

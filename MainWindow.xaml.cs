@@ -124,6 +124,7 @@ namespace RCLayoutPreview
                     frameworkElement.DataContext = jsonData;
 
                     // Use XamlFixer to process named fields
+                    LogStatus("Processing named fields...");
                     XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode: true);
 
                     previewHost.Content = frameworkElement;
@@ -155,6 +156,7 @@ namespace RCLayoutPreview
                     currentJsonPath = jsonPath;
                     string jsonContent = File.ReadAllText(jsonPath);
 
+                    // Clear and reload JSON data
                     jsonData = JObject.Parse(jsonContent);
                     LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
 

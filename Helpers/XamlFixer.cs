@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Windows;
 using System.Windows.Controls; // Added for TextBlock
+using System.Windows.Media; // Added for SolidColorBrush and Colors
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 
@@ -104,59 +105,74 @@ namespace RCLayoutPreview.Helpers
 
             Debug.WriteLine("[ProcessNamedFields] Starting field processing...");
 
-            foreach (var child in LogicalTreeHelper.GetChildren(rootElement))
+            ProcessElementRecursively(rootElement, jsonData, debugMode);
+
+            Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
+        }
+
+        private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
+        {
+            Debug.WriteLine($"[ProcessNamedFields] Processing element of type: {element.GetType().Name}, Name: {element.Name ?? "(Unnamed)"}");
+
+            if (!string.IsNullOrEmpty(element.Name))
             {
-                Debug.WriteLine($"[ProcessNamedFields] Found child of type: {child.GetType().Name}");
-
-                if (child is FrameworkElement element)
+                // Parse the field name using FieldNameParser
+                if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
-                    Debug.WriteLine($"[ProcessNamedFields] Found FrameworkElement: {element.Name ?? "(Unnamed)"}");
+                    Debug.WriteLine($"[ProcessNamedFields] Parsed FieldType: {parsedField.FieldType}, InstanceIndex: {parsedField.InstanceIndex}");
 
-                    if (!string.IsNullOrEmpty(element.Name))
+                    // Use the parsed FieldType for JSON lookup
+                    if (jsonData.TryGetValue(parsedField.FieldType, out var value))
                     {
-                        // Parse the field name using FieldNameParser
-                        if (FieldNameParser.TryParse(element.Name, out var parsedField))
+                        Debug.WriteLine($"[ProcessNamedFields] JSON value found for {parsedField.FieldType}: {value}");
+
+                        if (element is TextBlock textBlock)
                         {
-                            Debug.WriteLine($"[ProcessNamedFields] Parsed FieldType: {parsedField.FieldType}, InstanceIndex: {parsedField.InstanceIndex}");
+                            textBlock.Text = value.ToString();
 
-                            // Use the parsed FieldType for JSON lookup
-                            if (jsonData.TryGetValue(parsedField.FieldType, out var value))
-                            {
-                                Debug.WriteLine($"[ProcessNamedFields] JSON value found for {parsedField.FieldType}: {value}");
-
-                                if (element is TextBlock textBlock)
-                                {
-                                    textBlock.Text = value.ToString();
-                                }
-                                else if (element is ContentControl contentControl)
-                                {
-                                    contentControl.Content = value.ToString();
-                                }
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[ProcessNamedFields] No JSON value found for {parsedField.FieldType}");
-                            }
-
-                            if (debugMode)
-                            {
-                                // Highlight the element in debug mode
-                                element.ToolTip = $"Bound to: {parsedField.FieldType}";
-                            }
+                            // Assign dummy colors based on the field name
+                            if (parsedField.FieldType.Contains("Lane1"))
+                                textBlock.Background = new SolidColorBrush(Colors.Red);
+                            else if (parsedField.FieldType.Contains("Lane2"))
+                                textBlock.Background = new SolidColorBrush(Colors.White);
+                            else if (parsedField.FieldType.Contains("Lane3"))
+                                textBlock.Background = new SolidColorBrush(Colors.Blue);
+                            else if (parsedField.FieldType.Contains("Lane4"))
+                                textBlock.Background = new SolidColorBrush(Colors.Yellow);
                         }
-                        else
+                        else if (element is ContentControl contentControl)
                         {
-                            Debug.WriteLine($"[ProcessNamedFields] Failed to parse field name: {element.Name}");
+                            contentControl.Content = value.ToString();
                         }
                     }
+                    else
+                    {
+                        Debug.WriteLine($"[ProcessNamedFields] No JSON value found for {parsedField.FieldType}");
+                    }
+
+                    if (debugMode)
+                    {
+                        // Highlight the element in debug mode
+                        element.ToolTip = $"Bound to: {parsedField.FieldType}";
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"[ProcessNamedFields] Failed to parse field name: {element.Name}");
+                }
+            }
+
+            foreach (var child in LogicalTreeHelper.GetChildren(element))
+            {
+                if (child is FrameworkElement childElement)
+                {
+                    ProcessElementRecursively(childElement, jsonData, debugMode);
                 }
                 else
                 {
                     Debug.WriteLine($"[ProcessNamedFields] Skipping non-FrameworkElement child of type: {child.GetType().Name}");
                 }
             }
-
-            Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
         }
     }
 }
