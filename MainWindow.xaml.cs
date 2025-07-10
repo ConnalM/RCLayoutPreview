@@ -5,6 +5,8 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Markup;
+using System.Windows.Media;
 
 namespace RCLayoutPreview
 {
@@ -15,6 +17,9 @@ namespace RCLayoutPreview
         private DispatcherTimer previewTimer;
         private string lastEditorContent = string.Empty;
         private TextBlock statusLabel;
+        private bool autoUpdateEnabled = true; // Flag to control auto-update
+        private int previewDelayMilliseconds = 3000; // Configurable delay in milliseconds
+        private DateTime lastEditTime;
 
         public MainWindow()
         {
@@ -58,6 +63,13 @@ namespace RCLayoutPreview
                             {
                                 if (stackChild is Button button && button.Content.ToString() == buttonContent)
                                 {
+                                    // Remove hiding logic for Preview button
+                                    if (buttonContent == "Preview")
+                                    {
+                                        button.Visibility = Visibility.Visible;
+                                        return;
+                                    }
+
                                     button.Visibility = Visibility.Collapsed;
                                     return;
                                 }
@@ -70,13 +82,21 @@ namespace RCLayoutPreview
 
         private void AutoPreviewTick(object sender, EventArgs e)
         {
+            if (!autoUpdateEnabled) return; // Skip auto-update if disabled
+
             var editor = FindName("Editor") as TextBox;
             if (editor != null)
             {
                 string currentContent = editor.Text;
                 if (currentContent != lastEditorContent && !string.IsNullOrWhiteSpace(currentContent))
                 {
+                    lastEditTime = DateTime.Now;
                     lastEditorContent = currentContent;
+                }
+
+                // Check if the delay has elapsed since the last edit
+                if ((DateTime.Now - lastEditTime).TotalMilliseconds >= previewDelayMilliseconds)
+                {
                     TryPreviewXaml(currentContent);
                 }
             }
@@ -104,6 +124,13 @@ namespace RCLayoutPreview
 
                 string processedXaml = XamlFixer.Preprocess(xamlContent);
                 LogStatus("XAML processed for preview");
+
+                // Validate XAML for common issues
+                if (processedXaml.Contains("FontSize=\"\""))
+                {
+                    LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
+                    processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
+                }
 
                 object element = System.Windows.Markup.XamlReader.Parse(processedXaml);
                 if (element is Window window)
@@ -135,9 +162,68 @@ namespace RCLayoutPreview
                     LogStatus("Parsed XAML does not contain a valid FrameworkElement.");
                 }
             }
+            catch (XamlParseException ex)
+            {
+                ShowErrorPopup($"XAML parsing error: {ex.Message}");
+            }
             catch (Exception ex)
             {
-                LogStatus($"Preview error: {ex.Message}");
+                ShowErrorPopup($"Preview error: {ex.Message}");
+            }
+        }
+
+        public static T FindElementByName<T>(DependencyObject parent, string name) where T : FrameworkElement
+        {
+            if (parent == null) return null;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T fe && fe.Name == name)
+                    return fe;
+
+                var result = FindElementByName<T>(child, name);
+                if (result != null)
+                    return result;
+            }
+
+            return null;
+        }
+
+        private void ShowErrorPopup(string errorMessage)
+        {
+            var layoutRoot = PreviewHost.Content as FrameworkElement;
+            var popupOverlay = FindElementByName<Grid>(layoutRoot, "PopupOverlay");
+            var popupMessage = FindElementByName<TextBlock>(layoutRoot, "PopupMessage");
+
+            if (popupOverlay == null)
+            {
+                LogStatus("PopupOverlay not found in the visual tree.");
+                return;
+            }
+
+            if (popupMessage == null)
+            {
+                LogStatus("PopupMessage not found in the visual tree.");
+                return;
+            }
+
+            popupMessage.Text = errorMessage;
+            Dispatcher.BeginInvoke(() =>
+            {
+                popupOverlay.Visibility = Visibility.Visible;
+                popupOverlay.UpdateLayout(); // Force layout update
+                LogStatus("PopupOverlay visibility set to Visible.");
+            });
+            LogStatus("Popup overlay displayed with message: " + errorMessage);
+        }
+
+        private void PopupOkButton_Click(object sender, RoutedEventArgs e)
+        {
+            var popupOverlay = FindName("PopupOverlay") as Grid;
+            if (popupOverlay != null)
+            {
+                popupOverlay.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -252,6 +338,10 @@ namespace RCLayoutPreview
             var editor = FindName("Editor") as TextBox;
             if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
             {
+                var layoutRoot = PreviewHost.Content as FrameworkElement;
+                var popupOverlay = FindElementByName<Grid>(layoutRoot, "PopupOverlay");
+                Console.WriteLine("Found popupOverlay: " + (popupOverlay != null));
+
                 TryPreviewXaml(editor.Text);
             }
         }
@@ -289,6 +379,32 @@ namespace RCLayoutPreview
             if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
             {
                 TryPreviewXaml(editor.Text);
+            }
+        }
+
+        private void AutoUpdateToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            var autoUpdate = (sender as CheckBox)?.IsChecked == true;
+            ToggleAutoUpdate(autoUpdate);
+        }
+
+        private void ToggleAutoUpdate(bool enable)
+        {
+            autoUpdateEnabled = enable;
+            LogStatus(enable ? "Auto-update enabled" : "Auto-update disabled");
+        }
+
+        private void DelayInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var delayInput = (sender as TextBox)?.Text;
+            if (int.TryParse(delayInput, out var delay))
+            {
+                previewDelayMilliseconds = delay;
+                LogStatus($"Preview delay updated to {previewDelayMilliseconds} ms.");
+            }
+            else
+            {
+                LogStatus("Invalid delay input. Please enter a valid number.");
             }
         }
     }

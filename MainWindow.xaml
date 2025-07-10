@@ -22,6 +22,14 @@
                       VerticalAlignment="Center"
                       Checked="DebugModeToggle_Changed"
                       Unchecked="DebugModeToggle_Changed"/>
+            <CheckBox x:Name="AutoUpdateToggle"
+                      Content="Auto-Update"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center"
+                      Checked="AutoUpdateToggle_Changed"
+                      Unchecked="AutoUpdateToggle_Changed"/>
+            <TextBlock Text="Delay (ms): " Margin="10,0,0,0" VerticalAlignment="Center"/>
+            <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" TextChanged="DelayInput_TextChanged"/>
             <TextBlock x:Name="StatusLabel"
                Text="Ready"
                Foreground="Gray"
@@ -31,41 +39,57 @@
 
         <!-- Main content split between editor and preview -->
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <TextBox x:Name="Editor"
-                     Grid.Column="0"
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"
-                     FontFamily="Consolas"
-                     FontSize="14"
-                     TextWrapping="NoWrap"
-                     Margin="5" />
+            <!-- Main content -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="5" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <Rectangle Grid.Column="1" Fill="LightGray" Width="1" />
+                <TextBox x:Name="Editor"
+                         Grid.Column="0"
+                         AcceptsReturn="True"
+                         AcceptsTab="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas"
+                         FontSize="14"
+                         TextWrapping="NoWrap"
+                         Margin="5" />
 
-            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="5">
-                <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
-                    <ContentControl x:Name="PreviewHost">
-                        <StackPanel>
-                            <TextBlock x:Name="RaceName" Text="" />
-                            <TextBlock x:Name="TrackName" Text="" />
-                            <TextBlock x:Name="RacerName" Text="" />
-                            <TextBlock x:Name="Lap" Text="" />
-                            <TextBlock x:Name="BestLapTime" Text="" />
-                            <TextBlock x:Name="GapLeader" Text="" />
-                            <TextBlock FontSize="20" Name="NextHeatNickname1_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
-                            <TextBlock FontSize="20" Name="NextHeatNickname2_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
-                        </StackPanel>
-                    </ContentControl>
-                </Border>
-            </ScrollViewer>
+                <Rectangle Grid.Column="1" Fill="LightGray" Width="1" />
+
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="5">
+                    <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
+                        <ContentControl x:Name="PreviewHost">
+                            <StackPanel>
+                                <TextBlock x:Name="RaceName" Text="" />
+                                <TextBlock x:Name="TrackName" Text="" />
+                                <TextBlock x:Name="RacerName" Text="" />
+                                <TextBlock x:Name="Lap" Text="" />
+                                <TextBlock x:Name="BestLapTime" Text="" />
+                                <TextBlock x:Name="GapLeader" Text="" />
+                                <TextBlock FontSize="20" Name="NextHeatNickname1_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
+                                <TextBlock FontSize="20" Name="NextHeatNickname2_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
+                            </StackPanel>
+                        </ContentControl>
+                    </Border>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Popup overlay -->
+            <Grid x:Name="PopupOverlay" Visibility="Collapsed" Background="#80000000" Grid.RowSpan="2">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400" Background="White" Margin="10">
+                    <TextBlock x:Name="PopupMessage" Text="" TextWrapping="Wrap" Margin="10" FontSize="14" Foreground="Red" />
+                    <Button Content="OK" Width="100" HorizontalAlignment="Center" Click="PopupOkButton_Click" />
+                </StackPanel>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>
