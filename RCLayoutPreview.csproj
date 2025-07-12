@@ -108,6 +108,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <None Include="stubdata4.json" />
+    <None Include="stubdata5.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Input;
 
 namespace RCLayoutPreview
 {
@@ -47,6 +48,9 @@ namespace RCLayoutPreview
             };
             previewTimer.Tick += AutoPreviewTick;
             previewTimer.Start();
+
+            // Populate JSON fields tree
+            PopulateJsonFieldsTree();
         }
 
         private void HideButton(string buttonContent)
@@ -232,7 +236,7 @@ namespace RCLayoutPreview
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             LogStatus($"Base directory: {baseDirectory}");
 
-            string jsonPath = Path.Combine(baseDirectory, "stubdata4.json");
+            string jsonPath = Path.Combine(baseDirectory, "stubdata5.json");
             LogStatus($"Checking path: {jsonPath}");
 
             if (File.Exists(jsonPath))
@@ -245,6 +249,9 @@ namespace RCLayoutPreview
                     // Clear and reload JSON data
                     jsonData = JObject.Parse(jsonContent);
                     LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
+
+                    // Populate JSON fields tree
+                    PopulateJsonFieldsTree();
 
                     return;
                 }
@@ -306,7 +313,7 @@ namespace RCLayoutPreview
             {
                 Filter = "JSON Data (*.json)|*.json",
                 Title = "Select JSON Data",
-                FileName = "stubdata4.json" // Default to stubdata4.json
+                FileName = "stubdata5.json" // Default to stubdata5.json
             };
 
             if (dlg.ShowDialog() == true)
@@ -318,6 +325,9 @@ namespace RCLayoutPreview
                     jsonData = JObject.Parse(json);
 
                     LogStatus($"Loaded: {Path.GetFileName(dlg.FileName)}");
+
+                    // Populate JSON fields tree
+                    PopulateJsonFieldsTree();
 
                     // Update preview with new data
                     var editor = FindName("Editor") as TextBox;
@@ -405,6 +415,56 @@ namespace RCLayoutPreview
             else
             {
                 LogStatus("Invalid delay input. Please enter a valid number.");
+            }
+        }
+
+        private void JsonFieldsTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var treeView = sender as TreeView;
+            var selectedItem = treeView?.SelectedItem as TreeViewItem;
+            if (selectedItem != null)
+            {
+                DragDrop.DoDragDrop(treeView, selectedItem.Header.ToString(), DragDropEffects.Copy);
+            }
+        }
+
+        private void JsonFieldsTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var treeView = sender as TreeView;
+            var selectedItem = treeView?.SelectedItem as TreeViewItem;
+            if (selectedItem != null)
+            {
+                var editor = FindName("Editor") as TextBox;
+                if (editor != null)
+                {
+                    editor.SelectedText = selectedItem.Header.ToString(); // Insert the field at the cursor position
+                }
+            }
+        }
+
+        private void Editor_Drop(object sender, DragEventArgs e)
+        {
+            var editor = sender as TextBox;
+            if (editor != null && e.Data.GetDataPresent(DataFormats.StringFormat))
+            {
+                var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;
+                editor.SelectedText = droppedText; // Insert the dropped text at the cursor position
+            }
+        }
+
+        private void PopulateJsonFieldsTree()
+        {
+            if (jsonData == null) return;
+
+            var jsonFieldsTree = FindName("JsonFieldsTree") as TreeView;
+            if (jsonFieldsTree == null) return;
+
+            jsonFieldsTree.Items.Clear();
+
+            foreach (var property in jsonData.Properties())
+            {
+                var item = new TreeViewItem { Header = property.Name };
+                jsonFieldsTree.Items.Add(item);
             }
         }
     }

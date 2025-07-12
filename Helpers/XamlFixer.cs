@@ -121,41 +121,38 @@ namespace RCLayoutPreview.Helpers
                 {
                     Debug.WriteLine($"[ProcessNamedFields] Parsed FieldType: {parsedField.FieldType}, InstanceIndex: {parsedField.InstanceIndex}");
 
-                    // Use the parsed FieldType for JSON lookup
-                    if (jsonData.TryGetValue(parsedField.FieldType, out var value))
+                    // Look up in each group: RacerData, GenericData, Actions
+                    JToken value = null;
+                    string foundGroup = null;
+                    if (jsonData["RacerData"] is JObject racerData && racerData.TryGetValue(parsedField.FieldType, out value))
                     {
-                        Debug.WriteLine($"[ProcessNamedFields] JSON value found for {parsedField.FieldType}: {value}");
+                        foundGroup = "RacerData";
+                    }
+                    else if (jsonData["GenericData"] is JObject genericData && genericData.TryGetValue(parsedField.FieldType, out value))
+                    {
+                        foundGroup = "GenericData";
+                    }
+                    else if (jsonData["Actions"] is JObject actionsData && actionsData.TryGetValue(parsedField.FieldType, out value))
+                    {
+                        foundGroup = "Actions";
+                    }
+
+                    if (value != null)
+                    {
+                        Debug.WriteLine($"[ProcessNamedFields] JSON value found for {parsedField.FieldType} in {foundGroup}: {value}");
 
                         if (element is TextBlock textBlock)
                         {
                             textBlock.Text = value.ToString();
-
-                            // Assign dummy colors dynamically
-                            SolidColorBrush backgroundColor = null;
-                            switch (parsedField.FieldType)
+                            if (foundGroup == "RacerData")
                             {
-                                case "NextHeatNickname1":
-                                    backgroundColor = new SolidColorBrush(Colors.Red);
-                                    break;
-                                case "NextHeatNickname2":
-                                    backgroundColor = new SolidColorBrush(Colors.White);
-                                    break;
-                                case "NextHeatNickname3":
-                                    backgroundColor = new SolidColorBrush(Colors.Blue);
-                                    break;
-                                case "NextHeatNickname4":
-                                    backgroundColor = new SolidColorBrush(Colors.Yellow);
-                                    break;
-                            }
-
-                            if (backgroundColor != null)
-                            {
-                                textBlock.Background = backgroundColor;
-                                Debug.WriteLine($"[ProcessNamedFields] Background color set for {parsedField.FieldType}: {backgroundColor.Color}");
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[ProcessNamedFields] No background color assigned for {parsedField.FieldType}");
+                                // Assign background color dynamically based on field name hash
+                                int hash = parsedField.FieldType.GetHashCode();
+                                byte r = (byte)((hash >> 16) & 0xFF);
+                                byte g = (byte)((hash >> 8) & 0xFF);
+                                byte b = (byte)(hash & 0xFF);
+                                textBlock.Background = new SolidColorBrush(Color.FromRgb(r, g, b));
+                                Debug.WriteLine($"[ProcessNamedFields] Background color set for {parsedField.FieldType}: RGB({r}, {g}, {b})");
                             }
                         }
                         else if (element is ContentControl contentControl)
