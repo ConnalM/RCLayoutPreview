@@ -463,8 +463,16 @@ namespace RCLayoutPreview
 
             foreach (var property in jsonData.Properties())
             {
-                var item = new TreeViewItem { Header = property.Name };
-                jsonFieldsTree.Items.Add(item);
+                var groupItem = new TreeViewItem { Header = property.Name };
+                if (property.Value is JObject groupObj)
+                {
+                    foreach (var field in groupObj.Properties())
+                    {
+                        var fieldItem = new TreeViewItem { Header = field.Name };
+                        groupItem.Items.Add(fieldItem);
+                    }
+                }
+                jsonFieldsTree.Items.Add(groupItem);
             }
         }
     }

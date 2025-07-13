@@ -3,8 +3,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Windows;
-using System.Windows.Controls; // Added for TextBlock
-using System.Windows.Media; // Added for SolidColorBrush and Colors
+using System.Windows.Controls;
+using System.Windows.Media;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 
@@ -49,8 +49,6 @@ namespace RCLayoutPreview.Helpers
                 foreach (var panel in xml.Descendants().Where(e => e.Name.LocalName == "StackPanel"))
                     panel.Attributes("VerticalAlignment").Where(a => !IsAllowedAlignment(a.Value)).Remove();
 
-                // Add more fixer rules here...
-
                 return xml.ToString(SaveOptions.DisableFormatting);
             }
             catch
@@ -73,25 +71,16 @@ namespace RCLayoutPreview.Helpers
         {
             string[] testInputs = new[]
             {
-                // No root, no namespace
                 "<TextBlock Text=\"Hello\" />",
-
-                // No namespace
                 "<Grid><TextBlock Text=\"Hi\" /></Grid>",
-
-                // Invalid attribute
                 "<Grid Padding=\"10\"><TextBlock Text=\"Test\" /></Grid>",
-
-                // StackPanel with bad alignment
                 "<StackPanel VerticalAlignment=\"Middle\"><TextBlock Text=\"Bad Align\" /></StackPanel>",
-
-                // Well-formed XAML
                 "<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"><TextBlock Text=\"OK\" /></Grid>"
             };
 
             foreach (var input in testInputs)
             {
-                string output = RCLayoutPreview.Helpers.XamlFixer.Preprocess(input);
+                string output = Preprocess(input);
                 Console.WriteLine("Input:\n" + input);
                 Console.WriteLine("Output:\n" + output);
                 Console.WriteLine("-----");
@@ -104,26 +93,20 @@ namespace RCLayoutPreview.Helpers
                 throw new ArgumentNullException("Root element or JSON data cannot be null.");
 
             Debug.WriteLine("[ProcessNamedFields] Starting field processing...");
-
             ProcessElementRecursively(rootElement, jsonData, debugMode);
-
             Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
         }
 
         private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
         {
-            Debug.WriteLine($"[ProcessNamedFields] Processing element of type: {element.GetType().Name}, Name: {element.Name ?? "(Unnamed)"}");
-
             if (!string.IsNullOrEmpty(element.Name))
             {
-                // Parse the field name using FieldNameParser
                 if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
-                    Debug.WriteLine($"[ProcessNamedFields] Parsed FieldType: {parsedField.FieldType}, InstanceIndex: {parsedField.InstanceIndex}");
-
                     // Look up in each group: RacerData, GenericData, Actions
                     JToken value = null;
                     string foundGroup = null;
+
                     if (jsonData["RacerData"] is JObject racerData && racerData.TryGetValue(parsedField.FieldType, out value))
                     {
                         foundGroup = "RacerData";
@@ -139,41 +122,47 @@ namespace RCLayoutPreview.Helpers
 
                     if (value != null)
                     {
-                        Debug.WriteLine($"[ProcessNamedFields] JSON value found for {parsedField.FieldType} in {foundGroup}: {value}");
-
-                        if (element is TextBlock textBlock)
+                        // Apply color to both TextBlock and Label elements from RacerData
+                        if (foundGroup == "RacerData")
                         {
-                            textBlock.Text = value.ToString();
-                            if (foundGroup == "RacerData")
+                            // Extract player/lane identifier for consistent color per player
+                            int playerIndex = GetPlayerIndexFromField(parsedField.FieldType);
+                            var colorBrush = GetPlayerColorBrush(playerIndex);
+
+                            if (element is TextBlock textBlock)
                             {
-                                // Assign background color dynamically based on field name hash
-                                int hash = parsedField.FieldType.GetHashCode();
-                                byte r = (byte)((hash >> 16) & 0xFF);
-                                byte g = (byte)((hash >> 8) & 0xFF);
-                                byte b = (byte)(hash & 0xFF);
-                                textBlock.Background = new SolidColorBrush(Color.FromRgb(r, g, b));
-                                Debug.WriteLine($"[ProcessNamedFields] Background color set for {parsedField.FieldType}: RGB({r}, {g}, {b})");
+                                textBlock.Text = value.ToString();
+                                textBlock.Background = colorBrush;
+                                textBlock.Foreground = new SolidColorBrush(Colors.White);
+                            }
+                            else if (element is Label label)
+                            {
+                                label.Content = value.ToString();
+                                label.Background = colorBrush;
+                                label.Foreground = new SolidColorBrush(Colors.White);
+                            }
+                            else if (element is ContentControl contentControl)
+                            {
+                                contentControl.Content = value.ToString();
                             }
                         }
-                        else if (element is ContentControl contentControl)
+                        else
                         {
-                            contentControl.Content = value.ToString();
+                            // For non-RacerData fields, just set the content without background
+                            if (element is TextBlock textBlock)
+                            {
+                                textBlock.Text = value.ToString();
+                            }
+                            else if (element is Label label)
+                            {
+                                label.Content = value.ToString();
+                            }
+                            else if (element is ContentControl contentControl)
+                            {
+                                contentControl.Content = value.ToString();
+                            }
                         }
                     }
-                    else
-                    {
-                        Debug.WriteLine($"[ProcessNamedFields] No JSON value found for {parsedField.FieldType}");
-                    }
-
-                    if (debugMode)
-                    {
-                        // Highlight the element in debug mode
-                        element.ToolTip = $"Bound to: {parsedField.FieldType}";
-                    }
-                }
-                else
-                {
-                    Debug.WriteLine($"[ProcessNamedFields] Failed to parse field name: {element.Name}");
                 }
             }
 
@@ -183,11 +172,44 @@ namespace RCLayoutPreview.Helpers
                 {
                     ProcessElementRecursively(childElement, jsonData, debugMode);
                 }
-                else
-                {
-                    Debug.WriteLine($"[ProcessNamedFields] Skipping non-FrameworkElement child of type: {child.GetType().Name}");
-                }
+            }
+        }
+
+        private static int GetPlayerIndexFromField(string fieldType)
+        {
+            // Match patterns like Lane1, Position2, RaceLeader3, etc.
+            var laneMatch = Regex.Match(fieldType, @"(?:Lane|Position|RaceLeader|SeasonLeader|SeasonRaceLeader)(\d+)");
+            if (laneMatch.Success && int.TryParse(laneMatch.Groups[1].Value, out int laneNum))
+            {
+                return laneNum;
+            }
+
+            // Match patterns like NextHeatNickname1, OnDeckNickname2, etc.
+            var nameMatch = Regex.Match(fieldType, @"(?:NextHeatNickname|OnDeckNickname|Pos)(\d+)");
+            if (nameMatch.Success && int.TryParse(nameMatch.Groups[1].Value, out int nameNum))
+            {
+                return nameNum;
+            }
+
+            // If no specific pattern matches, use a hash of the field type for a consistent color
+            return Math.Abs(fieldType.GetHashCode() % 20) + 1;
+        }
+
+        private static SolidColorBrush GetPlayerColorBrush(int playerIndex)
+        {
+            // Use a fixed set of distinct colors for players
+            switch ((playerIndex - 1) % 8)
+            {
+                case 0: return new SolidColorBrush(Color.FromRgb(192, 0, 0));      // Red
+                case 1: return new SolidColorBrush(Color.FromRgb(0, 112, 192));    // Blue
+                case 2: return new SolidColorBrush(Color.FromRgb(0, 176, 80));     // Green
+                case 3: return new SolidColorBrush(Color.FromRgb(112, 48, 160));   // Purple
+                case 4: return new SolidColorBrush(Color.FromRgb(255, 192, 0));    // Gold
+                case 5: return new SolidColorBrush(Color.FromRgb(0, 176, 240));    // Light Blue
+                case 6: return new SolidColorBrush(Color.FromRgb(146, 208, 80));   // Light Green
+                case 7: return new SolidColorBrush(Color.FromRgb(255, 102, 0));    // Orange
+                default: return new SolidColorBrush(Color.FromRgb(128, 128, 128)); // Gray (fallback)
             }
         }
     }
-}
+} 

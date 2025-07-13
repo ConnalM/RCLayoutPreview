@@ -107,8 +107,9 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-    <None Include="stubdata4.json" />
-    <None Include="stubdata5.json" />
+    <None Include="stubdata5.json">
+		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</None>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
