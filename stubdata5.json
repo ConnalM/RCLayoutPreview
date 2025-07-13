@@ -696,7 +696,6 @@
     "NextHeatNickname6": "Ghost",
     "NextHeatNickname7": "Nitro",
     "NextHeatNickname8": "Sparta",
-    "NextHeatNumber": "4",
     "OnDeckNickname1": "Echo",
     "OnDeckNickname2": "Delta",
     "OnDeckNickname3": "Foxtrot",
@@ -735,8 +734,7 @@
     "Pos20": "20th"
   },
 
-  "GenericData": 
-  {
+  "GenericData": {
     "BestHeatName": "John Smith",
     "BestHeatNickname": "Speedy",
     "BestHeatTime": "23.123",
@@ -767,7 +765,9 @@
     "StartLamp10": "\\images\\light_red.png",
     "StatusLabel": "Heat 3 of 8",
     "TrackImage": "\\images\\track.png",
-    "TrackName": "Silverstone Circuit"
+    "TrackName": "Silverstone Circuit",
+    "NextHeatNumber": "4"
+
   },
 
   "Actions": 

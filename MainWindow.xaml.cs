@@ -22,6 +22,10 @@ namespace RCLayoutPreview
         private int previewDelayMilliseconds = 3000; // Configurable delay in milliseconds
         private DateTime lastEditTime;
 
+        // Fixed initial widths for fields and editor panels
+        private const double INITIAL_FIELDS_WIDTH = 200;
+        private const double INITIAL_EDITOR_WIDTH = 400;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -51,6 +55,12 @@ namespace RCLayoutPreview
 
             // Populate JSON fields tree
             PopulateJsonFieldsTree();
+        }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // For this simplified version, we don't need to do anything
+            // The layout is set up in XAML to maintain the fixed widths
         }
 
         private void HideButton(string buttonContent)

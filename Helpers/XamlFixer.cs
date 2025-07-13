@@ -67,26 +67,6 @@ namespace RCLayoutPreview.Helpers
             };
         }
 
-        public static void TestXamlFixer()
-        {
-            string[] testInputs = new[]
-            {
-                "<TextBlock Text=\"Hello\" />",
-                "<Grid><TextBlock Text=\"Hi\" /></Grid>",
-                "<Grid Padding=\"10\"><TextBlock Text=\"Test\" /></Grid>",
-                "<StackPanel VerticalAlignment=\"Middle\"><TextBlock Text=\"Bad Align\" /></StackPanel>",
-                "<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"><TextBlock Text=\"OK\" /></Grid>"
-            };
-
-            foreach (var input in testInputs)
-            {
-                string output = Preprocess(input);
-                Console.WriteLine("Input:\n" + input);
-                Console.WriteLine("Output:\n" + output);
-                Console.WriteLine("-----");
-            }
-        }
-
         public static void ProcessNamedFields(FrameworkElement rootElement, JObject jsonData, bool debugMode)
         {
             if (rootElement == null || jsonData == null)
@@ -122,44 +102,56 @@ namespace RCLayoutPreview.Helpers
 
                     if (value != null)
                     {
+                        // Only display text in instance 1 (_1)
+                        bool showText = parsedField.InstanceIndex == 1;
+                        string displayText = showText ? value.ToString() : "";
+                        
                         // Apply color to both TextBlock and Label elements from RacerData
                         if (foundGroup == "RacerData")
                         {
                             // Extract player/lane identifier for consistent color per player
-                            int playerIndex = GetPlayerIndexFromField(parsedField.FieldType);
-                            var colorBrush = GetPlayerColorBrush(playerIndex);
+                            int playerIndex = GetPlayerIndex(parsedField.FieldType);
+                            var colorBrush = GetColor(playerIndex);
 
                             if (element is TextBlock textBlock)
                             {
-                                textBlock.Text = value.ToString();
+                                textBlock.Text = displayText;
                                 textBlock.Background = colorBrush;
-                                textBlock.Foreground = new SolidColorBrush(Colors.White);
+                                
+                                if (showText)
+                                {
+                                    textBlock.Foreground = new SolidColorBrush(Colors.White);
+                                }
                             }
                             else if (element is Label label)
                             {
-                                label.Content = value.ToString();
+                                label.Content = displayText;
                                 label.Background = colorBrush;
-                                label.Foreground = new SolidColorBrush(Colors.White);
+                                
+                                if (showText)
+                                {
+                                    label.Foreground = new SolidColorBrush(Colors.White);
+                                }
                             }
-                            else if (element is ContentControl contentControl)
+                            else if (element is ContentControl contentControl && showText)
                             {
-                                contentControl.Content = value.ToString();
+                                contentControl.Content = displayText;
                             }
                         }
-                        else
+                        else if (showText)
                         {
-                            // For non-RacerData fields, just set the content without background
+                            // For non-RacerData fields, just set the content
                             if (element is TextBlock textBlock)
                             {
-                                textBlock.Text = value.ToString();
+                                textBlock.Text = displayText;
                             }
                             else if (element is Label label)
                             {
-                                label.Content = value.ToString();
+                                label.Content = displayText;
                             }
                             else if (element is ContentControl contentControl)
                             {
-                                contentControl.Content = value.ToString();
+                                contentControl.Content = displayText;
                             }
                         }
                     }
@@ -174,8 +166,8 @@ namespace RCLayoutPreview.Helpers
                 }
             }
         }
-
-        private static int GetPlayerIndexFromField(string fieldType)
+        
+        private static int GetPlayerIndex(string fieldType)
         {
             // Match patterns like Lane1, Position2, RaceLeader3, etc.
             var laneMatch = Regex.Match(fieldType, @"(?:Lane|Position|RaceLeader|SeasonLeader|SeasonRaceLeader)(\d+)");
@@ -194,8 +186,8 @@ namespace RCLayoutPreview.Helpers
             // If no specific pattern matches, use a hash of the field type for a consistent color
             return Math.Abs(fieldType.GetHashCode() % 20) + 1;
         }
-
-        private static SolidColorBrush GetPlayerColorBrush(int playerIndex)
+        
+        private static SolidColorBrush GetColor(int playerIndex)
         {
             // Use a fixed set of distinct colors for players
             switch ((playerIndex - 1) % 8)
@@ -212,4 +204,4 @@ namespace RCLayoutPreview.Helpers
             }
         }
     }
-} 
+}
