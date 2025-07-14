@@ -1,9 +1,14 @@
+using ICSharpCode.AvalonEdit.Highlighting;
+using ICSharpCode.AvalonEdit.Search;
+using ICSharpCode.AvalonEdit.Document;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
+using System.Xml;
 
 namespace RCLayoutPreview
 {
@@ -14,7 +19,11 @@ namespace RCLayoutPreview
         private TextBlock statusLabel;
         private bool autoUpdateEnabled = true;
         private int previewDelayMilliseconds = 3000;
+        private DateTime lastEditTime;
+        private string lastEditorContent = string.Empty;
+        private DispatcherTimer previewTimer;
         private MainWindow previewWindow;
+        private SearchPanel searchPanel;
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -25,16 +34,70 @@ namespace RCLayoutPreview
             this.previewWindow = previewWindow;
             statusLabel = FindName("StatusLabel") as TextBlock;
 
-            // Monitor text changes for auto-update
-            Editor.TextChanged += (s, e) => 
+            // Set up editor
+            Editor.ShowLineNumbers = true;
+            Editor.TextChanged += Editor_TextChanged;
+            Editor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("XML");
+
+            // Add search panel
+            searchPanel = SearchPanel.Install(Editor);
+            
+            // Add keyboard shortcuts
+            Editor.InputBindings.Add(new KeyBinding(
+                ApplicationCommands.Find,
+                new KeyGesture(Key.F, ModifierKeys.Control)));
+            
+            // Set up timer for automatic preview
+            previewTimer = new DispatcherTimer
             {
-                if (autoUpdateEnabled)
-                {
-                    XamlContentChanged?.Invoke(this, Editor.Text);
-                }
+                Interval = TimeSpan.FromMilliseconds(500)
             };
+            previewTimer.Tick += AutoPreviewTick;
+            previewTimer.Start();
 
             LoadStubData();
+
+            // Set up drag and drop
+            Editor.AllowDrop = true;
+            Editor.Drop += Editor_Drop;
+        }
+
+        private void Editor_TextChanged(object sender, EventArgs e)
+        {
+            if (!autoUpdateEnabled) return;
+
+            string currentContent = Editor.Text;
+            if (currentContent != lastEditorContent && !string.IsNullOrWhiteSpace(currentContent))
+            {
+                lastEditTime = DateTime.Now;
+                lastEditorContent = currentContent;
+            }
+        }
+
+        private void AutoPreviewTick(object sender, EventArgs e)
+        {
+            if (!autoUpdateEnabled) return;
+
+            if ((DateTime.Now - lastEditTime).TotalMilliseconds >= previewDelayMilliseconds)
+            {
+                string currentContent = Editor.Text;
+                if (!string.IsNullOrWhiteSpace(currentContent))
+                {
+                    try
+                    {
+                        // Validate XML before sending
+                        var doc = new XmlDocument();
+                        doc.LoadXml(currentContent);
+                        
+                        XamlContentChanged?.Invoke(this, currentContent);
+                        LogStatus("Preview updated");
+                    }
+                    catch (XmlException ex)
+                    {
+                        LogStatus($"Invalid XAML: {ex.Message}");
+                    }
+                }
+            }
         }
 
         private void LoadStubData()
@@ -153,6 +216,7 @@ namespace RCLayoutPreview
             autoUpdateEnabled = (sender as CheckBox)?.IsChecked == true;
             if (autoUpdateEnabled)
             {
+                lastEditTime = DateTime.Now;
                 XamlContentChanged?.Invoke(this, Editor.Text);
             }
             LogStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
@@ -187,7 +251,8 @@ namespace RCLayoutPreview
             var selectedItem = treeView?.SelectedItem as TreeViewItem;
             if (selectedItem != null)
             {
-                Editor.SelectedText = selectedItem.Header.ToString();
+                var caretOffset = Editor.CaretOffset;
+                Editor.Document.Insert(caretOffset, selectedItem.Header.ToString());
             }
         }
 
@@ -196,7 +261,16 @@ namespace RCLayoutPreview
             if (e.Data.GetDataPresent(DataFormats.StringFormat))
             {
                 var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;
-                Editor.SelectedText = droppedText;
+                var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
+                if (pos.HasValue)
+                {
+                    var offset = Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column);
+                    Editor.Document.Insert(offset, droppedText);
+                }
+                else
+                {
+                    Editor.Document.Insert(Editor.CaretOffset, droppedText);
+                }
             }
         }
 
@@ -219,6 +293,16 @@ namespace RCLayoutPreview
                 }
                 JsonFieldsTree.Items.Add(groupItem);
             }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            if (searchPanel != null)
+            {
+                searchPanel.Uninstall();
+                searchPanel = null;
+            }
+            base.OnClosed(e);
         }
     }
 }

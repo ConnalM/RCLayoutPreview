@@ -7,7 +7,6 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Markup;
 using System.Windows.Media;
-using System.Windows.Input;
 
 namespace RCLayoutPreview
 {
@@ -15,96 +14,25 @@ namespace RCLayoutPreview
     {
         private string currentJsonPath;
         private JObject jsonData;
-        private DispatcherTimer previewTimer;
-        private string lastEditorContent = string.Empty;
-        private TextBlock statusLabel;
-        private bool autoUpdateEnabled = true;
-        private int previewDelayMilliseconds = 3000;
-        private DateTime lastEditTime;
         private EditorWindow editorWindow;
 
         public MainWindow()
         {
             InitializeComponent();
-            statusLabel = FindName("StatusLabel") as TextBlock;
-            HideButton("Load JSON");
-            HideButton("Preview");
             LoadStubData();
-            var previewHost = FindName("PreviewHost") as ContentControl;
-            if (previewHost != null)
-            {
-                previewHost.Content = null;
-            }
-            previewTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(500)
-            };
-            previewTimer.Tick += AutoPreviewTick;
-            previewTimer.Start();
-            PopulateJsonFieldsTree();
-            this.Loaded += MainWindow_Loaded;
 
             // Create and show editor window
             editorWindow = new EditorWindow(this);
             editorWindow.XamlContentChanged += EditorWindow_XamlContentChanged;
             editorWindow.JsonDataChanged += EditorWindow_JsonDataChanged;
             editorWindow.Show();
+
+            this.Loaded += MainWindow_Loaded;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             LogStatus("Layout initialized.");
-        }
-
-        private void HideButton(string buttonContent)
-        {
-            foreach (var child in LogicalTreeHelper.GetChildren(this))
-            {
-                if (child is Grid grid)
-                {
-                    foreach (var gridChild in LogicalTreeHelper.GetChildren(grid))
-                    {
-                        if (gridChild is StackPanel stackPanel)
-                        {
-                            foreach (var stackChild in LogicalTreeHelper.GetChildren(stackPanel))
-                            {
-                                if (stackChild is Button button && button.Content.ToString() == buttonContent)
-                                {
-                                    if (buttonContent == "Preview")
-                                    {
-                                        button.Visibility = Visibility.Visible;
-                                        return;
-                                    }
-
-                                    button.Visibility = Visibility.Collapsed;
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private void AutoPreviewTick(object sender, EventArgs e)
-        {
-            if (!autoUpdateEnabled) return;
-
-            var editor = FindName("Editor") as TextBox;
-            if (editor != null)
-            {
-                string currentContent = editor.Text;
-                if (currentContent != lastEditorContent && !string.IsNullOrWhiteSpace(currentContent))
-                {
-                    lastEditTime = DateTime.Now;
-                    lastEditorContent = currentContent;
-                }
-
-                if ((DateTime.Now - lastEditTime).TotalMilliseconds >= previewDelayMilliseconds)
-                {
-                    TryPreviewXaml(currentContent);
-                }
-            }
         }
 
         private void EditorWindow_XamlContentChanged(object sender, string xamlContent)
@@ -116,15 +44,10 @@ namespace RCLayoutPreview
         {
             jsonData = newJsonData;
             // If we have current XAML content, refresh the preview with new data
-            var previewHost = FindName("PreviewHost") as ContentControl;
-            if (previewHost?.Content != null)
+            if (PreviewHost?.Content is FrameworkElement frameworkElement)
             {
-                var frameworkElement = previewHost.Content as FrameworkElement;
-                if (frameworkElement != null)
-                {
-                    frameworkElement.DataContext = jsonData;
-                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
-                }
+                frameworkElement.DataContext = jsonData;
+                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
             }
         }
 
@@ -138,14 +61,7 @@ namespace RCLayoutPreview
 
             try
             {
-                var previewHost = FindName("PreviewHost") as ContentControl;
-                if (previewHost == null)
-                {
-                    LogStatus("Preview host is not found.");
-                    return;
-                }
-
-                previewHost.Content = null;
+                PreviewHost.Content = null;
 
                 string processedXaml = XamlFixer.Preprocess(xamlContent);
                 LogStatus("XAML processed for preview");
@@ -172,11 +88,10 @@ namespace RCLayoutPreview
                     }
 
                     frameworkElement.DataContext = jsonData;
-
                     LogStatus("Processing named fields...");
                     XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
 
-                    previewHost.Content = frameworkElement;
+                    PreviewHost.Content = frameworkElement;
                     LogStatus("Preview updated successfully.");
                 }
                 else
@@ -214,39 +129,14 @@ namespace RCLayoutPreview
 
         private void ShowErrorPopup(string errorMessage)
         {
-            var layoutRoot = PreviewHost.Content as FrameworkElement;
-            var popupOverlay = FindElementByName<Grid>(layoutRoot, "PopupOverlay");
-            var popupMessage = FindElementByName<TextBlock>(layoutRoot, "PopupMessage");
-
-            if (popupOverlay == null)
-            {
-                LogStatus("PopupOverlay not found in the visual tree.");
-                return;
-            }
-
-            if (popupMessage == null)
-            {
-                LogStatus("PopupMessage not found in the visual tree.");
-                return;
-            }
-
-            popupMessage.Text = errorMessage;
-            Dispatcher.BeginInvoke(() =>
-            {
-                popupOverlay.Visibility = Visibility.Visible;
-                popupOverlay.UpdateLayout();
-                LogStatus("PopupOverlay visibility set to Visible.");
-            });
+            PopupMessage.Text = errorMessage;
+            PopupOverlay.Visibility = Visibility.Visible;
             LogStatus("Popup overlay displayed with message: " + errorMessage);
         }
 
         private void PopupOkButton_Click(object sender, RoutedEventArgs e)
         {
-            var popupOverlay = FindName("PopupOverlay") as Grid;
-            if (popupOverlay != null)
-            {
-                popupOverlay.Visibility = Visibility.Collapsed;
-            }
+            PopupOverlay.Visibility = Visibility.Collapsed;
         }
 
         private void LoadStubData()
@@ -263,13 +153,8 @@ namespace RCLayoutPreview
                 {
                     currentJsonPath = jsonPath;
                     string jsonContent = File.ReadAllText(jsonPath);
-
                     jsonData = JObject.Parse(jsonContent);
                     LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
-
-                    PopulateJsonFieldsTree();
-
-                    return;
                 }
                 catch (Exception ex)
                 {
@@ -280,116 +165,15 @@ namespace RCLayoutPreview
             {
                 LogStatus($"File does not exist: {jsonPath}");
             }
-
-            LogStatus("No JSON data files found.");
         }
 
         private void LogStatus(string message)
         {
-            if (statusLabel != null)
+            if (StatusLabel != null)
             {
-                statusLabel.Text = message;
+                StatusLabel.Text = message;
             }
             Console.WriteLine($"Status: {message}");
-        }
-
-        private void LoadLayout_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "XAML Layout (*.xaml)|*.xaml",
-                Title = "Select Layout XAML"
-            };
-
-            if (dlg.ShowDialog() == true)
-            {
-                var editor = FindName("Editor") as TextBox;
-                if (editor != null)
-                {
-                    try
-                    {
-                        string xamlContent = File.ReadAllText(dlg.FileName);
-                        editor.Text = xamlContent;
-                        LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
-
-                        TryPreviewXaml(xamlContent);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogStatus($"Error loading layout: {ex.Message}");
-                    }
-                }
-            }
-        }
-
-        private void LoadJson_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "JSON Data (*.json)|*.json",
-                Title = "Select JSON Data",
-                FileName = "stubdata5.json"
-            };
-
-            if (dlg.ShowDialog() == true)
-            {
-                try
-                {
-                    currentJsonPath = dlg.FileName;
-                    string json = File.ReadAllText(dlg.FileName);
-                    jsonData = JObject.Parse(json);
-
-                    LogStatus($"Loaded: {Path.GetFileName(dlg.FileName)}");
-
-                    PopulateJsonFieldsTree();
-
-                    var editor = FindName("Editor") as TextBox;
-                    if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
-                    {
-                        TryPreviewXaml(editor.Text);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogStatus($"Error loading JSON: {ex.Message}");
-                }
-            }
-        }
-
-        private void Preview_Click(object sender, RoutedEventArgs e)
-        {
-            var editor = FindName("Editor") as TextBox;
-            if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
-            {
-                var layoutRoot = PreviewHost.Content as FrameworkElement;
-                var popupOverlay = FindElementByName<Grid>(layoutRoot, "PopupOverlay");
-                Console.WriteLine("Found popupOverlay: " + (popupOverlay != null));
-
-                TryPreviewXaml(editor.Text);
-            }
-        }
-
-        private void SaveLayout_Click(object sender, RoutedEventArgs e)
-        {
-            var editor = FindName("Editor") as TextBox;
-            if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
-            {
-                var dlg = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "XAML Layout (*.xaml)|*.xaml",
-                    Title = "Save Layout XAML"
-                };
-
-                if (dlg.ShowDialog() == true)
-                {
-                    File.WriteAllText(dlg.FileName, editor.Text);
-                    LogStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
-                }
-            }
-            else
-            {
-                LogStatus("Nothing to save. Editor is empty.");
-            }
         }
 
         private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
@@ -397,94 +181,9 @@ namespace RCLayoutPreview
             var debugMode = (sender as CheckBox)?.IsChecked == true;
             LogStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
 
-            var previewHost = FindName("PreviewHost") as ContentControl;
-            if (previewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
+            if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
-            }
-        }
-
-        private void AutoUpdateToggle_Changed(object sender, RoutedEventArgs e)
-        {
-            var autoUpdate = (sender as CheckBox)?.IsChecked == true;
-            ToggleAutoUpdate(autoUpdate);
-        }
-
-        private void ToggleAutoUpdate(bool enable)
-        {
-            autoUpdateEnabled = enable;
-            LogStatus(enable ? "Auto-update enabled" : "Auto-update disabled");
-        }
-
-        private void DelayInput_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            var delayInput = (sender as TextBox)?.Text;
-            if (int.TryParse(delayInput, out var delay))
-            {
-                previewDelayMilliseconds = delay;
-                LogStatus($"Preview delay updated to {previewDelayMilliseconds} ms.");
-            }
-            else
-            {
-                LogStatus("Invalid delay input. Please enter a valid number.");
-            }
-        }
-
-        private void JsonFieldsTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            var treeView = sender as TreeView;
-            var selectedItem = treeView?.SelectedItem as TreeViewItem;
-            if (selectedItem != null)
-            {
-                DragDrop.DoDragDrop(treeView, selectedItem.Header.ToString(), DragDropEffects.Copy);
-            }
-        }
-
-        private void JsonFieldsTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            var treeView = sender as TreeView;
-            var selectedItem = treeView?.SelectedItem as TreeViewItem;
-            if (selectedItem != null)
-            {
-                var editor = FindName("Editor") as TextBox;
-                if (editor != null)
-                {
-                    editor.SelectedText = selectedItem.Header.ToString();
-                }
-            }
-        }
-
-        private void Editor_Drop(object sender, DragEventArgs e)
-        {
-            var editor = sender as TextBox;
-            if (editor != null && e.Data.GetDataPresent(DataFormats.StringFormat))
-            {
-                var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;
-                editor.SelectedText = droppedText;
-            }
-        }
-
-        private void PopulateJsonFieldsTree()
-        {
-            if (jsonData == null) return;
-
-            var jsonFieldsTree = FindName("JsonFieldsTree") as TreeView;
-            if (jsonFieldsTree == null) return;
-
-            jsonFieldsTree.Items.Clear();
-
-            foreach (var property in jsonData.Properties())
-            {
-                var groupItem = new TreeViewItem { Header = property.Name };
-                if (property.Value is JObject groupObj)
-                {
-                    foreach (var field in groupObj.Properties())
-                    {
-                        var fieldItem = new TreeViewItem { Header = field.Name };
-                        groupItem.Items.Add(fieldItem);
-                    }
-                }
-                jsonFieldsTree.Items.Add(groupItem);
             }
         }
 
