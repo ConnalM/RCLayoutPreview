@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Input;
+using System.Windows.Controls.Primitives;
 
 namespace RCLayoutPreview
 {
@@ -18,42 +19,183 @@ namespace RCLayoutPreview
         private DispatcherTimer previewTimer;
         private string lastEditorContent = string.Empty;
         private TextBlock statusLabel;
-        private bool autoUpdateEnabled = true;
-        private int previewDelayMilliseconds = 3000;
+        private bool autoUpdateEnabled = true; // Flag to control auto-update
+        private int previewDelayMilliseconds = 3000; // Configurable delay in milliseconds
         private DateTime lastEditTime;
-        private EditorWindow editorWindow;
+
+        // Manual splitter handling
+        private Border activeSplitter = null;
+        private Point startDragPoint;
+        private double fieldsStartWidth;
+        private double editorStartWidth;
+        private double editorStartLeft;
+        private double previewStartLeft;
+
+        // Minimum sizes
+        private const double MIN_PANEL_WIDTH = 100;
+        private const double MIN_EDITOR_WIDTH = 200;
 
         public MainWindow()
         {
             InitializeComponent();
+
+            // Initialize UI elements
             statusLabel = FindName("StatusLabel") as TextBlock;
             HideButton("Load JSON");
             HideButton("Preview");
+
+            // Load JSON data automatically
             LoadStubData();
+
+            // Clear the preview area initially
             var previewHost = FindName("PreviewHost") as ContentControl;
             if (previewHost != null)
             {
                 previewHost.Content = null;
             }
+
+            // Set up timer for automatic preview
             previewTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(500)
             };
             previewTimer.Tick += AutoPreviewTick;
             previewTimer.Start();
-            PopulateJsonFieldsTree();
-            this.Loaded += MainWindow_Loaded;
 
-            // Create and show editor window
-            editorWindow = new EditorWindow(this);
-            editorWindow.XamlContentChanged += EditorWindow_XamlContentChanged;
-            editorWindow.JsonDataChanged += EditorWindow_JsonDataChanged;
-            editorWindow.Show();
+            // Populate JSON fields tree
+            PopulateJsonFieldsTree();
+
+            // Size change event for canvas
+            MainCanvas.SizeChanged += MainCanvas_SizeChanged;
+
+            // Log when window is fully loaded
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private void MainCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdatePreviewPanel();
+        }
+
+        private void UpdatePreviewPanel()
+        {
+            try
+            {
+                // Maintain a fixed width for the preview panel
+                double previewWidth = Math.Max(200, MainCanvas.ActualWidth - Canvas.GetLeft(PreviewScrollViewer) - 10);
+                PreviewScrollViewer.Width = previewWidth;
+
+                // Update the position of the preview panel based on the splitter
+                double editorRightEdge = Canvas.GetLeft(EditorPanel) + EditorPanel.Width;
+                Canvas.SetLeft(PreviewScrollViewer, editorRightEdge + 5);
+
+                LogStatus($"Preview panel updated: Width={PreviewScrollViewer.Width}, Left={Canvas.GetLeft(PreviewScrollViewer)}");
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"Error updating preview panel: {ex.Message}");
+            }
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            LogStatus("Layout initialized.");
+            // Log initial sizes for diagnostics
+            LogStatus("Layout initialized. Splitters should now work independently.");
+
+            // Initial update after window is loaded
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                UpdatePreviewPanel();
+            }), DispatcherPriority.Loaded);
+        }
+
+        // Manual splitter handling
+        private void Splitter_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                // Remember which splitter is being dragged
+                activeSplitter = sender as Border;
+
+                // Capture mouse and record starting positions
+                activeSplitter.CaptureMouse();
+                startDragPoint = e.GetPosition(MainCanvas);
+
+                // Store initial widths and positions
+                fieldsStartWidth = FieldsPanel.Width;
+                editorStartWidth = EditorPanel.Width;
+                editorStartLeft = Canvas.GetLeft(EditorPanel);
+                previewStartLeft = Canvas.GetLeft(PreviewScrollViewer);
+
+                // Log which splitter is active
+                LogStatus($"Dragging {(activeSplitter.Name == "FieldsEditorSplitter" ? "Fields/Editor" : "Editor/Preview")} splitter");
+
+                e.Handled = true;
+            }
+        }
+
+        private void Splitter_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (activeSplitter != null && e.LeftButton == MouseButtonState.Pressed)
+            {
+                // Calculate the drag distance
+                Point currentPosition = e.GetPosition(MainCanvas);
+                double horizontalChange = currentPosition.X - startDragPoint.X;
+
+                if (Math.Abs(horizontalChange) > 2) // Small threshold to avoid tiny movements
+                {
+                    if (activeSplitter.Name == "FieldsEditorSplitter")
+                    {
+                        // Update FieldsPanel and EditorPanel only
+                        double newFieldsWidth = Math.Max(MIN_PANEL_WIDTH, fieldsStartWidth + horizontalChange);
+                        FieldsPanel.Width = newFieldsWidth;
+                        Canvas.SetLeft(FieldsEditorSplitter, newFieldsWidth);
+                        Canvas.SetLeft(EditorPanel, newFieldsWidth + 5);
+
+                        LogStatus($"FieldsEditorSplitter moved: FieldsPanel.Width={FieldsPanel.Width}, EditorPanel.Left={Canvas.GetLeft(EditorPanel)}");
+                    }
+                    else if (activeSplitter.Name == "EditorPreviewSplitter")
+                    {
+                        // Update EditorPanel and PreviewScrollViewer only
+                        double newEditorWidth = Math.Max(MIN_EDITOR_WIDTH, editorStartWidth + horizontalChange);
+                        EditorPanel.Width = newEditorWidth;
+                        Canvas.SetLeft(EditorPreviewSplitter, editorStartLeft + newEditorWidth);
+                        Canvas.SetLeft(PreviewScrollViewer, editorStartLeft + newEditorWidth + 5);
+
+                        LogStatus($"EditorPreviewSplitter moved: EditorPanel.Width={EditorPanel.Width}, PreviewScrollViewer.Left={Canvas.GetLeft(PreviewScrollViewer)}");
+                    }
+
+                    // Update preview size
+                    UpdatePreviewPanel();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void Splitter_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (activeSplitter != null)
+            {
+                // Release mouse capture
+                activeSplitter.ReleaseMouseCapture();
+
+                // Log the final dimensions
+                LogStatus($"Splitter set - Fields: {FieldsPanel.Width:F0}, Editor: {EditorPanel.Width:F0}");
+
+                // Reset active splitter
+                activeSplitter = null;
+                e.Handled = true;
+            }
+        }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.PreviousSize.Width > 0 && e.PreviousSize.Width != e.NewSize.Width)
+            {
+                // Only need to update the preview panel
+                UpdatePreviewPanel();
+                LogStatus($"Window resized to {e.NewSize.Width:F0}px wide");
+            }
         }
 
         private void HideButton(string buttonContent)
@@ -70,6 +212,7 @@ namespace RCLayoutPreview
                             {
                                 if (stackChild is Button button && button.Content.ToString() == buttonContent)
                                 {
+                                    // Remove hiding logic for Preview button
                                     if (buttonContent == "Preview")
                                     {
                                         button.Visibility = Visibility.Visible;
@@ -88,7 +231,7 @@ namespace RCLayoutPreview
 
         private void AutoPreviewTick(object sender, EventArgs e)
         {
-            if (!autoUpdateEnabled) return;
+            if (!autoUpdateEnabled) return; // Skip auto-update if disabled
 
             var editor = FindName("Editor") as TextBox;
             if (editor != null)
@@ -100,30 +243,10 @@ namespace RCLayoutPreview
                     lastEditorContent = currentContent;
                 }
 
+                // Check if the delay has elapsed since the last edit
                 if ((DateTime.Now - lastEditTime).TotalMilliseconds >= previewDelayMilliseconds)
                 {
                     TryPreviewXaml(currentContent);
-                }
-            }
-        }
-
-        private void EditorWindow_XamlContentChanged(object sender, string xamlContent)
-        {
-            TryPreviewXaml(xamlContent);
-        }
-
-        private void EditorWindow_JsonDataChanged(object sender, JObject newJsonData)
-        {
-            jsonData = newJsonData;
-            // If we have current XAML content, refresh the preview with new data
-            var previewHost = FindName("PreviewHost") as ContentControl;
-            if (previewHost?.Content != null)
-            {
-                var frameworkElement = previewHost.Content as FrameworkElement;
-                if (frameworkElement != null)
-                {
-                    frameworkElement.DataContext = jsonData;
-                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
             }
         }
@@ -145,18 +268,20 @@ namespace RCLayoutPreview
                     return;
                 }
 
+                // Clear the preview host before updating
                 previewHost.Content = null;
 
                 string processedXaml = XamlFixer.Preprocess(xamlContent);
                 LogStatus("XAML processed for preview");
 
+                // Validate XAML for common issues
                 if (processedXaml.Contains("FontSize=\"\""))
                 {
                     LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
                     processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
                 }
 
-                object element = XamlReader.Parse(processedXaml);
+                object element = System.Windows.Markup.XamlReader.Parse(processedXaml);
                 if (element is Window window)
                 {
                     LogStatus("XAML contains a Window element. Extracting content.");
@@ -171,10 +296,12 @@ namespace RCLayoutPreview
                         return;
                     }
 
+                    // Apply JSON data to the DataContext
                     frameworkElement.DataContext = jsonData;
 
+                    // Use XamlFixer to process named fields
                     LogStatus("Processing named fields...");
-                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode: true);
 
                     previewHost.Content = frameworkElement;
                     LogStatus("Preview updated successfully.");
@@ -234,7 +361,7 @@ namespace RCLayoutPreview
             Dispatcher.BeginInvoke(() =>
             {
                 popupOverlay.Visibility = Visibility.Visible;
-                popupOverlay.UpdateLayout();
+                popupOverlay.UpdateLayout(); // Force layout update
                 LogStatus("PopupOverlay visibility set to Visible.");
             });
             LogStatus("Popup overlay displayed with message: " + errorMessage);
@@ -264,9 +391,11 @@ namespace RCLayoutPreview
                     currentJsonPath = jsonPath;
                     string jsonContent = File.ReadAllText(jsonPath);
 
+                    // Clear and reload JSON data
                     jsonData = JObject.Parse(jsonContent);
                     LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
 
+                    // Populate JSON fields tree
                     PopulateJsonFieldsTree();
 
                     return;
@@ -312,6 +441,7 @@ namespace RCLayoutPreview
                         editor.Text = xamlContent;
                         LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
 
+                        // Force an immediate preview
                         TryPreviewXaml(xamlContent);
                     }
                     catch (Exception ex)
@@ -328,7 +458,7 @@ namespace RCLayoutPreview
             {
                 Filter = "JSON Data (*.json)|*.json",
                 Title = "Select JSON Data",
-                FileName = "stubdata5.json"
+                FileName = "stubdata5.json" // Default to stubdata5.json
             };
 
             if (dlg.ShowDialog() == true)
@@ -341,8 +471,10 @@ namespace RCLayoutPreview
 
                     LogStatus($"Loaded: {Path.GetFileName(dlg.FileName)}");
 
+                    // Populate JSON fields tree
                     PopulateJsonFieldsTree();
 
+                    // Update preview with new data
                     var editor = FindName("Editor") as TextBox;
                     if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
                     {
@@ -397,10 +529,11 @@ namespace RCLayoutPreview
             var debugMode = (sender as CheckBox)?.IsChecked == true;
             LogStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
 
-            var previewHost = FindName("PreviewHost") as ContentControl;
-            if (previewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
+            // Update the preview if we have content
+            var editor = FindName("Editor") as TextBox;
+            if (editor != null && !string.IsNullOrWhiteSpace(editor.Text))
             {
-                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
+                TryPreviewXaml(editor.Text);
             }
         }
 
@@ -449,7 +582,7 @@ namespace RCLayoutPreview
                 var editor = FindName("Editor") as TextBox;
                 if (editor != null)
                 {
-                    editor.SelectedText = selectedItem.Header.ToString();
+                    editor.SelectedText = selectedItem.Header.ToString(); // Insert the field at the cursor position
                 }
             }
         }
@@ -460,7 +593,7 @@ namespace RCLayoutPreview
             if (editor != null && e.Data.GetDataPresent(DataFormats.StringFormat))
             {
                 var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;
-                editor.SelectedText = droppedText;
+                editor.SelectedText = droppedText; // Insert the dropped text at the cursor position
             }
         }
 
@@ -486,13 +619,6 @@ namespace RCLayoutPreview
                 }
                 jsonFieldsTree.Items.Add(groupItem);
             }
-        }
-
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
-        {
-            // Close the editor window when the preview window is closed
-            editorWindow.Close();
-            base.OnClosing(e);
         }
     }
 }

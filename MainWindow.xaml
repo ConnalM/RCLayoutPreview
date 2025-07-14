@@ -1,117 +1,43 @@
 ﻿<Window x:Class="RCLayoutPreview.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="RC Layout Editor Preview"
-        Height="800"
-        Width="1200"
-        SizeChanged="Window_SizeChanged"
+        xmlns:local="clr-namespace:RCLayoutPreview"
+        Title="Preview"
+        Height="600"
+        Width="800"
         FontFamily="Segoe UI">
-    <DockPanel LastChildFill="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
         <!-- Top toolbar -->
-        <StackPanel Orientation="Horizontal"
-                    Margin="10"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    DockPanel.Dock="Top">
-            <Button Content="Load Layout" Click="LoadLayout_Click" Margin="0,0,8,0"/>
-            <Button Content="Load JSON" Click="LoadJson_Click" Margin="0,0,8,0"/>
-            <Button Content="Preview" Click="Preview_Click" Margin="0,0,8,0"/>
-            <Button Content="Save Layout" Click="SaveLayout_Click" Margin="0,0,8,0"/>
-            <CheckBox x:Name="DebugModeToggle"
-                      Content="Diagnostics Mode"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      Checked="DebugModeToggle_Changed"
-                      Unchecked="DebugModeToggle_Changed"/>
-            <CheckBox x:Name="AutoUpdateToggle"
-                      Content="Auto-Update"
-                      IsChecked="True"
-                      Margin="10,0,0,0"
-                      VerticalAlignment="Center"
-                      Checked="AutoUpdateToggle_Changed"
-                      Unchecked="AutoUpdateToggle_Changed"/>
-            <TextBlock Text="Delay (ms): " Margin="10,0,0,0" VerticalAlignment="Center"/>
-            <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" TextChanged="DelayInput_TextChanged"/>
-            <TextBlock x:Name="StatusLabel"
-               Text="Ready"
-               Foreground="Gray"
-               Margin="10,4,0,4"
-               VerticalAlignment="Center"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <CheckBox x:Name="DebugModeToggle" Content="Diagnostics Mode" Margin="10,0,0,0" VerticalAlignment="Center" 
+                      Checked="DebugModeToggle_Changed" Unchecked="DebugModeToggle_Changed"/>
+            <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center"/>
         </StackPanel>
 
-        <!-- Main content area - Using Grid with ColumnDefinitions for proper splitter support -->
-        <Grid x:Name="MainGrid">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200" MinWidth="100" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="400" MinWidth="200" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" MinWidth="200" />
-            </Grid.ColumnDefinitions>
+        <!-- Preview Panel -->
+        <ScrollViewer Grid.Row="1" x:Name="PreviewScrollViewer" VerticalScrollBarVisibility="Auto" Margin="10">
+            <Border x:Name="PreviewPanel" BorderBrush="#FFD0D0D0" BorderThickness="1" Padding="10">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FFF5F5F5" Offset="0"/>
+                        <GradientStop Color="White" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <ContentControl x:Name="PreviewHost"/>
+            </Border>
+        </ScrollViewer>
 
-            <!-- JSON Fields TreeView -->
-            <TreeView x:Name="JsonFieldsTree" 
-                      Grid.Column="0" 
-                      Margin="5" 
-                      AllowDrop="True" 
-                      PreviewMouseLeftButtonDown="JsonFieldsTree_PreviewMouseLeftButtonDown" 
-                      MouseDoubleClick="JsonFieldsTree_MouseDoubleClick"/>
-
-            <!-- Vertical GridSplitter between Fields and Editor -->
-            <GridSplitter Grid.Column="1"
-                          Width="5"
-                          ResizeBehavior="PreviousAndNext"
-                          HorizontalAlignment="Stretch"
-                          VerticalAlignment="Stretch"
-                          Background="LightGray" />
-
-            <!-- Editor -->
-            <TextBox x:Name="Editor"
-                     Grid.Column="2"
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"
-                     FontFamily="Consolas"
-                     FontSize="14"
-                     TextWrapping="NoWrap"
-                     Margin="5" 
-                     AllowDrop="True" 
-                     Drop="Editor_Drop" />
-
-            <!-- Vertical GridSplitter between Editor and Preview -->
-            <GridSplitter Grid.Column="3"
-                          Width="5"
-                          ResizeBehavior="PreviousAndNext"
-                          HorizontalAlignment="Stretch"
-                          VerticalAlignment="Stretch"
-                          Background="LightGray" />
-
-            <!-- Preview Panel -->
-            <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto" Margin="5">
-                <Border BorderBrush="Gray" BorderThickness="1" Padding="5" Background="White">
-                    <ContentControl x:Name="PreviewHost">
-                        <StackPanel>
-                            <TextBlock x:Name="RaceName" Text="" />
-                            <TextBlock x:Name="TrackName" Text="" />
-                            <TextBlock x:Name="RacerName" Text="" />
-                            <TextBlock x:Name="Lap" Text="" />
-                            <TextBlock x:Name="BestLapTime" Text="" />
-                            <TextBlock x:Name="GapLeader" Text="" />
-                            <TextBlock FontSize="20" Name="NextHeatNickname1_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
-                            <TextBlock FontSize="20" Name="NextHeatNickname2_1" Margin="5,0,10,0" Foreground="Black" Background="Black" />
-                        </StackPanel>
-                    </ContentControl>
-                </Border>
-            </ScrollViewer>
-        </Grid>
-        
         <!-- Popup overlay -->
-        <Grid x:Name="PopupOverlay" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
+        <Grid x:Name="PopupOverlay" Grid.RowSpan="2" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400" Background="White" Margin="10">
-                <TextBlock x:Name="PopupMessage" Text="" TextWrapping="Wrap" Margin="10" FontSize="14" Foreground="Red" />
-                <Button Content="OK" Width="100" HorizontalAlignment="Center" Click="PopupOkButton_Click" />
+                <TextBlock x:Name="PopupMessage" Text="" TextWrapping="Wrap" Margin="10" FontSize="14" Foreground="Red"/>
+                <Button Content="OK" Width="100" HorizontalAlignment="Center" Click="PopupOkButton_Click"/>
             </StackPanel>
         </Grid>
-    </DockPanel>
+    </Grid>
 </Window>
