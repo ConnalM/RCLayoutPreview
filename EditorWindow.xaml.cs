@@ -2,6 +2,8 @@ using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Search;
 using ICSharpCode.AvalonEdit.Document;
 using Newtonsoft.Json.Linq;
+using RCLayoutPreview.Helpers;
+using RCLayoutPreview.Controls;
 using System;
 using System.IO;
 using System.Windows;
@@ -55,11 +57,11 @@ namespace RCLayoutPreview
             previewTimer.Tick += AutoPreviewTick;
             previewTimer.Start();
 
-            LoadStubData();
-
-            // Set up drag and drop
+            // Set up drag and drop for snippets
             Editor.AllowDrop = true;
             Editor.Drop += Editor_Drop;
+
+            LoadStubData();
         }
 
         private void Editor_TextChanged(object sender, EventArgs e)
@@ -258,6 +260,28 @@ namespace RCLayoutPreview
 
         private void Editor_Drop(object sender, DragEventArgs e)
         {
+            // Handle dropping layout snippets
+            if (e.Data.GetDataPresent("LayoutSnippet"))
+            {
+                var snippet = e.Data.GetData("LayoutSnippet") as LayoutSnippet;
+                if (snippet != null && SnippetGallery != null)
+                {
+                    var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
+                    if (pos.HasValue)
+                    {
+                        var offset = Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column);
+                        Editor.Document.Insert(offset, SnippetGallery.ProcessSnippet(snippet));
+                    }
+                    else
+                    {
+                        Editor.Document.Insert(Editor.CaretOffset, SnippetGallery.ProcessSnippet(snippet));
+                    }
+                    LogStatus($"Inserted {snippet.Name} snippet");
+                }
+                return;
+            }
+
+            // Handle dropping regular strings
             if (e.Data.GetDataPresent(DataFormats.StringFormat))
             {
                 var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;

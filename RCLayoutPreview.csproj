@@ -53,13 +53,16 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-	<PackageReference Include="AvalonEdit" Version="6.3.0" />
+    <PackageReference Include="AvalonEdit" Version="6.3.0" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Page Include="Controls\SnippetGallery.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="EditorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -75,12 +78,16 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Controls\SnippetGallery.xaml.cs">
+      <DependentUpon>SnippetGallery.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Data\RaceData.cs" />
     <Compile Include="EditorWindow.xaml.cs">
       <DependentUpon>EditorWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Helpers\DebugFieldSelector.cs" />
     <Compile Include="Helpers\FieldNameParser.cs" />
+    <Compile Include="Helpers\LayoutSnippet.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\XamlFixer.cs" />
     <Compile Include="MainWindow.xaml.cs">

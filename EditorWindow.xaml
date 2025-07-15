@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:RCLayoutPreview"
         xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
+        xmlns:controls="clr-namespace:RCLayoutPreview.Controls"
         Title="RC Layout Editor"
         Height="800"
-        Width="1000"
+        Width="1200"
         FontFamily="Segoe UI">
     <Grid>
         <Grid.RowDefinitions>
@@ -30,18 +31,34 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="250" MinWidth="100"/>
                 <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="250" MinWidth="100"/>
+                <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="*" MinWidth="200"/>
             </Grid.ColumnDefinitions>
 
             <!-- JSON Fields Panel -->
-            <Border Grid.Column="0" x:Name="FieldsPanel" BorderBrush="#FFD0D0D0" BorderThickness="1">
-                <TreeView x:Name="JsonFieldsTree"
-                         AllowDrop="True"
-                         PreviewMouseLeftButtonDown="JsonFieldsTree_PreviewMouseLeftButtonDown"
-                         MouseDoubleClick="JsonFieldsTree_MouseDoubleClick"/>
-            </Border>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Text="JSON Fields" 
+                         FontWeight="Bold" 
+                         Margin="5"/>
+                
+                <Border Grid.Row="1" 
+                        x:Name="FieldsPanel" 
+                        BorderBrush="#FFD0D0D0" 
+                        BorderThickness="1">
+                    <TreeView x:Name="JsonFieldsTree"
+                             AllowDrop="True"
+                             PreviewMouseLeftButtonDown="JsonFieldsTree_PreviewMouseLeftButtonDown"
+                             MouseDoubleClick="JsonFieldsTree_MouseDoubleClick"/>
+                </Border>
+            </Grid>
 
-            <!-- Splitter -->
+            <!-- First GridSplitter -->
             <GridSplitter Grid.Column="1"
                          ResizeDirection="Columns"
                          ResizeBehavior="PreviousAndNext"
@@ -49,8 +66,34 @@
                          HorizontalAlignment="Stretch"
                          VerticalAlignment="Stretch"/>
 
+            <!-- Snippet Gallery -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Text="Layout Snippets" 
+                         FontWeight="Bold" 
+                         Margin="5"/>
+                
+                <Border Grid.Row="1" 
+                        BorderBrush="#FFD0D0D0" 
+                        BorderThickness="1">
+                    <controls:SnippetGallery x:Name="SnippetGallery"/>
+                </Border>
+            </Grid>
+
+            <!-- Second GridSplitter -->
+            <GridSplitter Grid.Column="3"
+                         ResizeDirection="Columns"
+                         ResizeBehavior="PreviousAndNext"
+                         Background="#FFE0E0E0"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Stretch"/>
+
             <!-- XAML Editor Panel -->
-            <Border Grid.Column="2" x:Name="EditorPanel" BorderBrush="#FFD0D0D0" BorderThickness="1">
+            <Border Grid.Column="4" x:Name="EditorPanel" BorderBrush="#FFD0D0D0" BorderThickness="1">
                 <avalonedit:TextEditor
                     x:Name="Editor"
                     FontFamily="Consolas"
