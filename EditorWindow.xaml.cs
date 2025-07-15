@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Xml;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace RCLayoutPreview
 {
@@ -273,11 +274,128 @@ namespace RCLayoutPreview
             var selectedItem = treeView?.SelectedItem as TreeViewItem;
             if (selectedItem != null)
             {
-                var caretOffset = Editor.CaretOffset;
-                Editor.Document.Insert(caretOffset, selectedItem.Header.ToString());
+                // Get the field name that was clicked
+                string fieldName = selectedItem.Header.ToString();
+                
+                // Get the current position in the editor
+                int caretOffset = Editor.CaretOffset;
+                
+                // Look for a placeholder nearby
+                string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
+                if (!string.IsNullOrEmpty(placeholder))
+                {
+                    // Replace the placeholder with the field name
+                    // Determine if we need to add position and instance suffix
+                    string actualFieldName = FormatFieldNameWithSuffix(fieldName);
+                    
+                    // Replace the placeholder with the field name
+                    ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
+                    LogStatus($"Replaced {placeholder} with {actualFieldName}");
+                }
+                else
+                {
+                    // No placeholder found, just insert at caret position
+                    Editor.Document.Insert(caretOffset, fieldName);
+                    LogStatus($"Inserted field: {fieldName}");
+                }
                 
                 // Check if this field triggers the placeholder removal
                 CheckForValidFields(Editor.Text);
+            }
+        }
+        
+        private string FindNearestPlaceholder(string text, int caretOffset)
+        {
+            // This regex finds placeholders in the format Name="Placeholder1", Name="Placeholder2", etc.
+            var placeholderRegex = new Regex(@"Name=""(Placeholder\d+)""");
+            
+            // Look for placeholders around the cursor position
+            // First look in a reasonable range around the cursor (100 characters)
+            int startPos = Math.Max(0, caretOffset - 100);
+            int endPos = Math.Min(text.Length, caretOffset + 100);
+            string searchText = text.Substring(startPos, endPos - startPos);
+            
+            // Find all placeholders in this range
+            var matches = placeholderRegex.Matches(searchText);
+            if (matches.Count == 0)
+            {
+                // No placeholders found in the vicinity
+                return null;
+            }
+            
+            // Find the closest placeholder to the cursor
+            int cursorRelativePos = caretOffset - startPos;
+            int closestDistance = int.MaxValue;
+            string closestPlaceholder = null;
+            
+            foreach (Match match in matches)
+            {
+                int distance = Math.Abs(match.Index - cursorRelativePos);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestPlaceholder = match.Groups[1].Value;
+                }
+            }
+            
+            return closestPlaceholder;
+        }
+        
+        private string FormatFieldNameWithSuffix(string fieldName)
+        {
+            // Check if we need to add position and instance suffixes
+            // Look at the current selection in editor to see if we're within a snippet
+            // that might need position information
+            
+            // Look for position placeholder in surrounding text
+            int caretOffset = Editor.CaretOffset;
+            int startPos = Math.Max(0, caretOffset - 200);
+            int length = Math.Min(400, Editor.Text.Length - startPos);
+            string surroundingText = Editor.Text.Substring(startPos, length);
+            
+            // Check for any position indicator like {0} replaced with 1,2,3 etc.
+            var positionMatch = Regex.Match(surroundingText, @"Name=""[^""]+""\s+(?:[^>]*\s+)?Content=""(\d+)""");
+            string position = "1"; // Default position
+            
+            if (positionMatch.Success)
+            {
+                position = positionMatch.Groups[1].Value;
+            }
+            
+            // Add the appropriate suffix based on field name patterns
+            if (fieldName.Contains("Position") || fieldName.Contains("Nickname") || 
+                fieldName.Contains("Lap") || fieldName.Contains("Avatar") ||
+                fieldName.Contains("BestLap") || fieldName.Contains("AvgLap") || 
+                fieldName.Contains("LastLap") || fieldName.Contains("LapTime"))
+            {
+                // These typically need position suffix
+                return $"{fieldName}_{position}_1";
+            }
+            else
+            {
+                // Other fields typically just need an instance suffix
+                return $"{fieldName}_1";
+            }
+        }
+        
+        private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
+        {
+            // Find the placeholder in the text
+            string pattern = $"Name=\"{placeholder}\"";
+            string replacement = $"Name=\"{fieldName}\"";
+            
+            // Get the document text
+            string text = Editor.Text;
+            
+            // Replace the first occurrence of the placeholder
+            int placeholderIndex = text.IndexOf(pattern);
+            if (placeholderIndex >= 0)
+            {
+                // Replace the placeholder
+                Editor.Document.Replace(placeholderIndex, pattern.Length, replacement);
+                
+                // Move cursor to just after the replaced text
+                Editor.CaretOffset = placeholderIndex + replacement.Length;
             }
         }
 

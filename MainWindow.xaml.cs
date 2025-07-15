@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Xml;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Collections.Generic;
 
 namespace RCLayoutPreview
 {
@@ -19,6 +20,7 @@ namespace RCLayoutPreview
         private JObject jsonData;
         private EditorWindow editorWindow;
         private bool placeholderRemoved = false;
+        private HashSet<string> usedElementNames = new HashSet<string>();
 
         public MainWindow()
         {
@@ -67,6 +69,7 @@ namespace RCLayoutPreview
             {
                 // Clear any previous content
                 PreviewHost.Content = null;
+                usedElementNames.Clear();
 
                 // Process the XAML through any utility methods
                 string processedXaml = XamlFixer.Preprocess(xamlContent);
@@ -82,6 +85,9 @@ namespace RCLayoutPreview
                 // Replace any remaining template placeholders
                 processedXaml = processedXaml.Replace("{styles}", "");
                 processedXaml = processedXaml.Replace("{content}", "");
+
+                // Fix duplicate element names
+                processedXaml = EnsureUniqueElementNames(processedXaml);
 
                 // Check if the XAML contains any valid field names and handle the placeholder
                 if (PlaceholderSwapManager.ContainsValidField(processedXaml))
@@ -212,6 +218,32 @@ namespace RCLayoutPreview
             {
                 ShowErrorPopup($"Preview error: {ex.Message}");
             }
+        }
+
+        // New method to ensure unique element names
+        private string EnsureUniqueElementNames(string xaml)
+        {
+            // Regular expression to find Name attributes
+            var nameRegex = new Regex(@"Name=""([^""]+)""");
+            
+            // Use a match evaluator to replace names that are duplicates
+            return nameRegex.Replace(xaml, match => {
+                string originalName = match.Groups[1].Value;
+                string uniqueName = originalName;
+                int counter = 1;
+                
+                // If this name is already used, generate a unique one by adding a suffix
+                while (usedElementNames.Contains(uniqueName))
+                {
+                    uniqueName = $"{originalName}_{counter++}";
+                }
+                
+                // Add the unique name to our used names collection
+                usedElementNames.Add(uniqueName);
+                
+                // Return the attribute with the potentially modified name
+                return $"Name=\"{uniqueName}\"";
+            });
         }
 
         // Helper method to fix binding expressions that might be causing issues

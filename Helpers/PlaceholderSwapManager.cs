@@ -11,16 +11,16 @@ namespace RCLayoutPreview.Helpers
     public static class PlaceholderSwapManager
     {
         // The placeholder element pattern to search for and replace
-        private static readonly string DefaultPlaceholderPattern = 
+        private static readonly string DefaultPlaceholderPattern =
             @"<TextBlock\s+Text=""Race Layout Preview Loaded""[^>]*(?:/>|>[^<]*</TextBlock>)";
 
-        // Patterns for valid field names in Race Coordinator
+        // Patterns for valid field names in Race Coordinator - updated for correct format
         private static readonly string[] ValidFieldPatterns = new[]
         {
-            @"Name=""(?:LapTime|BestLap|AvgLap|LastLap|Position|Nickname)_Position\d+(?:_\d+)?""",
+            @"Name=""(?:LapTime|BestLap|AvgLap|LastLap|Position|Nickname)_\d+(?:_\d+)?""",
             @"Name=""(?:NextHeatName|NextHeatNickname\d+|OnDeckName|OnDeckNickname\d+)(?:_\d+)?""",
             @"Name=""(?:RaceTimer|LapRecord|LapRecordHolder|CurrentEventName|CurrentTrackName)(?:_\d+)?""",
-            @"Name=""(?:Avatar_Position\d+)(?:_\d+)?""",
+            @"Name=""(?:Avatar)_\d+(?:_\d+)?""",
             @"Name=""(?:SeasonLeader\d+|RaceLeader\d+|SeasonRaceLeader\d+)(?:_\d+)?"""
         };
 
@@ -73,97 +73,93 @@ namespace RCLayoutPreview.Helpers
         }
 
         /// <summary>
-        /// Removes the default placeholder element from the XAML.
-        /// </summary>
-        /// <param name="xamlContent">The XAML content to process</param>
-        /// <returns>The XAML content with placeholder removed if appropriate</returns>
-        public static string RemovePlaceholder(string xamlContent)
-        {
-            if (string.IsNullOrWhiteSpace(xamlContent))
-                return xamlContent;
-
-            if (ContainsPlaceholder(xamlContent) && ContainsValidField(xamlContent))
-            {
-                // Replace the placeholder with an empty string
-                var result = Regex.Replace(xamlContent, DefaultPlaceholderPattern, "", RegexOptions.IgnoreCase);
-                Debug.WriteLine("[PlaceholderSwapManager] Placeholder removed from XAML");
-                return result;
-            }
-
-            return xamlContent;
-        }
-
-        /// <summary>
-        /// Replaces the default placeholder with a customized message.
-        /// </summary>
-        /// <param name="xamlContent">The XAML content to process</param>
-        /// <param name="message">The new message to display</param>
-        /// <returns>The XAML content with placeholder replaced</returns>
-        public static string ReplacePlaceholderWithMessage(string xamlContent, string message)
-        {
-            if (string.IsNullOrWhiteSpace(xamlContent) || string.IsNullOrWhiteSpace(message))
-                return xamlContent;
-
-            if (ContainsPlaceholder(xamlContent))
-            {
-                var newTextBlock = $"<TextBlock Text=\"{message}\" FontSize=\"22\" FontWeight=\"Bold\" Foreground=\"DarkGray\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\" />";
-                
-                var result = Regex.Replace(xamlContent, DefaultPlaceholderPattern, newTextBlock, RegexOptions.IgnoreCase);
-                Debug.WriteLine($"[PlaceholderSwapManager] Placeholder replaced with message: {message}");
-                return result;
-            }
-
-            return xamlContent;
-        }
-
-        /// <summary>
-        /// Determines if the XAML contains the default placeholder.
+        /// Determines if the XAML contains the default placeholder element.
         /// </summary>
         /// <param name="xamlContent">The XAML content to check</param>
-        /// <returns>True if the placeholder is present, false otherwise</returns>
+        /// <returns>True if the placeholder is found, false otherwise</returns>
         public static bool ContainsPlaceholder(string xamlContent)
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
                 return false;
 
-            return Regex.IsMatch(xamlContent, DefaultPlaceholderPattern, RegexOptions.IgnoreCase);
+            return Regex.IsMatch(xamlContent, DefaultPlaceholderPattern);
         }
 
         /// <summary>
-        /// Generates a dynamic message based on the detected field.
+        /// Generates a message based on the field type detected in the XAML content.
         /// </summary>
-        /// <param name="xamlContent">The XAML content to check</param>
-        /// <returns>A customized message or null if no field was detected</returns>
+        /// <param name="xamlContent">The XAML content to analyze</param>
+        /// <returns>A descriptive message about the detected field</returns>
         public static string GenerateFieldDetectedMessage(string xamlContent)
         {
             var fieldName = GetFirstFieldName(xamlContent);
-            if (string.IsNullOrWhiteSpace(fieldName))
+            if (string.IsNullOrEmpty(fieldName))
                 return null;
 
-            // Parse the field name to generate a friendly message
-            if (FieldNameParser.TryParse(fieldName, out var parsed))
-            {
-                string fieldType = parsed.FieldType;
+            // Parse the field name to get its components
+            var fieldParts = fieldName.Split('_');
+            if (fieldParts.Length == 0)
+                return null;
 
-                if (fieldType.Contains("LapTime") || fieldType.Contains("BestLap"))
-                    return $"Now showing: Lap Time data";
-                
-                if (fieldType.Contains("Position"))
-                    return $"Now showing: Position data";
-                
-                if (fieldType.Contains("Nickname"))
-                    return $"Now showing: Racer information";
-                
-                if (fieldType.Contains("RaceTimer"))
-                    return $"Now showing: Race Timer";
-                
-                if (fieldType.Contains("NextHeat") || fieldType.Contains("OnDeck"))
-                    return $"Now showing: Upcoming heat information";
-                
-                return $"Now showing: {fieldType} data";
-            }
+            string fieldType = fieldParts[0];
+            string dataType = "";
 
-            return "Layout preview active";
+            // Determine the data type based on the field name
+            if (fieldType.StartsWith("LapTime"))
+                dataType = "Lap Time";
+            else if (fieldType.StartsWith("BestLap"))
+                dataType = "Best Lap";
+            else if (fieldType.StartsWith("AvgLap"))
+                dataType = "Average Lap";
+            else if (fieldType.StartsWith("LastLap"))
+                dataType = "Last Lap";
+            else if (fieldType.StartsWith("Nickname"))
+                dataType = "Racer Name";
+            else if (fieldType.StartsWith("Position"))
+                dataType = "Position";
+            else if (fieldType.StartsWith("NextHeat"))
+                dataType = "Next Heat";
+            else if (fieldType.StartsWith("RaceTimer"))
+                dataType = "Race Timer";
+            else
+                dataType = fieldType;
+
+            return $"Now showing: {dataType} data";
+        }
+
+        /// <summary>
+        /// Replaces the placeholder element with a message about the detected field.
+        /// </summary>
+        /// <param name="xamlContent">The XAML content to modify</param>
+        /// <param name="message">The message to display instead of the placeholder</param>
+        /// <returns>The modified XAML content</returns>
+        public static string ReplacePlaceholderWithMessage(string xamlContent, string message)
+        {
+            if (string.IsNullOrWhiteSpace(xamlContent) || string.IsNullOrWhiteSpace(message))
+                return xamlContent;
+
+            return Regex.Replace(xamlContent, DefaultPlaceholderPattern,
+                $"<TextBlock Text=\"{message}\" " +
+                "FontSize=\"28\" " +
+                "FontWeight=\"Bold\" " +
+                "Foreground=\"White\" " +
+                "Background=\"#3F000000\" " +
+                "Padding=\"10\" " +
+                "HorizontalAlignment=\"Center\" " +
+                "VerticalAlignment=\"Center\" />");
+        }
+
+        /// <summary>
+        /// Removes the placeholder element entirely from the XAML content.
+        /// </summary>
+        /// <param name="xamlContent">The XAML content to modify</param>
+        /// <returns>The modified XAML content</returns>
+        public static string RemovePlaceholder(string xamlContent)
+        {
+            if (string.IsNullOrWhiteSpace(xamlContent))
+                return xamlContent;
+
+            return Regex.Replace(xamlContent, DefaultPlaceholderPattern, "");
         }
     }
 }

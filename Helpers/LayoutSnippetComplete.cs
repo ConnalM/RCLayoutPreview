@@ -33,7 +33,7 @@ namespace RCLayoutPreview.Helpers
             "    <Viewbox Stretch=\"Uniform\">\r\n" +
             "        <Grid>\r\n" +
             "            <!-- Insert layout elements below -->\r\n" +
-            "            <!-- Example: <TextBlock Name=\"LapTime_Position1_1\" FontSize=\"20\" Background=\"Black\" Foreground=\"White\" /> -->\r\n" +
+            "            <!-- Example: <TextBlock Name=\"LapTime_1_1\" FontSize=\"20\" Background=\"Black\" Foreground=\"White\" /> -->\r\n" +
             "            {content}\r\n" +
             "            <TextBlock Text=\"Race Layout Preview Loaded\"\r\n" +
             "                       FontSize=\"28\"\r\n" +
@@ -45,50 +45,50 @@ namespace RCLayoutPreview.Helpers
             "    </Viewbox>\r\n" +
             "</Window>";
 
-        // Fixed template to avoid duplicate names
+        // Using clear placeholder names for easy identification and replacement
         private static readonly string RacerRowTemplate =
-            "<StackPanel Orientation=\"Horizontal\" Margin=\"5\">" +
-            "<Label Name=\"PositionLabel_Position{0}\" Width=\"30\" Content=\"{0}\" {styles}/>" +
-            "<Label Name=\"Nickname_Position{0}\" Width=\"150\" {styles}/>" +
-            "<Label Name=\"Lap_Position{0}\" Width=\"50\" HorizontalContentAlignment=\"Right\" {styles}/>" +
+            "<StackPanel Orientation=\"Horizontal\" Margin=\"5\">\r\n" +
+            "    <Label Name=\"Placeholder1\" Width=\"30\" Content=\"{0}\" {styles}/>\r\n" +
+            "    <Label Name=\"Placeholder2\" Width=\"150\" Content=\"Racer {0}\" {styles}/>\r\n" +
+            "    <Label Name=\"Placeholder3\" Width=\"50\" HorizontalContentAlignment=\"Right\" Content=\"0\" {styles}/>\r\n" +
             "</StackPanel>";
 
         private static readonly string TimerTemplate =
-            "<StackPanel>" +
-            "<TextBlock Text=\"Race Time\" FontSize=\"16\" HorizontalAlignment=\"Center\"/>" +
-            "<Label Name=\"RaceTimer\" FontSize=\"40\" HorizontalAlignment=\"Center\" {styles}/>" +
+            "<StackPanel>\r\n" +
+            "    <TextBlock Text=\"Race Time\" FontSize=\"16\" HorizontalAlignment=\"Center\"/>\r\n" +
+            "    <Label Name=\"Placeholder1\" Content=\"00:00.000\" FontSize=\"40\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
             "</StackPanel>";
 
         private static readonly string AvatarTemplate =
-            "<Border BorderBrush=\"White\" BorderThickness=\"1\" Width=\"100\" Height=\"100\">" +
-            "<Image Name=\"Avatar_Position{0}\" Stretch=\"UniformToFill\"/>" +
+            "<Border BorderBrush=\"White\" BorderThickness=\"1\" Width=\"100\" Height=\"100\">\r\n" +
+            "    <Image Name=\"Placeholder1\" Stretch=\"UniformToFill\"/>\r\n" +
             "</Border>";
 
         private static readonly string NextRaceTemplate =
-            "<StackPanel Margin=\"10\">" +
-            "<TextBlock Text=\"Next Race\" FontSize=\"20\" HorizontalAlignment=\"Center\" {styles}/>" +
-            "<Label Name=\"NextHeatName\" FontSize=\"24\" HorizontalAlignment=\"Center\" {styles}/>" +
-            "<ItemsControl Name=\"NextHeatRacers\">" +
-            "<ItemsControl.ItemTemplate>" +
-            "<DataTemplate>" +
-            "<TextBlock Text=\"{Binding}\" FontSize=\"16\" {styles}/>" +
-            "</DataTemplate>" +
-            "</ItemsControl.ItemTemplate>" +
-            "</ItemsControl>" +
+            "<StackPanel Margin=\"10\">\r\n" +
+            "    <TextBlock Text=\"Next Race\" FontSize=\"20\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
+            "    <Label Name=\"Placeholder1\" Content=\"Placeholder Heat\" FontSize=\"24\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
+            "    <ItemsControl Name=\"Placeholder2\">\r\n" +
+            "        <ItemsControl.ItemTemplate>\r\n" +
+            "            <DataTemplate>\r\n" +
+            "                <TextBlock Text=\"{Binding}\" FontSize=\"16\" {styles}/>\r\n" +
+            "            </DataTemplate>\r\n" +
+            "        </ItemsControl.ItemTemplate>\r\n" +
+            "    </ItemsControl>\r\n" +
             "</StackPanel>";
 
         private static readonly string LapRecordTemplate =
-            "<StackPanel>" +
-            "<TextBlock Text=\"Lap Record\" FontSize=\"16\" HorizontalAlignment=\"Center\"/>" +
-            "<Label Name=\"LapRecord\" FontSize=\"24\" HorizontalAlignment=\"Center\" {styles}/>" +
-            "<Label Name=\"LapRecordHolder\" FontSize=\"16\" HorizontalAlignment=\"Center\" {styles}/>" +
+            "<StackPanel>\r\n" +
+            "    <TextBlock Text=\"Lap Record\" FontSize=\"16\" HorizontalAlignment=\"Center\"/>\r\n" +
+            "    <Label Name=\"Placeholder1\" Content=\"00:00.000\" FontSize=\"24\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
+            "    <Label Name=\"Placeholder2\" Content=\"Placeholder Name\" FontSize=\"16\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
             "</StackPanel>";
 
         private static readonly string RacerStatsTemplate =
-            "<StackPanel Margin=\"5\">" +
-            "<Label Name=\"BestLap_Position{0}\" Content=\"Best: \" {styles}/>" +
-            "<Label Name=\"AvgLap_Position{0}\" Content=\"Avg: \" {styles}/>" +
-            "<Label Name=\"LastLap_Position{0}\" Content=\"Last: \" {styles}/>" +
+            "<StackPanel Margin=\"5\">\r\n" +
+            "    <Label Name=\"Placeholder1\" Content=\"Best: 00:00.000\" {styles}/>\r\n" +
+            "    <Label Name=\"Placeholder2\" Content=\"Avg: 00:00.000\" {styles}/>\r\n" +
+            "    <Label Name=\"Placeholder3\" Content=\"Last: 00:00.000\" {styles}/>\r\n" +
             "</StackPanel>";
 
         private static readonly string ViewboxTemplate =
@@ -96,13 +96,15 @@ namespace RCLayoutPreview.Helpers
             "    {content}\r\n" +
             "</Viewbox>";
 
+        // Using clear placeholder instead of actual field names
         private static readonly string LapTimeTemplate =
-            "<TextBlock Name=\"LapTime_Position{0}_1\" " +
-            "FontSize=\"20\" " +
-            "Background=\"Black\" " +
-            "Foreground=\"White\" " +
-            "HorizontalAlignment=\"Center\" " +
-            "Margin=\"5\" {styles}/>";
+            "<TextBlock Name=\"Placeholder1\" \r\n" +
+            "           Text=\"00:00.000\" \r\n" +
+            "           FontSize=\"20\" \r\n" +
+            "           Background=\"Black\" \r\n" +
+            "           Foreground=\"White\" \r\n" +
+            "           HorizontalAlignment=\"Center\" \r\n" +
+            "           Margin=\"5\" {styles}/>";
 
         // List of available snippets
         public static List<LayoutSnippet> GetDefaultSnippets()
@@ -127,11 +129,14 @@ namespace RCLayoutPreview.Helpers
                     Description = "A row showing racer name, position, and lap count",
                     Category = "Racers",
                     XamlTemplate = RacerRowTemplate,
-                    RequiredFields = new List<string> { "PositionLabel_Position", "Nickname_Position", "Lap_Position" },
+                    RequiredFields = new List<string> { "Position_{0}_1", "Nickname_{0}_1", "Lap_{0}_1" },
                     DefaultStyles = "FontSize=\"20\" Background=\"Black\" Foreground=\"White\"",
                     Placeholders = new Dictionary<string, string>
                     {
-                        { "{0}", "Racer Position (1-8)" }
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "Position_{0}_1 (position)" },
+                        { "Placeholder2", "Nickname_{0}_1 (name)" },
+                        { "Placeholder3", "Lap_{0}_1 (lap count)" }
                     }
                 },
 
@@ -141,8 +146,12 @@ namespace RCLayoutPreview.Helpers
                     Description = "Large timer display with labels",
                     Category = "Timing",
                     XamlTemplate = TimerTemplate,
-                    RequiredFields = new List<string> { "RaceTimer" },
-                    DefaultStyles = "Background=\"Black\" Foreground=\"White\""
+                    RequiredFields = new List<string> { "RaceTimer_1" },
+                    DefaultStyles = "Background=\"Black\" Foreground=\"White\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "RaceTimer_1 (race time)" }
+                    }
                 },
 
                 new LayoutSnippet
@@ -151,10 +160,12 @@ namespace RCLayoutPreview.Helpers
                     Description = "Display racer's avatar image",
                     Category = "Racers",
                     XamlTemplate = AvatarTemplate,
-                    RequiredFields = new List<string> { "Avatar_Position" },
+                    RequiredFields = new List<string> { "Avatar_{0}_1" },
+                    DefaultStyles = "",
                     Placeholders = new Dictionary<string, string>
                     {
-                        { "{0}", "Racer Position (1-8)" }
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "Avatar_{0}_1 (racer avatar)" }
                     }
                 },
 
@@ -164,8 +175,13 @@ namespace RCLayoutPreview.Helpers
                     Description = "Display information about the next race",
                     Category = "Race Info",
                     XamlTemplate = NextRaceTemplate,
-                    RequiredFields = new List<string> { "NextHeatName", "NextHeatRacers" },
-                    DefaultStyles = "Foreground=\"White\""
+                    RequiredFields = new List<string> { "NextHeatName_1", "NextHeatRacers" },
+                    DefaultStyles = "Foreground=\"White\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "NextHeatName_1 (next heat name)" },
+                        { "Placeholder2", "NextHeatRacers (list of racers)" }
+                    }
                 },
 
                 new LayoutSnippet
@@ -174,8 +190,13 @@ namespace RCLayoutPreview.Helpers
                     Description = "Display current lap record and holder",
                     Category = "Timing",
                     XamlTemplate = LapRecordTemplate,
-                    RequiredFields = new List<string> { "LapRecord", "LapRecordHolder" },
-                    DefaultStyles = "Background=\"Black\" Foreground=\"White\""
+                    RequiredFields = new List<string> { "LapRecord_1", "LapRecordHolder_1" },
+                    DefaultStyles = "Background=\"Black\" Foreground=\"White\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "LapRecord_1 (record time)" },
+                        { "Placeholder2", "LapRecordHolder_1 (record holder)" }
+                    }
                 },
 
                 new LayoutSnippet
@@ -184,11 +205,14 @@ namespace RCLayoutPreview.Helpers
                     Description = "Display lap time statistics for a racer",
                     Category = "Racers",
                     XamlTemplate = RacerStatsTemplate,
-                    RequiredFields = new List<string> { "BestLap_Position", "AvgLap_Position", "LastLap_Position" },
+                    RequiredFields = new List<string> { "BestLap_{0}_1", "AvgLap_{0}_1", "LastLap_{0}_1" },
                     DefaultStyles = "FontSize=\"16\" Foreground=\"White\"",
                     Placeholders = new Dictionary<string, string>
                     {
-                        { "{0}", "Racer Position (1-8)" }
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "BestLap_{0}_1 (best lap time)" },
+                        { "Placeholder2", "AvgLap_{0}_1 (average lap time)" },
+                        { "Placeholder3", "LastLap_{0}_1 (last lap time)" }
                     }
                 },
 
@@ -210,11 +234,12 @@ namespace RCLayoutPreview.Helpers
                     Description = "Display a racer's lap time with Race Coordinator naming format",
                     Category = "Timing",
                     XamlTemplate = LapTimeTemplate,
-                    RequiredFields = new List<string> { "LapTime_Position" },
+                    RequiredFields = new List<string> { "LapTime_{0}_1" },
                     DefaultStyles = "FontWeight=\"Bold\"",
                     Placeholders = new Dictionary<string, string>
                     {
-                        { "{0}", "Racer Position (1-8)" }
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "LapTime_{0}_1 (lap time)" }
                     }
                 }
             };
