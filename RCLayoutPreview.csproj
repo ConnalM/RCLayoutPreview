@@ -87,7 +87,7 @@
     </Compile>
     <Compile Include="Helpers\DebugFieldSelector.cs" />
     <Compile Include="Helpers\FieldNameParser.cs" />
-    <Compile Include="Helpers\LayoutSnippet.cs" />
+    <Compile Include="Helpers\LayoutSnippetComplete.cs" />
     <Compile Include="Helpers\PlaceholderSwapManager.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\XamlFixer.cs" />
