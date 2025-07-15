@@ -279,24 +279,46 @@ namespace RCLayoutPreview
 
                 // Get the current position in the editor
                 int caretOffset = Editor.CaretOffset;
+                string actualFieldName = FormatFieldNameWithSuffix(fieldName);
 
-                // Look for a placeholder nearby
-                string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
-                if (!string.IsNullOrEmpty(placeholder))
+                // If there is a selection, check if it matches a field name pattern
+                if (Editor.SelectionLength > 0)
                 {
-                    // Replace the placeholder with the field name
-                    // Determine if we need to add position and instance suffix
-                    string actualFieldName = FormatFieldNameWithSuffix(fieldName);
-
-                    // Replace the placeholder with the field name
-                    ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
-                    LogStatus($"Replaced {placeholder} with {actualFieldName}");
+                    string selectedText = Editor.SelectedText;
+                    // Regex for RC field name pattern
+                    var fieldNameRegex = new Regex(@"[A-Za-z0-9_]+_\d+");
+                    if (fieldNameRegex.IsMatch(selectedText))
+                    {
+                        // Replace the selected field name with the new field name (with suffix)
+                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
+                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
+                        LogStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
+                    }
+                    else
+                    {
+                        // If not a field name, just insert at selection
+                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
+                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
+                        LogStatus($"Inserted field name '{actualFieldName}' at selection");
+                    }
                 }
                 else
                 {
-                    // No placeholder found, just insert at caret position
-                    Editor.Document.Insert(caretOffset, fieldName);
-                    LogStatus($"Inserted field: {fieldName}");
+                    // Look for a placeholder nearby
+                    string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
+                    if (!string.IsNullOrEmpty(placeholder))
+                    {
+                        // Replace the placeholder with the field name
+                        ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
+                        LogStatus($"Replaced {placeholder} with {actualFieldName}");
+                    }
+                    else
+                    {
+                        // No selection and no placeholder, insert at caret position
+                        Editor.Document.Insert(caretOffset, actualFieldName);
+                        Editor.CaretOffset = caretOffset + actualFieldName.Length;
+                        LogStatus($"Inserted field name '{actualFieldName}' at cursor");
+                    }
                 }
 
                 // Check if this field triggers the placeholder removal

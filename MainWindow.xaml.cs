@@ -75,6 +75,10 @@ namespace RCLayoutPreview
                 string name = match.Groups[1].Value;
                 if (!string.IsNullOrWhiteSpace(name))
                 {
+                    // Allow duplicate placeholders (e.g., Placeholder1, Placeholder2, Placeholder3)
+                    if (name.StartsWith("Placeholder"))
+                        continue;
+                    // Only error if the exact same field name (including suffix) is duplicated
                     if (nameSet.Contains(name))
                     {
                         duplicateNames.Add(name);
