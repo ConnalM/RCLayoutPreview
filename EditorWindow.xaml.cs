@@ -47,12 +47,12 @@ namespace RCLayoutPreview
 
             // Add search panel
             searchPanel = SearchPanel.Install(Editor);
-            
+
             // Add keyboard shortcuts
             Editor.InputBindings.Add(new KeyBinding(
                 ApplicationCommands.Find,
                 new KeyGesture(Key.F, ModifierKeys.Control)));
-            
+
             // Set up timer for automatic preview
             previewTimer = new DispatcherTimer
             {
@@ -93,7 +93,7 @@ namespace RCLayoutPreview
                     fieldDetected = true;
                     string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
                     string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
-                    
+
                     // Update the status with a notification
                     LogStatus($"Field detected: {(string.IsNullOrEmpty(message) ? fieldName : message)}");
 
@@ -135,7 +135,7 @@ namespace RCLayoutPreview
                         // Validate XML before sending
                         var doc = new XmlDocument();
                         doc.LoadXml(currentContent);
-                        
+
                         XamlContentChanged?.Invoke(this, currentContent);
                         LogStatus("Preview updated");
                     }
@@ -201,7 +201,7 @@ namespace RCLayoutPreview
                     Editor.Text = xamlContent;
                     LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
                     XamlContentChanged?.Invoke(this, xamlContent);
-                    
+
                     // Check for valid fields in the loaded file
                     CheckForValidFields(xamlContent);
                 }
@@ -276,10 +276,10 @@ namespace RCLayoutPreview
             {
                 // Get the field name that was clicked
                 string fieldName = selectedItem.Header.ToString();
-                
+
                 // Get the current position in the editor
                 int caretOffset = Editor.CaretOffset;
-                
+
                 // Look for a placeholder nearby
                 string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
                 if (!string.IsNullOrEmpty(placeholder))
@@ -287,7 +287,7 @@ namespace RCLayoutPreview
                     // Replace the placeholder with the field name
                     // Determine if we need to add position and instance suffix
                     string actualFieldName = FormatFieldNameWithSuffix(fieldName);
-                    
+
                     // Replace the placeholder with the field name
                     ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
                     LogStatus($"Replaced {placeholder} with {actualFieldName}");
@@ -298,23 +298,23 @@ namespace RCLayoutPreview
                     Editor.Document.Insert(caretOffset, fieldName);
                     LogStatus($"Inserted field: {fieldName}");
                 }
-                
+
                 // Check if this field triggers the placeholder removal
                 CheckForValidFields(Editor.Text);
             }
         }
-        
+
         private string FindNearestPlaceholder(string text, int caretOffset)
         {
             // This regex finds placeholders in the format Name="Placeholder1", Name="Placeholder2", etc.
             var placeholderRegex = new Regex(@"Name=""(Placeholder\d+)""");
-            
+
             // Look for placeholders around the cursor position
             // First look in a reasonable range around the cursor (100 characters)
             int startPos = Math.Max(0, caretOffset - 100);
             int endPos = Math.Min(text.Length, caretOffset + 100);
             string searchText = text.Substring(startPos, endPos - startPos);
-            
+
             // Find all placeholders in this range
             var matches = placeholderRegex.Matches(searchText);
             if (matches.Count == 0)
@@ -322,12 +322,12 @@ namespace RCLayoutPreview
                 // No placeholders found in the vicinity
                 return null;
             }
-            
+
             // Find the closest placeholder to the cursor
             int cursorRelativePos = caretOffset - startPos;
             int closestDistance = int.MaxValue;
             string closestPlaceholder = null;
-            
+
             foreach (Match match in matches)
             {
                 int distance = Math.Abs(match.Index - cursorRelativePos);
@@ -337,63 +337,63 @@ namespace RCLayoutPreview
                     closestPlaceholder = match.Groups[1].Value;
                 }
             }
-            
+
             return closestPlaceholder;
         }
-        
+
         private string FormatFieldNameWithSuffix(string fieldName)
         {
-            // Check if we need to add position and instance suffixes
-            // Look at the current selection in editor to see if we're within a snippet
-            // that might need position information
-            
-            // Look for position placeholder in surrounding text
+            // Get position from surrounding content
             int caretOffset = Editor.CaretOffset;
             int startPos = Math.Max(0, caretOffset - 200);
             int length = Math.Min(400, Editor.Text.Length - startPos);
             string surroundingText = Editor.Text.Substring(startPos, length);
-            
+
             // Check for any position indicator like {0} replaced with 1,2,3 etc.
             var positionMatch = Regex.Match(surroundingText, @"Name=""[^""]+""\s+(?:[^>]*\s+)?Content=""(\d+)""");
             string position = "1"; // Default position
-            
+
             if (positionMatch.Success)
             {
                 position = positionMatch.Groups[1].Value;
             }
-            
-            // Add the appropriate suffix based on field name patterns
-            if (fieldName.Contains("Position") || fieldName.Contains("Nickname") || 
-                fieldName.Contains("Lap") || fieldName.Contains("Avatar") ||
-                fieldName.Contains("BestLap") || fieldName.Contains("AvgLap") || 
-                fieldName.Contains("LastLap") || fieldName.Contains("LapTime"))
+
+            // For Race Coordinator naming conventions:
+            // 1. Check if field name already has a suffix (_1, _2, etc.)
+            if (Regex.IsMatch(fieldName, @"_\d+$"))
             {
-                // These typically need position suffix
+                return fieldName; // Already has a suffix
+            }
+
+            // 2. Special handling for racer-specific fields
+            if (fieldName == "Position" || fieldName == "Nickname" ||
+                fieldName == "Lap" || fieldName == "Avatar" ||
+                fieldName == "BestLap" || fieldName == "AvgLap" ||
+                fieldName == "LastLap" || fieldName == "LapTime")
+            {
                 return $"{fieldName}_{position}_1";
             }
-            else
-            {
-                // Other fields typically just need an instance suffix
-                return $"{fieldName}_1";
-            }
+
+            // 3. For all other fields, just add _1
+            return $"{fieldName}_1";
         }
-        
+
         private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
         {
             // Find the placeholder in the text
             string pattern = $"Name=\"{placeholder}\"";
             string replacement = $"Name=\"{fieldName}\"";
-            
+
             // Get the document text
             string text = Editor.Text;
-            
+
             // Replace the first occurrence of the placeholder
             int placeholderIndex = text.IndexOf(pattern);
             if (placeholderIndex >= 0)
             {
                 // Replace the placeholder
                 Editor.Document.Replace(placeholderIndex, pattern.Length, replacement);
-                
+
                 // Move cursor to just after the replaced text
                 Editor.CaretOffset = placeholderIndex + replacement.Length;
             }
@@ -404,10 +404,10 @@ namespace RCLayoutPreview
             // Get the current line
             var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
             if (line == null) return string.Empty;
-            
+
             // Extract text from the start of the line to the caret position
             string lineText = Editor.Document.GetText(line.Offset, Math.Min(line.Length, Editor.CaretOffset - line.Offset));
-            
+
             // Extract only the whitespace at the beginning
             return new string(lineText.TakeWhile(c => c == ' ' || c == '\t').ToArray());
         }
@@ -416,13 +416,13 @@ namespace RCLayoutPreview
         {
             // Split the text by newlines
             string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            
+
             // Apply indentation to each line except the first one (which will inherit the caret's indentation)
             for (int i = 1; i < lines.Length; i++)
             {
                 lines[i] = indentation + lines[i];
             }
-            
+
             // Join the lines back together
             return string.Join(Environment.NewLine, lines);
         }
@@ -437,22 +437,22 @@ namespace RCLayoutPreview
                 {
                     // Process the snippet
                     string processedSnippet = SnippetGallery.ProcessSnippet(snippet);
-                    
+
                     // Get drop position
                     var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
-                    int offset = pos.HasValue 
-                        ? Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column) 
+                    int offset = pos.HasValue
+                        ? Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column)
                         : Editor.CaretOffset;
-                    
+
                     // Get the current indentation
                     string indentation = GetCurrentIndentation();
-                    
+
                     // Apply indentation to the snippet
                     if (!string.IsNullOrEmpty(indentation))
                     {
                         processedSnippet = ApplyIndentation(processedSnippet, indentation);
                     }
-                    
+
                     // Check if there's selected text to replace
                     if (Editor.SelectionLength > 0 && processedSnippet.Contains("{content}"))
                     {
@@ -464,9 +464,9 @@ namespace RCLayoutPreview
                     {
                         Editor.Document.Insert(offset, processedSnippet);
                     }
-                    
+
                     LogStatus($"Inserted {snippet.Name} snippet");
-                    
+
                     // Check if this snippet triggers the placeholder removal
                     CheckForValidFields(Editor.Text);
                 }
@@ -487,7 +487,7 @@ namespace RCLayoutPreview
                 {
                     Editor.Document.Insert(Editor.CaretOffset, droppedText);
                 }
-                
+
                 // Check if this dropped text triggers the placeholder removal
                 CheckForValidFields(Editor.Text);
             }
