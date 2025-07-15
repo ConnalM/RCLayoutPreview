@@ -65,6 +65,34 @@ namespace RCLayoutPreview
                 return;
             }
 
+            // --- Begin: Duplicate field name detection ---
+            var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            var nameMatches = nameRegex.Matches(xamlContent);
+            var nameSet = new HashSet<string>();
+            var duplicateNames = new List<string>();
+            foreach (Match match in nameMatches)
+            {
+                string name = match.Groups[1].Value;
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    if (nameSet.Contains(name))
+                    {
+                        duplicateNames.Add(name);
+                    }
+                    else
+                    {
+                        nameSet.Add(name);
+                    }
+                }
+            }
+            if (duplicateNames.Count > 0)
+            {
+                ShowErrorPopup($"Error: Duplicate field names detected in XAML: {string.Join(", ", duplicateNames)}. Please ensure all element names are unique.");
+                LogStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
+                return;
+            }
+            // --- End: Duplicate field name detection ---
+
             try
             {
                 // Clear any previous content
@@ -139,6 +167,14 @@ namespace RCLayoutPreview
 
                 // Fix any Binding expressions that might be causing issues
                 processedXaml = FixBindingExpressions(processedXaml);
+
+                // Detect and handle empty Name attributes before parsing
+                var emptyNameMatches = Regex.Matches(processedXaml, "Name\\s*=\\s*\"\\s*\"");
+                if (emptyNameMatches.Count > 0)
+                {
+                    ShowErrorPopup($"Warning: {emptyNameMatches.Count} empty Name attribute(s) were found and removed from the XAML. Please check your layout for missing names.");
+                    processedXaml = Regex.Replace(processedXaml, "Name\\s*=\\s*\"\\s*\"", "");
+                }
 
                 object element = null;
 

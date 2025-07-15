@@ -241,6 +241,18 @@ namespace RCLayoutPreview.Helpers
                         { "{0}", "Racer Position (1-8)" },
                         { "Placeholder1", "LapTime_{0}_1 (lap time)" }
                     }
+                },
+
+                new LayoutSnippet
+                {
+                    Name = "StackPanel Vertical",
+                    Description = "A vertical StackPanel container for layout grouping",
+                    Category = "Containers",
+                    XamlTemplate = "<StackPanel Orientation=\"Vertical\" Margin=\"5\">\r\n    {content}\r\n</StackPanel>",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "{content}", "Place content here" }
+                    }
                 }
             };
         }

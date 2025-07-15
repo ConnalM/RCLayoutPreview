@@ -343,39 +343,23 @@ namespace RCLayoutPreview
 
         private string FormatFieldNameWithSuffix(string fieldName)
         {
-            // Get position from surrounding content
-            int caretOffset = Editor.CaretOffset;
-            int startPos = Math.Max(0, caretOffset - 200);
-            int length = Math.Min(400, Editor.Text.Length - startPos);
-            string surroundingText = Editor.Text.Substring(startPos, length);
-
-            // Check for any position indicator like {0} replaced with 1,2,3 etc.
-            var positionMatch = Regex.Match(surroundingText, @"Name=""[^""]+""\s+(?:[^>]*\s+)?Content=""(\d+)""");
-            string position = "1"; // Default position
-
-            if (positionMatch.Success)
+            // Scan the entire editor text for existing field names with suffixes
+            string text = Editor.Text;
+            // Regex to match fieldName_1, fieldName_2, etc.
+            var suffixRegex = new Regex($@"{Regex.Escape(fieldName)}_(\d+)");
+            var matches = suffixRegex.Matches(text);
+            int maxSuffix = 0;
+            foreach (Match match in matches)
             {
-                position = positionMatch.Groups[1].Value;
+                if (int.TryParse(match.Groups[1].Value, out int suffix))
+                {
+                    if (suffix > maxSuffix)
+                        maxSuffix = suffix;
+                }
             }
-
-            // For Race Coordinator naming conventions:
-            // 1. Check if field name already has a suffix (_1, _2, etc.)
-            if (Regex.IsMatch(fieldName, @"_\d+$"))
-            {
-                return fieldName; // Already has a suffix
-            }
-
-            // 2. Special handling for racer-specific fields
-            if (fieldName == "Position" || fieldName == "Nickname" ||
-                fieldName == "Lap" || fieldName == "Avatar" ||
-                fieldName == "BestLap" || fieldName == "AvgLap" ||
-                fieldName == "LastLap" || fieldName == "LapTime")
-            {
-                return $"{fieldName}_{position}_1";
-            }
-
-            // 3. For all other fields, just add _1
-            return $"{fieldName}_1";
+            // Next available suffix
+            int nextSuffix = maxSuffix + 1;
+            return $"{fieldName}_{nextSuffix}";
         }
 
         private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)

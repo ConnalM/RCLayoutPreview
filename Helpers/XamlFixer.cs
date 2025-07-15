@@ -83,33 +83,46 @@ namespace RCLayoutPreview.Helpers
             {
                 if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
-                    // Look up in each group: RacerData, GenericData, Actions
+                    // --- Begin: Normalize field name for lookup ---
+                    // Remove trailing _1, _2, etc. for lookup (e.g., Pos2_1, Pos2_2 => Pos2)
+                    string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
+                    // Try original and normalized
                     JToken value = null;
                     string foundGroup = null;
-
-                    if (jsonData["RacerData"] is JObject racerData && racerData.TryGetValue(parsedField.FieldType, out value))
+                    if (jsonData["RacerData"] is JObject racerData)
                     {
-                        foundGroup = "RacerData";
+                        if (racerData.TryGetValue(parsedField.FieldType, out value) ||
+                            racerData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "RacerData";
+                        }
                     }
-                    else if (jsonData["GenericData"] is JObject genericData && genericData.TryGetValue(parsedField.FieldType, out value))
+                    if (value == null && jsonData["GenericData"] is JObject genericData)
                     {
-                        foundGroup = "GenericData";
+                        if (genericData.TryGetValue(parsedField.FieldType, out value) ||
+                            genericData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "GenericData";
+                        }
                     }
-                    else if (jsonData["Actions"] is JObject actionsData && actionsData.TryGetValue(parsedField.FieldType, out value))
+                    if (value == null && jsonData["Actions"] is JObject actionsData)
                     {
-                        foundGroup = "Actions";
+                        if (actionsData.TryGetValue(parsedField.FieldType, out value) ||
+                            actionsData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "Actions";
+                        }
                     }
+                    // --- End: Normalize field name for lookup ---
 
                     if (value != null)
                     {
-                        // Only display text in instance 1 (_1)
-                        bool showText = parsedField.InstanceIndex == 1;
-                        string displayText = showText ? value.ToString() : "";
+                        // Show the value for all instances, not just _1
+                        string displayText = value.ToString();
                         
                         // Apply color to both TextBlock and Label elements from RacerData
                         if (foundGroup == "RacerData")
                         {
-                            // Extract player/lane identifier for consistent color per player
                             int playerIndex = GetPlayerIndex(parsedField.FieldType);
                             var colorBrush = GetColor(playerIndex);
 
@@ -117,28 +130,20 @@ namespace RCLayoutPreview.Helpers
                             {
                                 textBlock.Text = displayText;
                                 textBlock.Background = colorBrush;
-                                
-                                if (showText)
-                                {
-                                    textBlock.Foreground = new SolidColorBrush(Colors.White);
-                                }
+                                textBlock.Foreground = new SolidColorBrush(Colors.White);
                             }
                             else if (element is Label label)
                             {
                                 label.Content = displayText;
                                 label.Background = colorBrush;
-                                
-                                if (showText)
-                                {
-                                    label.Foreground = new SolidColorBrush(Colors.White);
-                                }
+                                label.Foreground = new SolidColorBrush(Colors.White);
                             }
-                            else if (element is ContentControl contentControl && showText)
+                            else if (element is ContentControl contentControl)
                             {
                                 contentControl.Content = displayText;
                             }
                         }
-                        else if (showText)
+                        else
                         {
                             // For non-RacerData fields, just set the content
                             if (element is TextBlock textBlock)
