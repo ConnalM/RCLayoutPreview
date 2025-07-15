@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using System.Xml;
+using System.Linq;
 
 namespace RCLayoutPreview
 {
@@ -26,9 +27,11 @@ namespace RCLayoutPreview
         private DispatcherTimer previewTimer;
         private MainWindow previewWindow;
         private SearchPanel searchPanel;
+        private bool fieldDetected = false;
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
+        public event EventHandler<string> ValidFieldDetected;
 
         public EditorWindow(MainWindow previewWindow)
         {
@@ -73,6 +76,47 @@ namespace RCLayoutPreview
             {
                 lastEditTime = DateTime.Now;
                 lastEditorContent = currentContent;
+
+                // Check for valid fields and notify if found for the first time
+                CheckForValidFields(currentContent);
+            }
+        }
+
+        private void CheckForValidFields(string content)
+        {
+            // Check if the content contains valid fields
+            if (PlaceholderSwapManager.ContainsValidField(content))
+            {
+                if (!fieldDetected)
+                {
+                    fieldDetected = true;
+                    string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
+                    string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
+                    
+                    // Update the status with a notification
+                    LogStatus($"Field detected: {(string.IsNullOrEmpty(message) ? fieldName : message)}");
+
+                    // If we're editing, update immediately rather than waiting for the timer
+                    if (autoUpdateEnabled)
+                    {
+                        try
+                        {
+                            // Try to validate XML before sending an update
+                            var doc = new XmlDocument();
+                            doc.LoadXml(content);
+                            XamlContentChanged?.Invoke(this, content);
+                        }
+                        catch (XmlException)
+                        {
+                            // Ignore XML errors during typing - the timer will handle them
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Reset detection flag if no fields are found anymore
+                fieldDetected = false;
             }
         }
 
@@ -156,37 +200,13 @@ namespace RCLayoutPreview
                     Editor.Text = xamlContent;
                     LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
                     XamlContentChanged?.Invoke(this, xamlContent);
+                    
+                    // Check for valid fields in the loaded file
+                    CheckForValidFields(xamlContent);
                 }
                 catch (Exception ex)
                 {
                     LogStatus($"Error loading layout: {ex.Message}");
-                }
-            }
-        }
-
-        private void LoadJson_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "JSON Data (*.json)|*.json",
-                Title = "Select JSON Data",
-                FileName = "stubdata5.json"
-            };
-
-            if (dlg.ShowDialog() == true)
-            {
-                try
-                {
-                    currentJsonPath = dlg.FileName;
-                    string json = File.ReadAllText(dlg.FileName);
-                    jsonData = JObject.Parse(json);
-                    LogStatus($"Loaded: {Path.GetFileName(dlg.FileName)}");
-                    PopulateJsonFieldsTree();
-                    JsonDataChanged?.Invoke(this, jsonData);
-                }
-                catch (Exception ex)
-                {
-                    LogStatus($"Error loading JSON: {ex.Message}");
                 }
             }
         }
@@ -255,7 +275,38 @@ namespace RCLayoutPreview
             {
                 var caretOffset = Editor.CaretOffset;
                 Editor.Document.Insert(caretOffset, selectedItem.Header.ToString());
+                
+                // Check if this field triggers the placeholder removal
+                CheckForValidFields(Editor.Text);
             }
+        }
+
+        private string GetCurrentIndentation()
+        {
+            // Get the current line
+            var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
+            if (line == null) return string.Empty;
+            
+            // Extract text from the start of the line to the caret position
+            string lineText = Editor.Document.GetText(line.Offset, Math.Min(line.Length, Editor.CaretOffset - line.Offset));
+            
+            // Extract only the whitespace at the beginning
+            return new string(lineText.TakeWhile(c => c == ' ' || c == '\t').ToArray());
+        }
+
+        private string ApplyIndentation(string text, string indentation)
+        {
+            // Split the text by newlines
+            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            
+            // Apply indentation to each line except the first one (which will inherit the caret's indentation)
+            for (int i = 1; i < lines.Length; i++)
+            {
+                lines[i] = indentation + lines[i];
+            }
+            
+            // Join the lines back together
+            return string.Join(Environment.NewLine, lines);
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
@@ -266,17 +317,40 @@ namespace RCLayoutPreview
                 var snippet = e.Data.GetData("LayoutSnippet") as LayoutSnippet;
                 if (snippet != null && SnippetGallery != null)
                 {
+                    // Process the snippet
+                    string processedSnippet = SnippetGallery.ProcessSnippet(snippet);
+                    
+                    // Get drop position
                     var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
-                    if (pos.HasValue)
+                    int offset = pos.HasValue 
+                        ? Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column) 
+                        : Editor.CaretOffset;
+                    
+                    // Get the current indentation
+                    string indentation = GetCurrentIndentation();
+                    
+                    // Apply indentation to the snippet
+                    if (!string.IsNullOrEmpty(indentation))
                     {
-                        var offset = Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column);
-                        Editor.Document.Insert(offset, SnippetGallery.ProcessSnippet(snippet));
+                        processedSnippet = ApplyIndentation(processedSnippet, indentation);
+                    }
+                    
+                    // Check if there's selected text to replace
+                    if (Editor.SelectionLength > 0 && processedSnippet.Contains("{content}"))
+                    {
+                        string selectedText = Editor.SelectedText;
+                        processedSnippet = processedSnippet.Replace("{content}", selectedText);
+                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, processedSnippet);
                     }
                     else
                     {
-                        Editor.Document.Insert(Editor.CaretOffset, SnippetGallery.ProcessSnippet(snippet));
+                        Editor.Document.Insert(offset, processedSnippet);
                     }
+                    
                     LogStatus($"Inserted {snippet.Name} snippet");
+                    
+                    // Check if this snippet triggers the placeholder removal
+                    CheckForValidFields(Editor.Text);
                 }
                 return;
             }
@@ -295,6 +369,9 @@ namespace RCLayoutPreview
                 {
                     Editor.Document.Insert(Editor.CaretOffset, droppedText);
                 }
+                
+                // Check if this dropped text triggers the placeholder removal
+                CheckForValidFields(Editor.Text);
             }
         }
 

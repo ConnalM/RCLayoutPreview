@@ -70,7 +70,8 @@
                                 Background="White"
                                 CornerRadius="3"
                                 MouseEnter="SnippetItem_MouseEnter"
-                                MouseLeave="SnippetItem_MouseLeave">
+                                MouseLeave="SnippetItem_MouseLeave"
+                                MouseDown="SnippetItem_MouseDown">
                             <Border.Effect>
                                 <DropShadowEffect Color="Gray" 
                                                 BlurRadius="5" 
