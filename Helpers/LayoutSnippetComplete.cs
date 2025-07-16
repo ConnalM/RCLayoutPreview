@@ -1,4 +1,8 @@
+using System;
+using System.IO;
+using System.Text;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace RCLayoutPreview.Helpers
 {
@@ -14,6 +18,7 @@ namespace RCLayoutPreview.Helpers
 
         // Constants for XAML templates
         private static readonly string BasicDocumentTemplate =
+            // Window background: sets the outermost background color of the window
             "<Window\r\n" +
             "    xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\r\n" +
             "    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\r\n" +
@@ -23,26 +28,32 @@ namespace RCLayoutPreview.Helpers
             "    mc:Ignorable=\"d\"\r\n" +
             "    Title=\"Race Layout\"\r\n" +
             "    Height=\"720\" Width=\"1280\"\r\n" +
-            "    Background=\"Black\">\r\n" +
-                    "\r\n" +
+            "    Background=\"Black\"\r\n" +
+            ">\r\n" +
+            "\r\n" +
             "    <!-- Optional styling resources -->\r\n" +
             "    <!-- <Window.Resources>\r\n" +
             "         <ResourceDictionary Source=\"ThemeDictionary.xaml\"/>\r\n" +
             "     </Window.Resources> -->\r\n" +
-                    "\r\n" +
-            "    <Viewbox Stretch=\"Uniform\">\r\n" +
-            "        <Grid>\r\n" +
-            "            <!-- Insert layout elements below -->\r\n" +
-            "            <!-- Example: <TextBlock Name=\"LapTime_1_1\" FontSize=\"20\" Background=\"Black\" Foreground=\"White\" /> -->\r\n" +
-            "            {content}\r\n" +
-            "            <TextBlock Text=\"Race Layout Preview Loaded\"\r\n" +
-            "                       FontSize=\"28\"\r\n" +
-            "                       FontWeight=\"Bold\"\r\n" +
-            "                       Foreground=\"Black\"\r\n" +
-            "                       HorizontalAlignment=\"Center\"\r\n" +
-            "                       VerticalAlignment=\"Center\" />\r\n" +
-            "        </Grid>\r\n" +
-            "    </Viewbox>\r\n" +
+            "\r\n" +
+            "    <!-- Border Background wraps Viewbox -->\r\n" +
+            "    <Border Background=\"Aqua\">\r\n" +
+            "        <Viewbox Stretch=\"Uniform\">\r\n" +
+            "            <!-- Grid Background -->\r\n" +
+            "            <Grid Background=\"White\">\r\n" +
+            "                <!-- Insert layout elements below -->\r\n" +
+            "                <!-- Example: <TextBlock Name=\"LapTime_1_1\" FontSize=\"20\" Background=\"Black\" Foreground=\"White\" /> -->\r\n" +
+            "                <!-- TextBlock Background -->\r\n" +
+            "                <TextBlock Text=\"Race Layout Preview Loaded\"\r\n" +
+            "                           FontSize=\"28\"\r\n" +
+            "                           FontWeight=\"Bold\"\r\n" +
+            "                           Foreground=\"Black\"\r\n" +
+            "                           Background=\"Yellow\"\r\n" +
+            "                           HorizontalAlignment=\"Center\"\r\n" +
+            "                           VerticalAlignment=\"Center\" />\r\n" +
+            "            </Grid>\r\n" +
+            "        </Viewbox>\r\n" +
+            "    </Border>\r\n" +
             "</Window>";
 
         // Using clear placeholder names for easy identification and replacement
@@ -270,6 +281,38 @@ namespace RCLayoutPreview.Helpers
             }
 
             return xaml;
+        }
+
+        /// <summary>
+        /// Save the layout snippet class content to a file, avoiding the file truncation issue
+        /// </summary>
+        /// <returns>True if successful, false otherwise</returns>
+        public static bool SaveLayoutSnippetClass()
+        {
+            try
+            {
+                string completeContent = GetCompleteLayoutSnippetContent();
+                string filePath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "Helpers",
+                    "LayoutSnippet.cs");
+
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                File.WriteAllText(filePath, completeContent, new UTF8Encoding(false));
+                Debug.WriteLine($"Successfully saved complete LayoutSnippet.cs file to {filePath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error saving LayoutSnippet.cs: {ex.Message}");
+                return false;
+            }
+        }
+
+        // This method contains the entire class as a string to avoid truncation issues
+        private static string GetCompleteLayoutSnippetContent()
+        {
+            return @"using System.Collections.Generic;\n\nnamespace RCLayoutPreview.Helpers\n{\n    public class LayoutSnippet\n    {\n        public string Name { get; set; }\n        public string Description { get; set; }\n        public string Category { get; set; }\n        public string XamlTemplate { get; set; }\n        public List<string> RequiredFields { get; set; } = new List<string>();\n        public Dictionary<string, string> Placeholders { get; set; } = new Dictionary<string, string>();\n        public string DefaultStyles { get; set; }\n        // ... (rest of the class definition as string) ...\n    }\n}";
         }
     }
 }

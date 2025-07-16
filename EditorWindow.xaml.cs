@@ -29,6 +29,7 @@ namespace RCLayoutPreview
         private MainWindow previewWindow;
         private SearchPanel searchPanel;
         private bool fieldDetected = false;
+        private string currentXamlPath = null;
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -199,6 +200,8 @@ namespace RCLayoutPreview
                 {
                     string xamlContent = File.ReadAllText(dlg.FileName);
                     Editor.Text = xamlContent;
+                    currentXamlPath = dlg.FileName;
+                    UpdateWindowTitleWithFileName();
                     LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
                     XamlContentChanged?.Invoke(this, xamlContent);
 
@@ -216,21 +219,68 @@ namespace RCLayoutPreview
         {
             if (!string.IsNullOrWhiteSpace(Editor.Text))
             {
-                var dlg = new Microsoft.Win32.SaveFileDialog
+                if (!string.IsNullOrEmpty(currentXamlPath))
                 {
-                    Filter = "XAML Layout (*.xaml)|*.xaml",
-                    Title = "Save Layout XAML"
-                };
+                    File.WriteAllText(currentXamlPath, Editor.Text);
+                    LogStatus($"Saved layout to: {Path.GetFileName(currentXamlPath)}");
+                    UpdateWindowTitleWithFileName();
+                }
+                else
+                {
+                    var dlg = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Filter = "XAML Layout (*.xaml)|*.xaml",
+                        Title = "Save Layout XAML"
+                    };
 
-                if (dlg.ShowDialog() == true)
-                {
-                    File.WriteAllText(dlg.FileName, Editor.Text);
-                    LogStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
+                    if (dlg.ShowDialog() == true)
+                    {
+                        File.WriteAllText(dlg.FileName, Editor.Text);
+                        currentXamlPath = dlg.FileName;
+                        LogStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
+                        UpdateWindowTitleWithFileName();
+                    }
                 }
             }
             else
             {
                 LogStatus("Nothing to save. Editor is empty.");
+            }
+        }
+
+        private void SaveAsLayout_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(Editor.Text))
+            {
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "XAML Layout (*.xaml)|*.xaml",
+                    Title = "Save Layout As"
+                };
+
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllText(dlg.FileName, Editor.Text);
+                    currentXamlPath = dlg.FileName;
+                    LogStatus($"Saved layout as: {Path.GetFileName(dlg.FileName)}");
+                    UpdateWindowTitleWithFileName();
+                }
+            }
+            else
+            {
+                LogStatus("Nothing to save. Editor is empty.");
+            }
+        }
+
+        private void UpdateWindowTitleWithFileName()
+        {
+            if (!string.IsNullOrEmpty(currentXamlPath))
+            {
+                this.Title = $"RC Layout Editor - {Path.GetFileName(currentXamlPath)}";
+            }
+            else
+            {
+                this.Title = "RC Layout Editor";
             }
         }
 

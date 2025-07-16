@@ -17,7 +17,7 @@ namespace RCLayoutPreview
             try 
             {
                 // Ensure our LayoutSnippet.cs file is complete and not truncated
-                LayoutSnippetUtility.SaveLayoutSnippetClass();
+                LayoutSnippet.SaveLayoutSnippetClass();
             }
             catch (Exception ex)
             {
