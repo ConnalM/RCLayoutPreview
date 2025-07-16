@@ -404,7 +404,13 @@ namespace RCLayoutPreview
 
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
+                // Refresh the preview content with the updated diagnostics mode
                 XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
+                LogStatus("Preview refreshed with updated diagnostics mode.");
+            }
+            else
+            {
+                LogStatus("Preview content is not available to refresh.");
             }
         }
 

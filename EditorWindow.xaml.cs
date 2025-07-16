@@ -520,6 +520,30 @@ namespace RCLayoutPreview
             }
         }
 
+        private void PreviewButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!autoUpdateEnabled)
+            {
+                string currentContent = Editor.Text;
+                if (!string.IsNullOrWhiteSpace(currentContent))
+                {
+                    try
+                    {
+                        // Validate XML before sending
+                        var doc = new XmlDocument();
+                        doc.LoadXml(currentContent);
+
+                        XamlContentChanged?.Invoke(this, currentContent);
+                        LogStatus("Preview refreshed manually");
+                    }
+                    catch (XmlException ex)
+                    {
+                        LogStatus($"Invalid XAML: {ex.Message}");
+                    }
+                }
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             if (searchPanel != null)

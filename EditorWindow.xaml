@@ -23,6 +23,7 @@
             <TextBlock Text="Delay (ms): " Margin="10,0,0,0" VerticalAlignment="Center"/>
             <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" TextChanged="DelayInput_TextChanged"/>
             <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center"/>
+            <Button Name="PreviewButton" Content="Preview" Width="100" Height="30" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0" Click="PreviewButton_Click"/>
         </StackPanel>
 
         <!-- Editor area -->

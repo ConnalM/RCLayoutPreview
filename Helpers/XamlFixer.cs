@@ -160,6 +160,18 @@ namespace RCLayoutPreview.Helpers
                             }
                         }
                     }
+
+                    // Add diagnostics-specific behavior
+                    if (debugMode)
+                    {
+                        element.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
+                        element.BorderThickness = new Thickness(1);
+                    }
+                    else
+                    {
+                        element.BorderBrush = null;
+                        element.BorderThickness = new Thickness(0);
+                    }
                 }
             }
 

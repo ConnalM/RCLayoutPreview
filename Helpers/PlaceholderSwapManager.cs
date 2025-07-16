@@ -135,18 +135,8 @@ namespace RCLayoutPreview.Helpers
         /// <returns>The modified XAML content</returns>
         public static string ReplacePlaceholderWithMessage(string xamlContent, string message)
         {
-            if (string.IsNullOrWhiteSpace(xamlContent) || string.IsNullOrWhiteSpace(message))
-                return xamlContent;
-
-            return Regex.Replace(xamlContent, DefaultPlaceholderPattern,
-                $"<TextBlock Text=\"{message}\" " +
-                "FontSize=\"28\" " +
-                "FontWeight=\"Bold\" " +
-                "Foreground=\"White\" " +
-                "Background=\"#3F000000\" " +
-                "Padding=\"10\" " +
-                "HorizontalAlignment=\"Center\" " +
-                "VerticalAlignment=\"Center\" />");
+            // Do not replace the placeholder; keep the original text intact
+            return xamlContent;
         }
 
         /// <summary>
