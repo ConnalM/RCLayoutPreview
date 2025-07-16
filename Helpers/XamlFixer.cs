@@ -73,88 +73,137 @@ namespace RCLayoutPreview.Helpers
                 throw new ArgumentNullException("Root element or JSON data cannot be null.");
 
             Debug.WriteLine("[ProcessNamedFields] Starting field processing...");
-            try
-            {
-                ProcessElementRecursively(rootElement, jsonData, debugMode);
-                Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[ProcessNamedFields] Error during field processing: {ex.Message}");
-                throw;
-            }
+            ProcessElementRecursively(rootElement, jsonData, debugMode);
+            Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
         }
 
         private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
         {
-            try
+            if (!string.IsNullOrEmpty(element.Name))
             {
-                if (!string.IsNullOrEmpty(element.Name))
+                if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
-                    Debug.WriteLine($"[ProcessElementRecursively] Processing element: {element.Name}");
-
-                    if (debugMode)
+                    // --- Begin: Normalize field name for lookup ---
+                    // Remove trailing _1, _2, etc. for lookup (e.g., Pos2_1, Pos2_2 => Pos2)
+                    string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
+                    // Try original and normalized
+                    JToken value = null;
+                    string foundGroup = null;
+                    if (jsonData["RacerData"] is JObject racerData)
                     {
-                        // Display the field name instead of the value
-                        Debug.WriteLine($"[Diagnostics Mode] Element Name: {element.Name}");
-                        if (element is TextBlock textBlock)
+                        if (racerData.TryGetValue(parsedField.FieldType, out value) ||
+                            racerData.TryGetValue(normalizedFieldType, out value))
                         {
-                            textBlock.Text = element.Name;
-                            Debug.WriteLine($"[Diagnostics Mode] TextBlock updated with Name: {element.Name}");
-                        }
-                        else if (element is Label label)
-                        {
-                            label.Content = element.Name;
-                            Debug.WriteLine($"[Diagnostics Mode] Label updated with Name: {element.Name}");
-                        }
-                        else if (element is ContentControl contentControl)
-                        {
-                            contentControl.Content = element.Name;
-                            Debug.WriteLine($"[Diagnostics Mode] ContentControl updated with Name: {element.Name}");
+                            foundGroup = "RacerData";
                         }
                     }
-                    else
+                    if (value == null && jsonData["GenericData"] is JObject genericData)
                     {
-                        // Display the value normally
-                        JToken value = jsonData.SelectToken(element.Name);
-                        if (value != null)
+                        if (genericData.TryGetValue(parsedField.FieldType, out value) ||
+                            genericData.TryGetValue(normalizedFieldType, out value))
                         {
-                            string displayText = value.ToString();
-                            Debug.WriteLine($"[Normal Mode] Element Name: {element.Name}, Value: {displayText}");
+                            foundGroup = "GenericData";
+                        }
+                    }
+                    if (value == null && jsonData["Actions"] is JObject actionsData)
+                    {
+                        if (actionsData.TryGetValue(parsedField.FieldType, out value) ||
+                            actionsData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "Actions";
+                        }
+                    }
+                    // --- End: Normalize field name for lookup ---
+
+                    if (value != null)
+                    {
+                        // Show the value for all instances, not just _1
+                        string displayText = value.ToString();
+                        
+                        // Apply color to both TextBlock and Label elements from RacerData
+                        if (foundGroup == "RacerData")
+                        {
+                            int playerIndex = GetPlayerIndex(parsedField.FieldType);
+                            var colorBrush = GetColor(playerIndex);
+
                             if (element is TextBlock textBlock)
                             {
                                 textBlock.Text = displayText;
-                                Debug.WriteLine($"[Normal Mode] TextBlock updated with Value: {displayText}");
+                                textBlock.Background = colorBrush;
+                                textBlock.Foreground = new SolidColorBrush(Colors.White);
                             }
                             else if (element is Label label)
                             {
                                 label.Content = displayText;
-                                Debug.WriteLine($"[Normal Mode] Label updated with Value: {displayText}");
+                                label.Background = colorBrush;
+                                label.Foreground = new SolidColorBrush(Colors.White);
                             }
                             else if (element is ContentControl contentControl)
                             {
                                 contentControl.Content = displayText;
-                                Debug.WriteLine($"[Normal Mode] ContentControl updated with Value: {displayText}");
+                            }
+                        }
+                        else
+                        {
+                            // For non-RacerData fields, just set the content
+                            if (element is TextBlock textBlock)
+                            {
+                                textBlock.Text = displayText;
+                            }
+                            else if (element is Label label)
+                            {
+                                label.Content = displayText;
+                            }
+                            else if (element is ContentControl contentControl)
+                            {
+                                contentControl.Content = displayText;
                             }
                         }
                     }
-                }
 
-                foreach (var child in LogicalTreeHelper.GetChildren(element))
-                {
-                    if (child is FrameworkElement childElement)
+                    // Add diagnostics-specific behavior
+                    if (debugMode)
                     {
-                        ProcessElementRecursively(childElement, jsonData, debugMode);
+                        if (element is Control control)
+                        {
+                            control.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
+                            control.BorderThickness = new Thickness(1);
+                        }
+                        else if (element is Border border)
+                        {
+                            border.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
+                            border.BorderThickness = new Thickness(1);
+                        }
+                        else if (element is TextBlock textBlock)
+                        {
+                            textBlock.Text = textBlock.Text; // No border, but keep for clarity
+                        }
+                    }
+                    else
+                    {
+                        if (element is Control control)
+                        {
+                            control.BorderBrush = null;
+                            control.BorderThickness = new Thickness(0);
+                        }
+                        else if (element is Border border)
+                        {
+                            border.BorderBrush = null;
+                            border.BorderThickness = new Thickness(0);
+                        }
                     }
                 }
             }
-            catch (Exception ex)
+
+            foreach (var child in LogicalTreeHelper.GetChildren(element))
             {
-                Debug.WriteLine($"[ProcessElementRecursively] Error processing element: {ex.Message}");
-                throw;
+                if (child is FrameworkElement childElement)
+                {
+                    ProcessElementRecursively(childElement, jsonData, debugMode);
+                }
             }
         }
-
+        
         private static int GetPlayerIndex(string fieldType)
         {
             // Match patterns like Lane1, Position2, RaceLeader3, etc.
@@ -173,6 +222,23 @@ namespace RCLayoutPreview.Helpers
 
             // If no specific pattern matches, use a hash of the field type for a consistent color
             return Math.Abs(fieldType.GetHashCode() % 20) + 1;
+        }
+        
+        private static SolidColorBrush GetColor(int playerIndex)
+        {
+            // Use a fixed set of distinct colors for players
+            switch ((playerIndex - 1) % 8)
+            {
+                case 0: return new SolidColorBrush(Color.FromRgb(192, 0, 0));      // Red
+                case 1: return new SolidColorBrush(Color.FromRgb(0, 112, 192));    // Blue
+                case 2: return new SolidColorBrush(Color.FromRgb(0, 176, 80));     // Green
+                case 3: return new SolidColorBrush(Color.FromRgb(112, 48, 160));   // Purple
+                case 4: return new SolidColorBrush(Color.FromRgb(255, 192, 0));    // Gold
+                case 5: return new SolidColorBrush(Color.FromRgb(0, 176, 240));    // Light Blue
+                case 6: return new SolidColorBrush(Color.FromRgb(146, 208, 80));   // Light Green
+                case 7: return new SolidColorBrush(Color.FromRgb(255, 102, 0));    // Orange
+                default: return new SolidColorBrush(Color.FromRgb(128, 128, 128)); // Gray (fallback)
+            }
         }
     }
 }

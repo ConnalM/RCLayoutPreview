@@ -230,15 +230,19 @@ namespace RCLayoutPreview
                         this.Title = window.Title;
                         LogStatus($"Window Title applied: {window.Title}");
                     }
-                    if (window.Width > 0)
+                    // Only apply Width/Height if toggle is checked
+                    if (ApplyWindowSizeToggle != null && ApplyWindowSizeToggle.IsChecked == true)
                     {
-                        this.Width = window.Width;
-                        LogStatus($"Window Width applied: {window.Width}");
-                    }
-                    if (window.Height > 0)
-                    {
-                        this.Height = window.Height;
-                        LogStatus($"Window Height applied: {window.Height}");
+                        if (window.Width > 0)
+                        {
+                            this.Width = window.Width;
+                            LogStatus($"Window Width applied: {window.Width}");
+                        }
+                        if (window.Height > 0)
+                        {
+                            this.Height = window.Height;
+                            LogStatus($"Window Height applied: {window.Height}");
+                        }
                     }
                     if (window.Background != null)
                     {
@@ -250,6 +254,13 @@ namespace RCLayoutPreview
                 {
                     PreviewHost.Content = element; // Use the parsed element directly
                     LogStatus("Preview updated with parsed element.");
+                }
+
+                // Always apply diagnostics mode after preview update
+                if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
+                {
+                    frameworkElement.DataContext = jsonData;
+                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
             }
             catch (XamlParseException ex)
