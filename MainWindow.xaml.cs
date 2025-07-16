@@ -221,33 +221,35 @@ namespace RCLayoutPreview
                 if (element is Window window)
                 {
                     LogStatus("XAML contains a Window element. Extracting content.");
-                    element = window.Content;
-                }
+                    PreviewHost.Content = null; // Clear existing content
+                    PreviewHost.Content = window.Content; // Use the Window's content
 
-                // Set content if it's a FrameworkElement
-                if (element is FrameworkElement frameworkElement)
-                {
-                    if (jsonData == null)
+                    // Apply Window properties to the preview
+                    if (window.Title != null)
                     {
-                        LogStatus("JSON data is null. Cannot bind values.");
-                        PreviewHost.Content = frameworkElement;
-                        return;
+                        this.Title = window.Title;
+                        LogStatus($"Window Title applied: {window.Title}");
                     }
-
-                    frameworkElement.DataContext = jsonData;
-                    LogStatus("Processing named fields...");
-                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
-
-                    PreviewHost.Content = frameworkElement;
-                    LogStatus("Preview updated successfully.");
-                }
-                else if (element != null)
-                {
-                    LogStatus($"Parsed XAML is not a FrameworkElement. Found: {element.GetType().Name}");
+                    if (window.Width > 0)
+                    {
+                        this.Width = window.Width;
+                        LogStatus($"Window Width applied: {window.Width}");
+                    }
+                    if (window.Height > 0)
+                    {
+                        this.Height = window.Height;
+                        LogStatus($"Window Height applied: {window.Height}");
+                    }
+                    if (window.Background != null)
+                    {
+                        this.Background = window.Background;
+                        LogStatus("Window Background applied.");
+                    }
                 }
                 else
                 {
-                    LogStatus("Failed to parse XAML into an element.");
+                    PreviewHost.Content = element; // Use the parsed element directly
+                    LogStatus("Preview updated with parsed element.");
                 }
             }
             catch (XamlParseException ex)
@@ -406,6 +408,8 @@ namespace RCLayoutPreview
             {
                 // Refresh the preview content with the updated diagnostics mode
                 XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
+                PreviewHost.Content = null; // Clear the content
+                PreviewHost.Content = frameworkElement; // Reapply the content
                 LogStatus("Preview refreshed with updated diagnostics mode.");
             }
             else
