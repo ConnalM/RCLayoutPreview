@@ -115,81 +115,53 @@ namespace RCLayoutPreview.Helpers
                     }
                     // --- End: Normalize field name for lookup ---
 
-                    if (value != null)
+                    if (foundGroup == "RacerData")
                     {
-                        // Show the value for all instances, not just _1
-                        string displayText = value.ToString();
-                        
-                        // Apply color to both TextBlock and Label elements from RacerData
-                        if (foundGroup == "RacerData")
+                        int playerIndex = GetPlayerIndex(parsedField.FieldType);
+                        var colorBrush = GetColor(playerIndex);
+                        if (element is TextBlock textBlock)
                         {
-                            int playerIndex = GetPlayerIndex(parsedField.FieldType);
-                            var colorBrush = GetColor(playerIndex);
-
-                            if (element is TextBlock textBlock)
-                            {
-                                textBlock.Text = displayText;
-                                textBlock.Background = colorBrush;
-                                textBlock.Foreground = new SolidColorBrush(Colors.White);
-                            }
-                            else if (element is Label label)
-                            {
-                                label.Content = displayText;
-                                label.Background = colorBrush;
-                                label.Foreground = new SolidColorBrush(Colors.White);
-                            }
-                            else if (element is ContentControl contentControl)
-                            {
-                                contentControl.Content = displayText;
-                            }
+                            textBlock.Background = colorBrush;
+                            textBlock.Foreground = new SolidColorBrush(Colors.White);
                         }
-                        else
+                        else if (element is Label label)
                         {
-                            // For non-RacerData fields, just set the content
-                            if (element is TextBlock textBlock)
-                            {
-                                textBlock.Text = displayText;
-                            }
-                            else if (element is Label label)
-                            {
-                                label.Content = displayText;
-                            }
-                            else if (element is ContentControl contentControl)
-                            {
-                                contentControl.Content = displayText;
-                            }
+                            label.Background = colorBrush;
+                            label.Foreground = new SolidColorBrush(Colors.White);
                         }
                     }
 
-                    // Add diagnostics-specific behavior
                     if (debugMode)
                     {
-                        if (element is Control control)
+                        // Show the field name only
+                        if (element is TextBlock textBlock)
                         {
-                            control.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
-                            control.BorderThickness = new Thickness(1);
+                            textBlock.Text = element.Name;
                         }
-                        else if (element is Border border)
+                        else if (element is Label label)
                         {
-                            border.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
-                            border.BorderThickness = new Thickness(1);
+                            label.Content = element.Name;
                         }
-                        else if (element is TextBlock textBlock)
+                        else if (element is ContentControl contentControl)
                         {
-                            textBlock.Text = textBlock.Text; // No border, but keep for clarity
+                            contentControl.Content = element.Name;
                         }
                     }
-                    else
+                    else if (value != null)
                     {
-                        if (element is Control control)
+                        // Show the value only
+                        string displayText = value.ToString();
+                        if (element is TextBlock textBlock)
                         {
-                            control.BorderBrush = null;
-                            control.BorderThickness = new Thickness(0);
+                            textBlock.Text = displayText;
                         }
-                        else if (element is Border border)
+                        else if (element is Label label)
                         {
-                            border.BorderBrush = null;
-                            border.BorderThickness = new Thickness(0);
+                            label.Content = displayText;
+                        }
+                        else if (element is ContentControl contentControl)
+                        {
+                            contentControl.Content = displayText;
                         }
                     }
                 }
