@@ -84,9 +84,7 @@ namespace RCLayoutPreview.Helpers
                 if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
                     // --- Begin: Normalize field name for lookup ---
-                    // Remove trailing _1, _2, etc. for lookup (e.g., Pos2_1, Pos2_2 => Pos2)
                     string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
-                    // Try original and normalized
                     JToken value = null;
                     string foundGroup = null;
                     if (jsonData["RacerData"] is JObject racerData)
@@ -115,28 +113,51 @@ namespace RCLayoutPreview.Helpers
                     }
                     // --- End: Normalize field name for lookup ---
 
-                    if (value != null)
+                    // Always set default foreground to white for preview
+                    if (element is TextBlock textBlock)
                     {
-                        // Show the value for all instances, not just _1
+                        textBlock.Foreground = new SolidColorBrush(Colors.White);
+                    }
+                    else if (element is Label label)
+                    {
+                        label.Foreground = new SolidColorBrush(Colors.White);
+                    }
+
+                    if (debugMode)
+                    {
+                        // Diagnostics mode: show field name only
+                        string displayText = parsedField.FieldType;
+                        if (element is TextBlock tb)
+                        {
+                            tb.Text = displayText;
+                        }
+                        else if (element is Label lbl)
+                        {
+                            lbl.Content = displayText;
+                        }
+                        else if (element is ContentControl contentControl)
+                        {
+                            contentControl.Content = displayText;
+                        }
+                    }
+                    else if (value != null)
+                    {
+                        // Normal mode: show value
                         string displayText = value.ToString();
-                        
-                        // Apply color to both TextBlock and Label elements from RacerData
                         if (foundGroup == "RacerData")
                         {
                             int playerIndex = GetPlayerIndex(parsedField.FieldType);
                             var colorBrush = GetColor(playerIndex);
 
-                            if (element is TextBlock textBlock)
+                            if (element is TextBlock tb)
                             {
-                                textBlock.Text = displayText;
-                                textBlock.Background = colorBrush;
-                                textBlock.Foreground = new SolidColorBrush(Colors.White);
+                                tb.Text = displayText;
+                                tb.Background = colorBrush;
                             }
-                            else if (element is Label label)
+                            else if (element is Label lbl)
                             {
-                                label.Content = displayText;
-                                label.Background = colorBrush;
-                                label.Foreground = new SolidColorBrush(Colors.White);
+                                lbl.Content = displayText;
+                                lbl.Background = colorBrush;
                             }
                             else if (element is ContentControl contentControl)
                             {
@@ -145,51 +166,18 @@ namespace RCLayoutPreview.Helpers
                         }
                         else
                         {
-                            // For non-RacerData fields, just set the content
-                            if (element is TextBlock textBlock)
+                            if (element is TextBlock tb)
                             {
-                                textBlock.Text = displayText;
+                                tb.Text = displayText;
                             }
-                            else if (element is Label label)
+                            else if (element is Label lbl)
                             {
-                                label.Content = displayText;
+                                lbl.Content = displayText;
                             }
                             else if (element is ContentControl contentControl)
                             {
                                 contentControl.Content = displayText;
                             }
-                        }
-                    }
-
-                    // Add diagnostics-specific behavior
-                    if (debugMode)
-                    {
-                        if (element is Control control)
-                        {
-                            control.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
-                            control.BorderThickness = new Thickness(1);
-                        }
-                        else if (element is Border border)
-                        {
-                            border.BorderBrush = new SolidColorBrush(Colors.DeepSkyBlue);
-                            border.BorderThickness = new Thickness(1);
-                        }
-                        else if (element is TextBlock textBlock)
-                        {
-                            textBlock.Text = textBlock.Text; // No border, but keep for clarity
-                        }
-                    }
-                    else
-                    {
-                        if (element is Control control)
-                        {
-                            control.BorderBrush = null;
-                            control.BorderThickness = new Thickness(0);
-                        }
-                        else if (element is Border border)
-                        {
-                            border.BorderBrush = null;
-                            border.BorderThickness = new Thickness(0);
                         }
                     }
                 }
