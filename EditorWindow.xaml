@@ -102,8 +102,8 @@
                     ShowLineNumbers="True"
                     WordWrap="True"
                     SyntaxHighlighting="XML"
-                    Background="White"
-                    Foreground="Black"
+                    Background="Black"
+                    Foreground="White"
                     HorizontalScrollBarVisibility="Auto"
                     VerticalScrollBarVisibility="Auto">
                     <avalonedit:TextEditor.Options>
