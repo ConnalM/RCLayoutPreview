@@ -5,14 +5,17 @@ using Newtonsoft.Json.Linq;
 using RCLayoutPreview.Helpers;
 using RCLayoutPreview.Controls;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml;
-using System.Linq;
-using System.Text.RegularExpressions;
+using System.Windows.Controls.Primitives;
 
 namespace RCLayoutPreview
 {
@@ -30,6 +33,11 @@ namespace RCLayoutPreview
         private SearchPanel searchPanel;
         private bool fieldDetected = false;
         private string currentXamlPath = null;
+        private Popup completionPopup;
+        private ListBox completionListBox;
+        private List<string> xamlKeywords;
+        private List<string> fieldNames;
+        private List<string> allCompletions;
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -66,7 +74,170 @@ namespace RCLayoutPreview
             Editor.AllowDrop = true;
             Editor.Drop += Editor_Drop;
 
+            // Predictive text setup
+            SetupPredictiveText();
+
             LoadStubData();
+        }
+
+        private void SetupPredictiveText()
+        {
+            // XAML keywords/tags
+            xamlKeywords = new List<string> {
+                "Window", "Grid", "StackPanel", "DockPanel", "Border", "TextBlock", "Label", "Button", "Image", "ItemsControl", "Viewbox", "Canvas", "UserControl", "Page", "ContentControl", "RowDefinition", "ColumnDefinition", "Background", "Foreground", "FontSize", "FontWeight", "HorizontalAlignment", "VerticalAlignment", "Margin", "Padding", "Width", "Height", "Name", "Content", "Text", "Source", "DataContext", "Binding"
+            };
+
+            // Load stubdata5.json field names
+            fieldNames = new List<string>();
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stubdata5.json");
+                if (File.Exists(jsonPath))
+                {
+                    var json = JObject.Parse(File.ReadAllText(jsonPath));
+                    foreach (var group in json.Properties())
+                    {
+                        if (group.Value is JObject obj)
+                        {
+                            foreach (var prop in obj.Properties())
+                                fieldNames.Add(prop.Name);
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            allCompletions = new List<string>();
+            allCompletions.AddRange(xamlKeywords);
+            allCompletions.AddRange(fieldNames);
+            allCompletions = allCompletions.Distinct().OrderBy(s => s).ToList();
+
+            // Setup popup
+            completionListBox = new ListBox
+            {
+                Background = Brushes.White,
+                Foreground = Brushes.Black,
+                BorderBrush = Brushes.Gray,
+                BorderThickness = new Thickness(1),
+                MinWidth = 180,
+                MaxHeight = 200
+            };
+            completionListBox.PreviewMouseLeftButtonUp += CompletionListBox_PreviewMouseLeftButtonUp;
+            completionListBox.PreviewKeyDown += CompletionListBox_PreviewKeyDown;
+
+            completionPopup = new Popup
+            {
+                PlacementTarget = Editor,
+                Placement = PlacementMode.RelativePoint,
+                StaysOpen = false,
+                AllowsTransparency = true,
+                Child = completionListBox
+            };
+
+            Editor.TextArea.TextEntering += Editor_TextArea_TextEntering;
+            Editor.TextArea.TextEntered += Editor_TextArea_TextEntered;
+            Editor.TextArea.PreviewKeyDown += Editor_PreviewKeyDown;
+        }
+
+        private void Editor_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (completionPopup.IsOpen && (e.Key == Key.Down || e.Key == Key.Up))
+            {
+                completionListBox.Focus();
+                if (completionListBox.Items.Count > 0)
+                {
+                    if (completionListBox.SelectedIndex < 0)
+                        completionListBox.SelectedIndex = 0;
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void Editor_TextArea_TextEntered(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            string word = GetCurrentWord();
+            if (string.IsNullOrEmpty(word) || word.Length < 2)
+            {
+                completionPopup.IsOpen = false;
+                return;
+            }
+            // Show suggestions that contain the word anywhere (not just at the start)
+            var matches = allCompletions
+                .Where(s => s.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
+                .ToList();
+            if (matches.Count > 0)
+            {
+                completionListBox.ItemsSource = matches;
+                completionListBox.SelectedIndex = 0;
+                var caret = Editor.TextArea.Caret;
+                var loc = Editor.TextArea.TextView.GetVisualPosition(caret.Position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineBottom) + new System.Windows.Vector(0, 5);
+                completionPopup.HorizontalOffset = loc.X;
+                completionPopup.VerticalOffset = loc.Y;
+                completionPopup.IsOpen = true;
+                // Do not steal focus from the editor
+            }
+            else
+            {
+                completionPopup.IsOpen = false;
+            }
+        }
+
+        private void Editor_TextArea_TextEntering(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            if (completionPopup.IsOpen && (e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0])))
+            {
+                // Accept completion on non-word character
+                InsertSelectedCompletion();
+                completionPopup.IsOpen = false;
+            }
+        }
+
+        private void CompletionListBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            InsertSelectedCompletion();
+            completionPopup.IsOpen = false;
+            Editor.TextArea.Focus();
+        }
+
+        private void CompletionListBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Tab)
+            {
+                InsertSelectedCompletion();
+                completionPopup.IsOpen = false;
+                Editor.TextArea.Focus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                completionPopup.IsOpen = false;
+                Editor.TextArea.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void InsertSelectedCompletion()
+        {
+            if (completionListBox.SelectedItem is string selected)
+            {
+                var word = GetCurrentWord();
+                if (!string.IsNullOrEmpty(word))
+                {
+                    int offset = Editor.CaretOffset;
+                    int start = offset - word.Length;
+                    Editor.Document.Replace(start, word.Length, selected);
+                    Editor.CaretOffset = start + selected.Length;
+                }
+            }
+        }
+
+        private string GetCurrentWord()
+        {
+            int offset = Editor.CaretOffset;
+            if (offset == 0) return string.Empty;
+            var text = Editor.Text.Substring(0, offset);
+            var match = Regex.Match(text, "([A-Za-z0-9_]+)$");
+            return match.Success ? match.Groups[1].Value : string.Empty;
         }
 
         private void Editor_TextChanged(object sender, EventArgs e)
