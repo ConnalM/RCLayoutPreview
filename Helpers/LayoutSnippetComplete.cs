@@ -28,8 +28,7 @@ namespace RCLayoutPreview.Helpers
             "    mc:Ignorable=\"d\"\r\n" +
             "    Title=\"Race Layout\"\r\n" +
             "    Height=\"720\" Width=\"1280\"\r\n" +
-            "    Background=\"Black\"\r\n" +
-            ">\r\n" +
+            "    Background=\"Black\"\r\n>\r\n" +
             "\r\n" +
             "    <!-- Optional styling resources -->\r\n" +
             "    <!-- <Window.Resources>\r\n" +
@@ -37,8 +36,7 @@ namespace RCLayoutPreview.Helpers
             "     </Window.Resources> -->\r\n" +
             "\r\n" +
             "    <!-- Border Background wraps Viewbox -->\r\n" +
-            "    <Border Background=\"Aqua\">\r\n" +
-            "        <Viewbox Stretch=\"Uniform\">\r\n" +
+            "    <Border Background=\"Blue\">\r\n" +
             "            <!-- Grid Background -->\r\n" +
             "            <Grid Background=\"White\">\r\n" +
             "                <!-- Insert layout elements below -->\r\n" +
@@ -52,7 +50,6 @@ namespace RCLayoutPreview.Helpers
             "                           HorizontalAlignment=\"Center\"\r\n" +
             "                           VerticalAlignment=\"Center\" />\r\n" +
             "            </Grid>\r\n" +
-            "        </Viewbox>\r\n" +
             "    </Border>\r\n" +
             "</Window>";
 
@@ -318,6 +315,67 @@ namespace RCLayoutPreview.Helpers
                     XamlTemplate =
                         "<Image Source=\"placeholder.png\" Width=\"100\" Height=\"100\" Stretch=\"Uniform\"\n" +
                         "       ToolTip=\"Basic image element\" />"
+                },
+
+                // --- Additional atomic/utility snippets using the static templates ---
+                new LayoutSnippet
+                {
+                    Name = "Racer Row",
+                    Description = "Horizontal row for racer info with placeholders.",
+                    Category = "Atomic Elements",
+                    XamlTemplate = RacerRowTemplate,
+                    DefaultStyles = "FontSize=\"18\" Margin=\"2\""
+                },
+                new LayoutSnippet
+                {
+                    Name = "Timer Display",
+                    Description = "Large timer label for race time.",
+                    Category = "Atomic Elements",
+                    XamlTemplate = TimerTemplate,
+                    DefaultStyles = "Foreground=\"Orange\" FontWeight=\"Bold\""
+                },
+                new LayoutSnippet
+                {
+                    Name = "Avatar Image",
+                    Description = "Square avatar image with border.",
+                    Category = "Atomic Elements",
+                    XamlTemplate = AvatarTemplate
+                },
+                new LayoutSnippet
+                {
+                    Name = "Next Race Panel",
+                    Description = "Panel for next race info and heat list.",
+                    Category = "Race Info Elements",
+                    XamlTemplate = NextRaceTemplate
+                },
+                new LayoutSnippet
+                {
+                    Name = "Lap Record (Placeholders)",
+                    Description = "Panel for lap record with placeholder fields.",
+                    Category = "Race Records",
+                    XamlTemplate = LapRecordTemplate
+                },
+                new LayoutSnippet
+                {
+                    Name = "Racer Stats Row",
+                    Description = "Row for best, average, and last lap times.",
+                    Category = "Atomic Elements",
+                    XamlTemplate = RacerStatsTemplate
+                },
+                new LayoutSnippet
+                {
+                    Name = "Viewbox Wrapper",
+                    Description = "Wraps content in a Viewbox for scaling.",
+                    Category = "Layout Shells",
+                    XamlTemplate = ViewboxTemplate,
+                    Placeholders = new Dictionary<string, string> { { "{content}", "<!-- Insert content here -->" } }
+                },
+                new LayoutSnippet
+                {
+                    Name = "Lap Time (Placeholder)",
+                    Description = "Single lap time TextBlock with placeholder.",
+                    Category = "Atomic Elements",
+                    XamlTemplate = LapTimeTemplate
                 }
             };
         }

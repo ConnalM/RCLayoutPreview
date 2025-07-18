@@ -482,10 +482,14 @@ namespace RCLayoutPreview
         private void JsonFieldsTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             var treeView = sender as TreeView;
-            var selectedItem = treeView?.SelectedItem as TreeViewItem;
-            if (selectedItem != null)
+            var clickedItem = e.OriginalSource as DependencyObject;
+            while (clickedItem != null && !(clickedItem is TreeViewItem))
+                clickedItem = VisualTreeHelper.GetParent(clickedItem);
+
+            if (clickedItem is TreeViewItem item)
             {
-                DragDrop.DoDragDrop(treeView, selectedItem.Header.ToString(), DragDropEffects.Copy);
+                item.IsSelected = true;
+                DragDrop.DoDragDrop(item, item.Header.ToString(), DragDropEffects.Copy);
             }
         }
 
