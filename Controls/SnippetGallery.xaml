@@ -6,6 +6,13 @@
              xmlns:local="clr-namespace:RCLayoutPreview.Controls"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="300">
+    <UserControl.Resources>
+        <DataTemplate x:Key="SnippetPreviewTemplate">
+            <Border BorderBrush="#FFCCCCCC" BorderThickness="1" Background="#FFF9F9F9" Padding="4" Margin="0,0,0,4">
+                <ContentPresenter Content="{Binding XamlTemplate}" />
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -71,32 +78,37 @@
                                 CornerRadius="3"
                                 MouseEnter="SnippetItem_MouseEnter"
                                 MouseLeave="SnippetItem_MouseLeave"
-                                MouseDown="SnippetItem_MouseDown">
+                                MouseDown="SnippetItem_MouseDown"
+                                ToolTipService.ShowDuration="60000">
+                            <Border.ToolTip>
+                                <ScrollViewer MinWidth="400" MinHeight="200" MaxHeight="600" MaxWidth="900" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding XamlTemplate}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+                                </ScrollViewer>
+                            </Border.ToolTip>
                             <Border.Effect>
                                 <DropShadowEffect Color="Gray" 
                                                 BlurRadius="5" 
                                                 ShadowDepth="1" 
                                                 Opacity="0.2"/>
                             </Border.Effect>
-                            
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-
                                 <TextBlock Text="{Binding Name}" 
                                          FontWeight="SemiBold"/>
-                                
                                 <TextBlock Grid.Row="1" 
                                          Text="{Binding Description}"
                                          TextWrapping="Wrap"
                                          Foreground="Gray"
                                          FontSize="12"
                                          Margin="0,3,0,0"/>
+                                <!-- Live Preview -->
+                                <ContentControl Grid.Row="2" Margin="0,6,0,0" Content="{Binding XamlTemplate}" ContentTemplate="{StaticResource SnippetPreviewTemplate}"/>
                             </Grid>
                         </Border>
-                        
                         <DataTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="SnippetItem" Property="Background" Value="#FFF5F5F5"/>

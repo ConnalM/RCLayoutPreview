@@ -117,6 +117,28 @@ namespace RCLayoutPreview.Helpers
             "           HorizontalAlignment=\"Center\" \r\n" +
             "           Margin=\"5\" {styles}/>";
 
+        // New snippet for Theme Dictionary
+        private static readonly string ThemeDictionarySnippet =
+            "<Window.Resources>\n" +
+            "    <ResourceDictionary>\n" +
+            "        <ResourceDictionary.MergedDictionaries>\n" +
+            "            <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
+            "        </ResourceDictionary.MergedDictionaries>\n" +
+            "    </ResourceDictionary>\n" +
+            "</Window.Resources>";
+
+        // Generalized Menu snippet with placeholders for easy adaptation
+        private static readonly string GeneralMenuSnippet =
+            "<Menu Height=\"22\" Name=\"{menuName}\" VerticalAlignment=\"Top\">\n" +
+            "    <MenuItem Header=\"{fileHeader}\">\n" +
+            "        <MenuItem Name=\"{saveName}\" Header=\"{saveHeader}\" DataContext=\"'key':'{saveKey}','modifier':'{saveModifier}'\" ToolTip=\"{saveTooltip}\" />\n" +
+            "        <MenuItem Name=\"{saveAsName}\" Header=\"{saveAsHeader}\" DataContext=\"'key':'{saveAsKey}','modifier':'{saveAsModifier}'\" ToolTip=\"{saveAsTooltip}\" />\n" +
+            "        <Separator/>\n" +
+            "        <MenuItem Name=\"{exportName}\" Header=\"{exportHeader}\" DataContext=\"'key':'{exportKey}','modifier':'{exportModifier}'\" ToolTip=\"{exportTooltip}\" />\n" +
+            "    </MenuItem>\n" +
+            "    <Separator Width=\"5\" />\n" +
+            "</Menu>";
+
         // List of available snippets
         public static List<LayoutSnippet> GetDefaultSnippets()
         {
@@ -133,125 +155,169 @@ namespace RCLayoutPreview.Helpers
                         { "{content}", "Your layout content here" }
                     }
                 },
-
                 new LayoutSnippet
                 {
-                    Name = "Racer Row",
-                    Description = "A row showing racer name, position, and lap count",
-                    Category = "Racers",
-                    XamlTemplate = RacerRowTemplate,
-                    RequiredFields = new List<string> { "Position_{0}_1", "Nickname_{0}_1", "Lap_{0}_1" },
-                    DefaultStyles = "FontSize=\"20\" Background=\"Black\" Foreground=\"White\"",
+                    Name = "Theme Dictionary",
+                    Description = "Window.Resources with merged ThemeDictionary.xaml resource.",
+                    Category = "Resources",
+                    XamlTemplate = ThemeDictionarySnippet
+                },
+                new LayoutSnippet
+                {
+                    Name = "General Menu",
+                    Description = "Generalized Menu with placeholders for easy adaptation.",
+                    Category = "Menus",
+                    XamlTemplate = GeneralMenuSnippet,
                     Placeholders = new Dictionary<string, string>
                     {
-                        { "{0}", "Racer Position (1-8)" },
-                        { "Placeholder1", "Position_{0}_1 (position)" },
-                        { "Placeholder2", "Nickname_{0}_1 (name)" },
-                        { "Placeholder3", "Lap_{0}_1 (lap count)" }
+                        { "{menuName}", "menu1" },
+                        { "{fileHeader}", "File" },
+                        { "{saveName}", "Save_1" },
+                        { "{saveHeader}", "Save" },
+                        { "{saveKey}", "S" },
+                        { "{saveModifier}", "Alt" },
+                        { "{saveTooltip}", "ALT-S to save the race" },
+                        { "{saveAsName}", "SaveAs_1" },
+                        { "{saveAsHeader}", "Save As..." },
+                        { "{saveAsKey}", "A" },
+                        { "{saveAsModifier}", "Alt" },
+                        { "{saveAsTooltip}", "ALT-a to save the race with the specified file name" },
+                        { "{exportName}", "Export_1" },
+                        { "{exportHeader}", "Export Race" },
+                        { "{exportKey}", "X" },
+                        { "{exportModifier}", "Alt" },
+                        { "{exportTooltip}", "Alt-X to export current race progress" }
                     }
                 },
-
                 new LayoutSnippet
                 {
-                    Name = "Timer Display",
-                    Description = "Large timer display with labels",
-                    Category = "Timing",
-                    XamlTemplate = TimerTemplate,
-                    RequiredFields = new List<string> { "RaceTimer_1" },
-                    DefaultStyles = "Background=\"Black\" Foreground=\"White\"",
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "Placeholder1", "RaceTimer_1 (race time)" }
-                    }
+                    Name = "Upper DockPanel",
+                    Description = "Full layout container for top-of-screen race info.",
+                    Category = "Layout Shells",
+                    XamlTemplate =
+                        "<DockPanel Height=\"200\" Margin=\"0,22,0,0\" VerticalAlignment=\"Top\">\n" +
+                        "    <Grid>\n" +
+                        "        <Grid.ColumnDefinitions>\n" +
+                        "            <ColumnDefinition />\n" +
+                        "            <ColumnDefinition />\n" +
+                        "            <ColumnDefinition />\n" +
+                        "        </Grid.ColumnDefinitions>\n" +
+                        "        <!-- Insert Track Info, Race Info, and Race State Image here -->\n" +
+                        "    </Grid>\n" +
+                        "</DockPanel>"
+                },
+                new LayoutSnippet
+                {
+                    Name = "Track Info Panel",
+                    Description = "Displays track image and name from RC Track Manager.",
+                    Category = "Track Info Elements",
+                    XamlTemplate =
+                        "<StackPanel Grid.Column=\"0\" Height=\"200\" VerticalAlignment=\"Bottom\">\n" +
+                        "    <!-- Track image pulled from RC's Track Manager -->\n" +
+                        "    <Viewbox Margin=\"5\" Stretch=\"None\">\n" +
+                        "        <Image Name=\"TrackImage_1\" Height=\"115\" MaxWidth=\"300\" StretchDirection=\"Both\"\n" +
+                        "               ToolTip=\"Set this image in Track Manager\" />\n" +
+                        "    </Viewbox>\n" +
+                        "    <!-- Label for 'Track:' header -->\n" +
+                        "    <Label Content=\"Track:\" FontSize=\"12\" FontWeight=\"Bold\" FontStyle=\"Italic\" Foreground=\"Linen\"\n" +
+                        "           ToolTip=\"Static label for track section\" />\n" +
+                        "    <!-- Track name pulled from RC -->\n" +
+                        "    <Viewbox MaxWidth=\"300\" MaxHeight=\"50\" MinHeight=\"50\">\n" +
+                        "        <Label Name=\"TrackName_1\" FontSize=\"30\" FontWeight=\"Bold\" FontStyle=\"Italic\" Foreground=\"White\"\n" +
+                        "               ToolTip=\"Displays the name of the selected track\" />\n" +
+                        "    </Viewbox>\n" +
+                        "</StackPanel>"
+                },
+                new LayoutSnippet
+                {
+                    Name = "Race Info Panel",
+                    Description = "Shows race name, time, and heat number.",
+                    Category = "Race Info Elements",
+                    XamlTemplate =
+                        "<StackPanel Grid.Column=\"1\" Height=\"200\" VerticalAlignment=\"Top\">\n" +
+                        "    <!-- Race name -->\n" +
+                        "    <Viewbox MaxWidth=\"320\" MaxHeight=\"50\">\n" +
+                        "        <Label Name=\"RaceName_1\" FontSize=\"28\" FontWeight=\"Bold\" Foreground=\"GreenYellow\"\n" +
+                        "               ToolTip=\"Displays the name of the current race\" />\n" +
+                        "    </Viewbox>\n" +
+                        "    <!-- Race time -->\n" +
+                        "    <Label Name=\"RaceTime_1\" FontSize=\"50\" FontWeight=\"Bold\" Foreground=\"GreenYellow\" HorizontalAlignment=\"Center\"\n" +
+                        "           ToolTip=\"Displays the current race time\" />\n" +
+                        "    <!-- Heat info -->\n" +
+                        "    <Label HorizontalAlignment=\"Center\">\n" +
+                        "        <DockPanel LastChildFill=\"True\" HorizontalAlignment=\"Center\">\n" +
+                        "            <TextBlock Text=\"Heat \" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\" />\n" +
+                        "            <TextBlock Name=\"HeatNumber_1\" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\"\n" +
+                        "                       ToolTip=\"Displays current heat number\" />\n" +
+                        "            <TextBlock Text=\" of \" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\" />\n" +
+                        "            <TextBlock Name=\"NumHeats_1\" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\"\n" +
+                        "                       ToolTip=\"Displays total number of heats\" />\n" +
+                        "        </DockPanel>\n" +
+                        "    </Label>\n" +
+                        "</StackPanel>"
+                },
+                new LayoutSnippet
+                {
+                    Name = "Race State Image",
+                    Description = "Displays race status flag image.",
+                    Category = "Race State Visuals",
+                    XamlTemplate =
+                        "<Image Grid.Column=\"2\" Name=\"RaceStateImage_1\" Stretch=\"Uniform\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\"\n" +
+                        "       Height=\"200\" Width=\"275\" ToolTip=\"Displays race state flag (e.g. red, green)\" />"
+                },
+                new LayoutSnippet
+                {
+                    Name = "Lap Record Panel",
+                    Description = "Displays best lap time and racer name.",
+                    Category = "Race Records",
+                    XamlTemplate =
+                        "<StackPanel>\n" +
+                        "    <TextBlock Text=\"Lap Record\" FontSize=\"16\" HorizontalAlignment=\"Center\" />\n" +
+                        "    <Label Name=\"RecordTime_1\" Content=\"00:00.000\" FontSize=\"24\" HorizontalAlignment=\"Center\"\n" +
+                        "           ToolTip=\"Displays best lap time\" />\n" +
+                        "    <Label Name=\"RecordName_1\" Content=\"Racer Name\" FontSize=\"16\" HorizontalAlignment=\"Center\"\n" +
+                        "           ToolTip=\"Displays name of record holder\" />\n" +
+                        "</StackPanel>"
+                },
+                new LayoutSnippet
+                {
+                    Name = "Media Placeholder",
+                    Description = "Preview-safe replacement for MediaElement.",
+                    Category = "Preview Placeholders",
+                    XamlTemplate =
+                        "<Border Width=\"150\" Height=\"125\" Background=\"DarkGray\">\n" +
+                        "    <TextBlock Text=\"[Video Placeholder]\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\" Foreground=\"White\"\n" +
+                        "               ToolTip=\"This would be a video in RC runtime\" />\n" +
+                        "</Border>"
                 },
 
+                // Atomic Elements
                 new LayoutSnippet
                 {
-                    Name = "Racer Avatar",
-                    Description = "Display racer's avatar image",
-                    Category = "Racers",
-                    XamlTemplate = AvatarTemplate,
-                    RequiredFields = new List<string> { "Avatar_{0}_1" },
-                    DefaultStyles = "",
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "{0}", "Racer Position (1-8)" },
-                        { "Placeholder1", "Avatar_{0}_1 (racer avatar)" }
-                    }
+                    Name = "Basic Label",
+                    Description = "Simple label with customizable content.",
+                    Category = "Atomic Elements",
+                    XamlTemplate =
+                        "<Label Content=\"Label Text\" FontSize=\"16\" Foreground=\"White\"\n" +
+                        "       ToolTip=\"Basic label element\" />"
                 },
-
                 new LayoutSnippet
                 {
-                    Name = "Next Race Info",
-                    Description = "Display information about the next race",
-                    Category = "Race Info",
-                    XamlTemplate = NextRaceTemplate,
-                    RequiredFields = new List<string> { "NextHeatName_1", "NextHeatRacers" },
-                    DefaultStyles = "Foreground=\"White\"",
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "Placeholder1", "NextHeatName_1 (next heat name)" },
-                        { "Placeholder2", "NextHeatRacers (list of racers)" }
-                    }
+                    Name = "Basic TextBlock",
+                    Description = "Simple text block for static text.",
+                    Category = "Atomic Elements",
+                    XamlTemplate =
+                        "<TextBlock Text=\"Static Text\" FontSize=\"16\" Foreground=\"White\"\n" +
+                        "           ToolTip=\"Basic text block element\" />"
                 },
-
                 new LayoutSnippet
                 {
-                    Name = "Lap Record",
-                    Description = "Display current lap record and holder",
-                    Category = "Timing",
-                    XamlTemplate = LapRecordTemplate,
-                    RequiredFields = new List<string> { "LapRecord_1", "LapRecordHolder_1" },
-                    DefaultStyles = "Background=\"Black\" Foreground=\"White\"",
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "Placeholder1", "LapRecord_1 (record time)" },
-                        { "Placeholder2", "LapRecordHolder_1 (record holder)" }
-                    }
-                },
-
-                new LayoutSnippet
-                {
-                    Name = "Racer Stats",
-                    Description = "Display lap time statistics for a racer",
-                    Category = "Racers",
-                    XamlTemplate = RacerStatsTemplate,
-                    RequiredFields = new List<string> { "BestLap_{0}_1", "AvgLap_{0}_1", "LastLap_{0}_1" },
-                    DefaultStyles = "FontSize=\"16\" Foreground=\"White\"",
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "{0}", "Racer Position (1-8)" },
-                        { "Placeholder1", "BestLap_{0}_1 (best lap time)" },
-                        { "Placeholder2", "AvgLap_{0}_1 (average lap time)" },
-                        { "Placeholder3", "LastLap_{0}_1 (last lap time)" }
-                    }
-                },
-
-                new LayoutSnippet
-                {
-                    Name = "Viewbox Container",
-                    Description = "A scaling container that maintains content aspect ratio",
-                    Category = "Containers",
-                    XamlTemplate = ViewboxTemplate,
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "{content}", "Place content here" }
-                    }
-                },
-
-                new LayoutSnippet
-                {
-                    Name = "Lap Time Display",
-                    Description = "Display a racer's lap time with Race Coordinator naming format",
-                    Category = "Timing",
-                    XamlTemplate = LapTimeTemplate,
-                    RequiredFields = new List<string> { "LapTime_{0}_1" },
-                    DefaultStyles = "FontWeight=\"Bold\"",
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "{0}", "Racer Position (1-8)" },
-                        { "Placeholder1", "LapTime_{0}_1 (lap time)" }
-                    }
+                    Name = "Basic Image",
+                    Description = "Simple image element with fixed size.",
+                    Category = "Atomic Elements",
+                    XamlTemplate =
+                        "<Image Source=\"placeholder.png\" Width=\"100\" Height=\"100\" Stretch=\"Uniform\"\n" +
+                        "       ToolTip=\"Basic image element\" />"
                 }
             };
         }

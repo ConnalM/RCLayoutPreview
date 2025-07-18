@@ -213,10 +213,18 @@ namespace RCLayoutPreview.Controls
         public string ProcessSnippet(LayoutSnippet snippet, int position = 1)
         {
             string xaml = snippet.XamlTemplate;
-            
             // Replace position placeholder
             xaml = xaml.Replace("{0}", position.ToString());
-            
+
+            // Replace all other placeholders with their default values if present
+            if (snippet.Placeholders != null)
+            {
+                foreach (var kvp in snippet.Placeholders)
+                {
+                    xaml = xaml.Replace(kvp.Key, kvp.Value);
+                }
+            }
+
             // Apply default styles if specified
             if (!string.IsNullOrEmpty(snippet.DefaultStyles))
             {

@@ -65,6 +65,14 @@ namespace RCLayoutPreview
                 return;
             }
 
+            // Remove any unreplaced curly-brace placeholders (e.g., {menuName}) to avoid XAML parse errors
+            xamlContent = Regex.Replace(xamlContent, @"<([a-zA-Z0-9_]+)\s*([^>]*)?\{[a-zA-Z0-9_]+\}([^>]*)?>", m =>
+            {
+                // Replace the tag with a comment so the user knows what was removed
+                return $"<!-- Invalid tag removed: {m.Value} -->";
+            });
+            xamlContent = Regex.Replace(xamlContent, @"\{[a-zA-Z0-9_]+\}", "");
+
             // --- Begin: Duplicate field name detection ---
             var nameRegex = new Regex("Name=\"([^\"]+)\"");
             var nameMatches = nameRegex.Matches(xamlContent);
