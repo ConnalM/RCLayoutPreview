@@ -7,11 +7,14 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace RCLayoutPreview.Helpers
 {
     public static class XamlFixer
     {
+        private static Dictionary<string, LayoutSnippet> snippetCache;
+
         public static string Preprocess(string rawXaml)
         {
             if (string.IsNullOrWhiteSpace(rawXaml))
@@ -77,11 +80,65 @@ namespace RCLayoutPreview.Helpers
             Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
         }
 
+        private static LayoutSnippet GetSnippetByName(string name)
+        {
+            if (snippetCache == null)
+            {
+                // Cache all snippets by name for faster lookup
+                snippetCache = LayoutSnippet.GetDefaultSnippets()
+                    .ToDictionary(s => s.Name, s => s);
+            }
+
+            return snippetCache.TryGetValue(name, out var snippet) ? snippet : null;
+        }
+
         private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
         {
             if (!string.IsNullOrEmpty(element.Name))
             {
-                if (FieldNameParser.TryParse(element.Name, out var parsedField))
+                // Get position from parent tag if available
+                int position = 1;
+                var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
+                if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
+                {
+                    position = pos;
+                }
+
+                // First check if this is a placeholder element
+                if (element.Name.StartsWith("Placeholder"))
+                {
+                    // Get initial value from Content/Text property
+                    string initialValue = "";
+                    if (element is Label lbl)
+                    {
+                        initialValue = lbl.Content?.ToString() ?? "";
+                    }
+                    else if (element is TextBlock tb)
+                    {
+                        initialValue = tb.Text ?? "";
+                    }
+
+                    // Apply formatting if needed
+                    if (initialValue.Contains("{0}"))
+                    {
+                        initialValue = string.Format(initialValue, position);
+                    }
+
+                    // Apply styling
+                    if (element is TextBlock textBlock)
+                    {
+                        textBlock.Text = initialValue;
+                        textBlock.Background = new SolidColorBrush(Colors.Black);
+                        textBlock.Foreground = new SolidColorBrush(Colors.White);
+                    }
+                    else if (element is Label label)
+                    {
+                        label.Content = initialValue;
+                        label.Background = new SolidColorBrush(Colors.Black);
+                        label.Foreground = new SolidColorBrush(Colors.White);
+                    }
+                }
+                else if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
                     // --- Begin: Normalize field name for lookup ---
                     string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");

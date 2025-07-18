@@ -13,7 +13,7 @@ namespace RCLayoutPreview.Helpers
         public string Category { get; set; }
         public string XamlTemplate { get; set; }
         public List<string> RequiredFields { get; set; } = new List<string>();
-        public Dictionary<string, string> Placeholders { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Placeholders { get; set; } = new Dictionary<string, String>();
         public string DefaultStyles { get; set; }
 
         // Constants for XAML templates
@@ -74,12 +74,12 @@ namespace RCLayoutPreview.Helpers
 
         private static readonly string NextRaceTemplate =
             "<StackPanel Margin=\"10\">\r\n" +
-            "    <TextBlock Text=\"Next Race\" FontSize=\"20\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
-            "    <Label Name=\"Placeholder1\" Content=\"Placeholder Heat\" FontSize=\"24\" HorizontalAlignment=\"Center\" {styles}/>\r\n" +
+            "    <TextBlock Text=\"Next Race\" FontSize=\"20\" HorizontalAlignment=\"Center\" Foreground=\"White\"/>\r\n" +
+            "    <Label Name=\"Placeholder1\" Content=\"Placeholder Heat\" FontSize=\"24\" HorizontalAlignment=\"Center\" Foreground=\"White\"/>\r\n" +
             "    <ItemsControl Name=\"Placeholder2\">\r\n" +
             "        <ItemsControl.ItemTemplate>\r\n" +
             "            <DataTemplate>\r\n" +
-            "                <TextBlock Text=\"{Binding}\" FontSize=\"16\" {styles}/>\r\n" +
+            "                <TextBlock Text=\"{Binding}\" FontSize=\"16\" Foreground=\"White\"/>\r\n" +
             "            </DataTemplate>\r\n" +
             "        </ItemsControl.ItemTemplate>\r\n" +
             "    </ItemsControl>\r\n" +
@@ -99,10 +99,73 @@ namespace RCLayoutPreview.Helpers
             "    <Label Name=\"Placeholder3\" Content=\"Last: 00:00.000\" {styles}/>\r\n" +
             "</StackPanel>";
 
-        private static readonly string ViewboxTemplate =
-            "<Viewbox Stretch=\"Uniform\" Width=\"400\" Height=\"300\">\r\n" +
-            "    {content}\r\n" +
-            "</Viewbox>";
+        private static readonly string RaceInfoPanelTemplate =
+            "<StackPanel Grid.Column=\"1\" Height=\"200\" VerticalAlignment=\"Top\">\r\n" +
+            "    <Viewbox MaxWidth=\"320\" MaxHeight=\"50\">\r\n" +
+            "        <Label Name=\"Placeholder1\" Content=\"Sample Race\" FontSize=\"28\" FontWeight=\"Bold\" Foreground=\"GreenYellow\"\r\n" +
+            "               ToolTip=\"Displays the name of the current race\" />\r\n" +
+            "    </Viewbox>\r\n" +
+            "    <Label Name=\"Placeholder2\" Content=\"00:00.000\" FontSize=\"50\" FontWeight=\"Bold\" Foreground=\"GreenYellow\" \r\n" +
+            "           HorizontalAlignment=\"Center\" ToolTip=\"Displays the current race time\" />\r\n" +
+            "    <Label HorizontalAlignment=\"Center\">\r\n" +
+            "        <DockPanel LastChildFill=\"True\" HorizontalAlignment=\"Center\">\r\n" +
+            "            <TextBlock Text=\"Heat \" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\" />\r\n" +
+            "            <TextBlock Name=\"Placeholder3\" Text=\"1\" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\"\r\n" +
+            "                       ToolTip=\"Displays current heat number\" />\r\n" +
+            "            <TextBlock Text=\" of \" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\" />\r\n" +
+            "            <TextBlock Name=\"Placeholder4\" Text=\"4\" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\"\r\n" +
+            "                       ToolTip=\"Displays total number of heats\" />\r\n" +
+            "        </DockPanel>\r\n" +
+            "    </Label>\r\n" +
+            "</StackPanel>";
+
+        private static readonly string TrackInfoPanelTemplate =
+            "<StackPanel Grid.Column=\"0\" Height=\"200\" VerticalAlignment=\"Bottom\">\r\n" +
+            "    <Viewbox Margin=\"5\" Stretch=\"None\">\r\n" +
+            "        <Image Name=\"Placeholder1\" Height=\"115\" MaxWidth=\"300\" StretchDirection=\"Both\"\r\n" +
+            "               ToolTip=\"Track image from RC Track Manager\" />\r\n" +
+            "    </Viewbox>\r\n" +
+            "    <Label Content=\"Track:\" FontSize=\"12\" FontWeight=\"Bold\" FontStyle=\"Italic\" Foreground=\"Linen\"\r\n" +
+            "           ToolTip=\"Static label for track section\" />\r\n" +
+            "    <Viewbox MaxWidth=\"300\" MaxHeight=\"50\" MinHeight=\"50\">\r\n" +
+            "        <Label Name=\"Placeholder2\" Content=\"Sample Track\" FontSize=\"30\" FontWeight=\"Bold\" FontStyle=\"Italic\" Foreground=\"White\"\r\n" +
+            "               ToolTip=\"Track name from Track Manager\" />\r\n" +
+            "    </Viewbox>\r\n" +
+            "</StackPanel>";
+
+        private static readonly string RaceStateImageTemplate =
+            "<Image Grid.Column=\"2\" Name=\"Placeholder1\" Stretch=\"Uniform\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\"\r\n" +
+            "       Height=\"200\" Width=\"275\" ToolTip=\"Race state flag (e.g. red, green)\" />";
+
+        private static readonly string LowerDockPanelTemplate =
+            "<DockPanel Margin=\"0,222,0,0\" Name=\"dockPanel2\" Background=\"Transparent\">\n" +
+            "  <Grid>\n" +
+            "    <Grid.RowDefinitions>\n" +
+            "      <RowDefinition Height=\"50\" />\n" +
+            "      <RowDefinition Height=\"100\" />\n" +
+            "    </Grid.RowDefinitions>\n" +
+            "    <Grid.ColumnDefinitions>\n" +
+            "      <ColumnDefinition Width=\"200\" />\n" +
+            "      <ColumnDefinition Width=\"100\" />\n" +
+            "      <ColumnDefinition Width=\"150\" />\n" +
+            "      <ColumnDefinition Width=\"150\" />\n" +
+            "      <ColumnDefinition Width=\"150\" />\n" +
+            "    </Grid.ColumnDefinitions>\n\n" +
+            "    <!-- Header labels -->\n" +
+            "    <Label Grid.Row=\"0\" Grid.Column=\"0\" Content=\"Name\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
+            "    <Label Grid.Row=\"0\" Grid.Column=\"1\" Content=\"Lap\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
+            "    <Label Grid.Row=\"0\" Grid.Column=\"2\" Content=\"Lap Time\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
+            "    <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
+            "    <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n\n" +
+            "    <!-- Lane 1 data row -->\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+            "  </Grid>\n" +
+            "</DockPanel>";
+
 
         // Using clear placeholder instead of actual field names
         private static readonly string LapTimeTemplate =
@@ -145,7 +208,7 @@ namespace RCLayoutPreview.Helpers
                 new LayoutSnippet
                 {
                     Name = "Basic RC Layout",
-                    Description = "Standard Race Coordinator layout file structure.",
+                    Description = "Standard Race Coordinator layout file structure",
                     Category = "Documents",
                     XamlTemplate =
                         "<!-- Basic RC Layout: Standard file structure for a Race Coordinator layout -->\n" +
@@ -220,23 +283,13 @@ namespace RCLayoutPreview.Helpers
                     Name = "Track Info Panel",
                     Description = "Displays track image and name from RC Track Manager.",
                     Category = "Track Info Elements",
-                    XamlTemplate =
-                        "<!-- Track Info Panel: Shows track image and name -->\n" +
-                        "<StackPanel Grid.Column=\"0\" Height=\"200\" VerticalAlignment=\"Bottom\">\n" +
-                        "    <!-- Track image pulled from RC's Track Manager -->\n" +
-                        "    <Viewbox Margin=\"5\" Stretch=\"None\">\n" +
-                        "        <Image Name=\"TrackImage_1\" Height=\"115\" MaxWidth=\"300\" StretchDirection=\"Both\"\n" +
-                        "               ToolTip=\"Set this image in Track Manager\" />\n" +
-                        "    </Viewbox>\n" +
-                        "    <!-- Label for 'Track:' header -->\n" +
-                        "    <Label Content=\"Track:\" FontSize=\"12\" FontWeight=\"Bold\" FontStyle=\"Italic\" Foreground=\"Linen\"\n" +
-                        "           ToolTip=\"Static label for track section\" />\n" +
-                        "    <!-- Track name pulled from RC -->\n" +
-                        "    <Viewbox MaxWidth=\"300\" MaxHeight=\"50\" MinHeight=\"50\">\n" +
-                        "        <Label Name=\"TrackName_1\" FontSize=\"30\" FontWeight=\"Bold\" FontStyle=\"Italic\" Foreground=\"White\"\n" +
-                        "               ToolTip=\"Displays the name of the selected track\" />\n" +
-                        "    </Viewbox>\n" +
-                        "</StackPanel>"
+                    XamlTemplate = TrackInfoPanelTemplate,
+                    RequiredFields = new List<string> { "TrackImage_1", "TrackName_1" },
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "TrackImage_1 (track preview)" },
+                        { "Placeholder2", "TrackName_1 (track name)" }
+                    }
                 },
                 // Race Info Panel: Shows race name, time, and heat number
                 new LayoutSnippet
@@ -244,69 +297,46 @@ namespace RCLayoutPreview.Helpers
                     Name = "Race Info Panel",
                     Description = "Shows race name, time, and heat number.",
                     Category = "Race Info Elements",
-                    XamlTemplate =
-                        "<!-- Race Info Panel: Shows race name, time, and heat number -->\n" +
-                        "<StackPanel Grid.Column=\"1\" Height=\"200\" VerticalAlignment=\"Top\">\n" +
-                        "    <!-- Race name -->\n" +
-                        "    <Viewbox MaxWidth=\"320\" MaxHeight=\"50\">\n" +
-                        "        <Label Name=\"RaceName_1\" FontSize=\"28\" FontWeight=\"Bold\" Foreground=\"GreenYellow\"\n" +
-                        "               ToolTip=\"Displays the name of the current race\" />\n" +
-                        "    </Viewbox>\n" +
-                        "    <!-- Race time -->\n" +
-                        "    <Label Name=\"RaceTime_1\" FontSize=\"50\" FontWeight=\"Bold\" Foreground=\"GreenYellow\" HorizontalAlignment=\"Center\"\n" +
-                        "           ToolTip=\"Displays the current race time\" />\n" +
-                        "    <!-- Heat info -->\n" +
-                        "    <Label HorizontalAlignment=\"Center\">\n" +
-                        "        <DockPanel LastChildFill=\"True\" HorizontalAlignment=\"Center\">\n" +
-                        "            <TextBlock Text=\"Heat \" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\" />\n" +
-                        "            <TextBlock Name=\"HeatNumber_1\" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\"\n" +
-                        "                       ToolTip=\"Displays current heat number\" />\n" +
-                        "            <TextBlock Text=\" of \" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\" />\n" +
-                        "            <TextBlock Name=\"NumHeats_1\" FontSize=\"24\" FontWeight=\"Bold\" Foreground=\"White\"\n" +
-                        "                       ToolTip=\"Displays total number of heats\" />\n" +
-                        "        </DockPanel>\n" +
-                        "    </Label>\n" +
-                        "</StackPanel>"
+                    XamlTemplate = RaceInfoPanelTemplate,
+                    RequiredFields = new List<string> { "RaceName_1", "RaceTime_1", "HeatNumber_1", "NumHeats_1" },
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "RaceName_1 (race name)" },
+                        { "Placeholder2", "RaceTime_1 (race time)" },
+                        { "Placeholder3", "HeatNumber_1 (current heat)" },
+                        { "Placeholder4", "NumHeats_1 (total heats)" }
+                    }
                 },
-                // Race State Image: Shows race status flag image
                 new LayoutSnippet
                 {
                     Name = "Race State Image",
                     Description = "Displays race status flag image.",
                     Category = "Race State Visuals",
-                    XamlTemplate =
-                        "<!-- Race State Image: Shows race status flag image -->\n" +
-                        "<Image Grid.Column=\"2\" Name=\"RaceStateImage_1\" Stretch=\"Uniform\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\"\n" +
-                        "       Height=\"200\" Width=\"275\" ToolTip=\"Displays race state flag (e.g. red, green)\" />"
+                    XamlTemplate = RaceStateImageTemplate,
+                    RequiredFields = new List<string> { "RaceStateImage_1" },
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "RaceStateImage_1 (status flag)" }
+                    }
                 },
-                // Lap Record Panel: Shows best lap time and racer name
                 new LayoutSnippet
                 {
-                    Name = "Lap Record Panel",
-                    Description = "Displays best lap time and racer name.",
-                    Category = "Race Records",
-                    XamlTemplate =
-                        "<!-- Lap Record Panel: Shows best lap time and racer name -->\n" +
-                        "<StackPanel>\n" +
-                        "    <TextBlock Text=\"Lap Record\" FontSize=\"16\" HorizontalAlignment=\"Center\" />\n" +
-                        "    <Label Name=\"RecordTime_1\" Content=\"00:00.000\" FontSize=\"24\" HorizontalAlignment=\"Center\"\n" +
-                        "           ToolTip=\"Displays best lap time\" />\n" +
-                        "    <Label Name=\"RecordName_1\" Content=\"Racer Name\" FontSize=\"16\" HorizontalAlignment=\"Center\"\n" +
-                        "           ToolTip=\"Displays name of record holder\" />\n" +
-                        "</StackPanel>"
-                },
-                // Media Placeholder: Safe replacement for MediaElement
-                new LayoutSnippet
-                {
-                    Name = "Media Placeholder",
-                    Description = "Preview-safe replacement for MediaElement.",
-                    Category = "Preview Placeholders",
-                    XamlTemplate =
-                        "<!-- Media Placeholder: Safe replacement for MediaElement -->\n" +
-                        "<Border Width=\"150\" Height=\"125\" Background=\"DarkGray\">\n" +
-                        "    <TextBlock Text=\"[Video Placeholder]\" HorizontalAlignment=\"Center\" VerticalAlignment=\"Center\" Foreground=\"White\"\n" +
-                        "               ToolTip=\"This would be a video in RC runtime\" />\n" +
-                        "</Border>"
+                    Name = "Lower DockPanel",
+                    Description = "Simplified layout for bottom-of-screen race table.",
+                    Category = "Layout Shells",
+                    XamlTemplate = LowerDockPanelTemplate,
+                    RequiredFields = new List<string> { 
+                        "Nickname_Lane1_2", "Lap_Lane1_2", "LapTime_Lane1_2", 
+                        "MedianTime_Lane1_2", "BestLapTime_Lane1_2"
+                    },
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "Nickname_Lane1_2 (racer name)" },
+                        { "Placeholder2", "Lap_Lane1_2 (lap count)" },
+                        { "Placeholder3", "LapTime_Lane1_2 (current lap)" },
+                        { "Placeholder4", "MedianTime_Lane1_2 (median time)" },
+                        { "Placeholder5", "BestLapTime_Lane1_2 (best time)" }
+                    }
                 },
 
                 // Atomic Elements
@@ -346,76 +376,101 @@ namespace RCLayoutPreview.Helpers
                 {
                     Name = "Racer Row",
                     Description = "Horizontal row for racer info with placeholders.",
-                    Category = "Atomic Elements",
-                    XamlTemplate =
-                        "<!-- Racer Row: Horizontal row for racer info with placeholders -->\n" +
-                        RacerRowTemplate,
-                    DefaultStyles = "FontSize=\"18\" Margin=\"2\""
+                    Category = "Racers",
+                    XamlTemplate = RacerRowTemplate,
+                    RequiredFields = new List<string> { "Position_{0}_1", "Nickname_{0}_1", "Lap_{0}_1" },
+                    DefaultStyles = "FontSize=\"18\" Margin=\"2\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "Position_{0}_1 (position)" },
+                        { "Placeholder2", "Nickname_{0}_1 (name)" }, 
+                        { "Placeholder3", "Lap_{0}_1 (lap count)" }
+                    }
                 },
                 new LayoutSnippet
                 {
                     Name = "Timer Display",
                     Description = "Large timer label for race time.",
-                    Category = "Atomic Elements",
-                    XamlTemplate =
-                        "<!-- Timer Display: Large timer label for race time -->\n" +
-                        TimerTemplate,
-                    DefaultStyles = "Foreground=\"Orange\" FontWeight=\"Bold\""
+                    Category = "Timing", 
+                    XamlTemplate = TimerTemplate,
+                    RequiredFields = new List<string> { "RaceTimer_1" },
+                    DefaultStyles = "Foreground=\"Orange\" FontWeight=\"Bold\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "RaceTimer_1 (race time)" }
+                    }
                 },
                 new LayoutSnippet
                 {
                     Name = "Avatar Image",
                     Description = "Square avatar image with border.",
-                    Category = "Atomic Elements",
-                    XamlTemplate =
-                        "<!-- Avatar Image: Square avatar image with border -->\n" +
-                        AvatarTemplate
+                    Category = "Racers",
+                    XamlTemplate = AvatarTemplate,
+                    RequiredFields = new List<string> { "Avatar_{0}_1" },
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "Avatar_{0}_1 (racer avatar)" }
+                    }
                 },
                 new LayoutSnippet
                 {
-                    Name = "Next Race Panel",
-                    Description = "Panel for next race info and heat list.",
-                    Category = "Race Info Elements",
-                    XamlTemplate =
-                        "<!-- Next Race Panel: Panel for next race info and heat list -->\n" +
-                        NextRaceTemplate
+                    Name = "Next Race Info",
+                    Description = "Display information about the next race",
+                    Category = "Race Info",
+                    XamlTemplate = NextRaceTemplate,
+                    RequiredFields = new List<string> { "NextHeatName_1", "NextHeatRacers" },
+                    DefaultStyles = "Foreground=\"White\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "NextHeatName_1 (next heat name)" },
+                        { "Placeholder2", "NextHeatRacers (list of racers)" }
+                    }
                 },
                 new LayoutSnippet
                 {
-                    Name = "Lap Record (Placeholders)",
-                    Description = "Panel for lap record with placeholder fields.",
-                    Category = "Race Records",
-                    XamlTemplate =
-                        "<!-- Lap Record (Placeholders): Panel for lap record with placeholder fields -->\n" +
-                        LapRecordTemplate
+                    Name = "Lap Record",
+                    Description = "Display current lap record and holder",
+                    Category = "Timing",
+                    XamlTemplate = LapRecordTemplate,
+                    RequiredFields = new List<string> { "LapRecord_1", "LapRecordHolder_1" },
+                    DefaultStyles = "Background=\"Black\" Foreground=\"White\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "Placeholder1", "LapRecord_1 (record time)" },
+                        { "Placeholder2", "LapRecordHolder_1 (record holder)" }
+                    }
                 },
                 new LayoutSnippet
                 {
-                    Name = "Racer Stats Row",
-                    Description = "Row for best, average, and last lap times.",
-                    Category = "Atomic Elements",
-                    XamlTemplate =
-                        "<!-- Racer Stats Row: Row for best, average, and last lap times -->\n" +
-                        RacerStatsTemplate
+                    Name = "Racer Stats",
+                    Description = "Display lap time statistics for a racer",
+                    Category = "Racers",
+                    XamlTemplate = RacerStatsTemplate,
+                    RequiredFields = new List<string> { "BestLap_{0}_1", "AvgLap_{0}_1", "LastLap_{0}_1" },
+                    DefaultStyles = "FontSize=\"16\" Foreground=\"White\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "BestLap_{0}_1 (best lap time)" },
+                        { "Placeholder2", "AvgLap_{0}_1 (average lap time)" },
+                        { "Placeholder3", "LastLap_{0}_1 (last lap time)" }
+                    }
                 },
                 new LayoutSnippet
                 {
-                    Name = "Viewbox Wrapper",
-                    Description = "Wraps content in a Viewbox for scaling.",
-                    Category = "Layout Shells",
-                    XamlTemplate =
-                        "<!-- Viewbox Wrapper: Wraps content in a Viewbox for scaling -->\n" +
-                        ViewboxTemplate,
-                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
-                },
-                new LayoutSnippet
-                {
-                    Name = "Lap Time (Placeholder)",
-                    Description = "Single lap time TextBlock with placeholder.",
-                    Category = "Atomic Elements",
-                    XamlTemplate =
-                        "<!-- Lap Time (Placeholder): Single lap time TextBlock with placeholder -->\n" +
-                        LapTimeTemplate
+                    Name = "Lap Time Display",
+                    Description = "Display a racer's lap time with Race Coordinator naming format",
+                    Category = "Timing",
+                    XamlTemplate = LapTimeTemplate,
+                    RequiredFields = new List<string> { "LapTime_{0}_1" },
+                    DefaultStyles = "FontWeight=\"Bold\"",
+                    Placeholders = new Dictionary<string, string>
+                    {
+                        { "{0}", "Racer Position (1-8)" },
+                        { "Placeholder1", "LapTime_{0}_1 (lap time)" }
+                    }
                 },
                new LayoutSnippet
                 {
@@ -425,7 +480,6 @@ namespace RCLayoutPreview.Helpers
                     XamlTemplate =
                         "<DockPanel Margin=\"0,222,0,0\" Name=\"dockPanel2\" Background=\"Transparent\">\n" +
                         "  <Grid>\n" +
-                        "    <!-- Column headers -->\n" +
                         "    <Grid.RowDefinitions>\n" +
                         "      <RowDefinition Height=\"50\" />\n" +
                         "      <RowDefinition Height=\"100\" />\n" +
@@ -444,11 +498,11 @@ namespace RCLayoutPreview.Helpers
                         "    <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
                         "    <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n\n" +
                         "    <!-- Lane 1 data row -->\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
                         "  </Grid>\n" +
                         "</DockPanel>"
                 },
@@ -487,9 +541,9 @@ namespace RCLayoutPreview.Helpers
                         "                <DockPanel Height=\"200\" Margin=\"0,22,0,0\" Name=\"dockPanel1\">\n" +
                         "                    <Grid>\n" +
                         "                        <Grid.ColumnDefinitions>\n" +
-                        "                            <ColumnDefinition /> <!-- Track Info -->\n" +
-                        "                            <ColumnDefinition /> <!-- Race Info -->\n" +
-                        "                            <ColumnDefinition /> <!-- Race Flag / Status -->\n" +
+                        "                            <ColumnDefinition />\n" +
+                        "                            <ColumnDefinition />\n" +
+                        "                            <ColumnDefinition />\n" +
                         "                        </Grid.ColumnDefinitions>\n\n" +
                         "                        <!-- ?? Track Info Block -->\n" +
                         "                        <!-- Use snippet: \"Track Info Panel\" -->\n" +
@@ -569,7 +623,7 @@ namespace RCLayoutPreview.Helpers
                     Description = "Wraps selected content in a Border with gray border and margin.",
                     Category = "Formatting",
                     XamlTemplate =
-                        "<Border BorderBrush=\"Gray\" BorderThickness=\"1\" Margin=\"2\">\n{content}\n</Border>",
+                        "<Border BorderBrush=\"Green\" BorderThickness=\"10\" Margin=\"5\">\n{content}\n</Border>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 }
             };
