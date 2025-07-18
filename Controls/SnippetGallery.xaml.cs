@@ -136,7 +136,7 @@ namespace RCLayoutPreview.Controls
                     // Prepare the drag data
                     DataObject dragData = new DataObject();
                     dragData.SetData("LayoutSnippet", snippet);
-                    dragData.SetData(DataFormats.StringFormat, ProcessSnippet(snippet));
+                    dragData.SetData(DataFormats.StringFormat, ProcessSnippetForDrag(snippet));
                     
                     // Start the drag operation
                     DragDrop.DoDragDrop(element, dragData, DragDropEffects.Copy);
@@ -149,33 +149,22 @@ namespace RCLayoutPreview.Controls
         {
             if (editor == null) return;
 
-            string processedSnippet = ProcessSnippet(snippet);
-            
+            string selectedText = editor.SelectionLength > 0 ? editor.SelectedText : "";
+            string processedSnippet = ProcessSnippet(snippet, 1, selectedText);
+
             // Get the current indentation
             string indentation = GetIndentation();
-            
-            // Apply indentation to each line of the snippet
             if (!string.IsNullOrEmpty(indentation))
             {
                 processedSnippet = ApplyIndentation(processedSnippet, indentation);
             }
-            
-            // Check if there's selected text to replace
+
             if (editor.SelectionLength > 0)
             {
-                // If there's a {content} placeholder, replace it with the selected text
-                if (processedSnippet.Contains("{content}"))
-                {
-                    string selectedText = editor.SelectedText;
-                    processedSnippet = processedSnippet.Replace("{content}", selectedText);
-                }
-                
-                // Replace the selected text with the snippet
                 editor.Document.Replace(editor.SelectionStart, editor.SelectionLength, processedSnippet);
             }
             else
             {
-                // If no selection, just insert at caret position
                 editor.Document.Insert(editor.CaretOffset, processedSnippet);
             }
         }
@@ -236,6 +225,17 @@ namespace RCLayoutPreview.Controls
             }
 
             return xaml;
+        }
+
+        public string ProcessSnippet(LayoutSnippet snippet, int position, string content)
+        {
+            return LayoutSnippet.ProcessSnippet(snippet, position, content);
+        }
+
+        // Explicitly call the correct overload in drag and drop
+        private string ProcessSnippetForDrag(LayoutSnippet snippet)
+        {
+            return LayoutSnippet.ProcessSnippet(snippet, 1, "");
         }
     }
 }
