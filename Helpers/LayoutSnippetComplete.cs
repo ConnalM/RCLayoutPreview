@@ -277,7 +277,6 @@ namespace RCLayoutPreview.Helpers
                         "    </Grid>\n" +
                         "</DockPanel>"
                 },
-                // Track Info Panel: Shows track image and name
                 new LayoutSnippet
                 {
                     Name = "Track Info Panel",
@@ -291,7 +290,6 @@ namespace RCLayoutPreview.Helpers
                         { "Placeholder2", "TrackName_1 (track name)" }
                     }
                 },
-                // Race Info Panel: Shows race name, time, and heat number
                 new LayoutSnippet
                 {
                     Name = "Race Info Panel",
@@ -311,7 +309,7 @@ namespace RCLayoutPreview.Helpers
                 {
                     Name = "Race State Image",
                     Description = "Displays race status flag image.",
-                    Category = "Race State Visuals",
+                    Category = "Race State Visuals", 
                     XamlTemplate = RaceStateImageTemplate,
                     RequiredFields = new List<string> { "RaceStateImage_1" },
                     Placeholders = new Dictionary<string, string>

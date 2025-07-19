@@ -9,7 +9,20 @@
     <UserControl.Resources>
         <DataTemplate x:Key="SnippetPreviewTemplate">
             <Border BorderBrush="#FFCCCCCC" BorderThickness="1" Background="#FFF9F9F9" Padding="4" Margin="0,0,0,4">
-                <ContentPresenter Content="{Binding XamlTemplate}" />
+                <ContentPresenter>
+                    <ContentPresenter.Content>
+                        <MultiBinding Converter="{x:Null}">
+                            <Binding Path="XamlTemplate" FallbackValue="[Preview not available]"/>
+                        </MultiBinding>
+                    </ContentPresenter.Content>
+                </ContentPresenter>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="SafeSnippetPreviewTemplate">
+            <Border BorderBrush="#FFCCCCCC" BorderThickness="1" Background="#FFF9F9F9" Padding="4" Margin="0,0,0,4">
+                <TextBlock Text="{Binding XamlTemplate, FallbackValue='[Preview not available]'}" 
+                          FontFamily="Consolas" FontSize="10" TextWrapping="Wrap" 
+                          MaxHeight="100" TextTrimming="CharacterEllipsis"/>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
@@ -106,7 +119,8 @@
                                          FontSize="12"
                                          Margin="0,3,0,0"/>
                                 <!-- Live Preview -->
-                                <ContentControl Grid.Row="2" Margin="0,6,0,0" Content="{Binding XamlTemplate}" ContentTemplate="{StaticResource SnippetPreviewTemplate}"/>
+                                <ContentControl Grid.Row="2" Margin="0,6,0,0" Content="{Binding XamlTemplate, FallbackValue='[No preview available]'}" 
+                                              ContentTemplate="{StaticResource SafeSnippetPreviewTemplate}"/>
                             </Grid>
                         </Border>
                         <DataTemplate.Triggers>

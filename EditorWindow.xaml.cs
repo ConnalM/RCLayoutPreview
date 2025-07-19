@@ -29,6 +29,7 @@ namespace RCLayoutPreview
         private DateTime lastEditTime;
         private string lastEditorContent = string.Empty;
         private DispatcherTimer previewTimer;
+        private bool updatePending = false;
         private MainWindow previewWindow;
         private SearchPanel searchPanel;
         private bool fieldDetected = false;
@@ -62,13 +63,13 @@ namespace RCLayoutPreview
                 ApplicationCommands.Find,
                 new KeyGesture(Key.F, ModifierKeys.Control)));
 
-            // Set up timer for automatic preview
+            // Set timer interval to match the preview delay
             previewTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(500)
+                Interval = TimeSpan.FromMilliseconds(previewDelayMilliseconds)
             };
             previewTimer.Tick += AutoPreviewTick;
-            previewTimer.Start();
+            // Don't start the timer until needed
 
             // Set up drag and drop for snippets
             Editor.AllowDrop = true;
@@ -245,76 +246,42 @@ namespace RCLayoutPreview
             if (!autoUpdateEnabled) return;
 
             string currentContent = Editor.Text;
-            if (currentContent != lastEditorContent && !string.IsNullOrWhiteSpace(currentContent))
-            {
-                lastEditTime = DateTime.Now;
-                lastEditorContent = currentContent;
+            if (currentContent == lastEditorContent || string.IsNullOrWhiteSpace(currentContent))
+                return;
 
-                // Check for valid fields and notify if found for the first time
-                CheckForValidFields(currentContent);
-            }
-        }
+            lastEditTime = DateTime.Now;
+            lastEditorContent = currentContent;
 
-        private void CheckForValidFields(string content)
-        {
-            // Check if the content contains valid fields
-            if (PlaceholderSwapManager.ContainsValidField(content))
-            {
-                if (!fieldDetected)
-                {
-                    fieldDetected = true;
-                    string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
-                    string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
-
-                    // Update the status with a notification
-                    LogStatus($"Field detected: {(string.IsNullOrEmpty(message) ? fieldName : message)}");
-
-                    // If we're editing, update immediately rather than waiting for the timer
-                    if (autoUpdateEnabled)
-                    {
-                        try
-                        {
-                            // Try to validate XML before sending an update
-                            var doc = new XmlDocument();
-                            doc.LoadXml(content);
-                            XamlContentChanged?.Invoke(this, content);
-                        }
-                        catch (XmlException)
-                        {
-                            // Ignore XML errors during typing - the timer will handle them
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Reset detection flag if no fields are found anymore
-                fieldDetected = false;
-            }
+            // Restart the timer
+            previewTimer.Stop();
+            previewTimer.Start();
         }
 
         private void AutoPreviewTick(object sender, EventArgs e)
         {
+            previewTimer.Stop(); // Stop the timer - we only want one update
+
             if (!autoUpdateEnabled) return;
 
-            if ((DateTime.Now - lastEditTime).TotalMilliseconds >= previewDelayMilliseconds)
+            string currentContent = Editor.Text;
+            if (!string.IsNullOrWhiteSpace(currentContent))
             {
-                string currentContent = Editor.Text;
-                if (!string.IsNullOrWhiteSpace(currentContent))
+                try
                 {
-                    try
-                    {
-                        // Validate XML before sending
-                        var doc = new XmlDocument();
-                        doc.LoadXml(currentContent);
+                    // Validate XML before sending
+                    var doc = new XmlDocument();
+                    doc.LoadXml(currentContent);
 
-                        XamlContentChanged?.Invoke(this, currentContent);
-                        LogStatus("Preview updated");
-                    }
-                    catch (XmlException ex)
-                    {
-                        LogStatus($"Invalid XAML: {ex.Message}");
-                    }
+                    // Check for valid fields
+                    CheckForValidFields(currentContent);
+
+                    // Send update to preview
+                    XamlContentChanged?.Invoke(this, currentContent);
+                    LogStatus("Preview updated");
+                }
+                catch (XmlException ex)
+                {
+                    LogStatus($"Invalid XAML: {ex.Message}");
                 }
             }
         }
@@ -758,6 +725,10 @@ namespace RCLayoutPreview
                         var doc = new XmlDocument();
                         doc.LoadXml(currentContent);
 
+                        // Check for valid fields
+                        CheckForValidFields(currentContent);
+
+                        // Send update to preview
                         XamlContentChanged?.Invoke(this, currentContent);
                         LogStatus("Preview refreshed manually");
                     }
@@ -777,6 +748,25 @@ namespace RCLayoutPreview
                 searchPanel = null;
             }
             base.OnClosed(e);
+        }
+
+        private void CheckForValidFields(string content)
+        {
+            if (PlaceholderSwapManager.ContainsValidField(content))
+            {
+                if (!fieldDetected)
+                {
+                    fieldDetected = true;
+                    string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
+                    string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
+                    LogStatus($"Field detected: {message ?? fieldName}");
+                    ValidFieldDetected?.Invoke(this, fieldName);
+                }
+            }
+            else
+            {
+                fieldDetected = false;
+            }
         }
     }
 }

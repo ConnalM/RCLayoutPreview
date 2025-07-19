@@ -6,6 +6,17 @@
         Height="600"
         Width="800"
         FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HasDropShadow" Value="True"/>
+        </Style>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -29,7 +40,15 @@
                         <GradientStop Color="White" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
-                <ContentControl x:Name="PreviewHost"/>
+                <Grid>
+                    <ContentControl x:Name="PreviewHost" 
+                                  Panel.ZIndex="1"
+                                  ToolTipService.InitialShowDelay="0"
+                                  ToolTipService.ShowDuration="60000"
+                                  ToolTipService.BetweenShowDelay="0"/>
+                    <!-- Tooltip layer -->
+                    <Canvas x:Name="TooltipLayer" Panel.ZIndex="2" IsHitTestVisible="False"/>
+                </Grid>
             </Border>
         </ScrollViewer>
 

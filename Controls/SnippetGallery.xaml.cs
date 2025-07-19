@@ -69,12 +69,26 @@ namespace RCLayoutPreview.Controls
         {
             if (snippetsList == null) return;
             
-            snippets = new ObservableCollection<LayoutSnippet>(LayoutSnippet.GetDefaultSnippets());
-            
-            snippetsView = CollectionViewSource.GetDefaultView(snippets);
-            snippetsView.GroupDescriptions.Add(new PropertyGroupDescription("Category"));
-            
-            snippetsList.ItemsSource = snippetsView;
+            try
+            {
+                var snippetList = LayoutSnippet.GetDefaultSnippets();
+                snippets = new ObservableCollection<LayoutSnippet>(snippetList);
+                
+                snippetsView = CollectionViewSource.GetDefaultView(snippets);
+                snippetsView.GroupDescriptions.Add(new PropertyGroupDescription("Category"));
+                
+                snippetsList.ItemsSource = snippetsView;
+                
+                System.Diagnostics.Debug.WriteLine($"[SnippetGallery] Loaded {snippets.Count} snippets successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SnippetGallery] Error loading snippets: {ex.Message}");
+                // Create empty collection to prevent binding errors
+                snippets = new ObservableCollection<LayoutSnippet>();
+                snippetsView = CollectionViewSource.GetDefaultView(snippets);
+                snippetsList.ItemsSource = snippetsView;
+            }
         }
 
         private void UpdateFilter()
@@ -199,20 +213,19 @@ namespace RCLayoutPreview.Controls
             return string.Join(Environment.NewLine, lines);
         }
 
+        /// <summary>
+        /// Process a snippet for insertion into the editor.
+        /// This version preserves the original Placeholder1, Placeholder2, etc. format 
+        /// which is required for the JSON lookup and background colors to work.
+        /// Only replace position placeholder {0} and styles placeholder {styles}
+        /// to ensure field names are properly processed against stubdata5.json.
+        /// </summary>
         public string ProcessSnippet(LayoutSnippet snippet, int position = 1)
         {
             string xaml = snippet.XamlTemplate;
+            
             // Replace position placeholder
             xaml = xaml.Replace("{0}", position.ToString());
-
-            // Replace all other placeholders with their default values if present
-            if (snippet.Placeholders != null)
-            {
-                foreach (var kvp in snippet.Placeholders)
-                {
-                    xaml = xaml.Replace(kvp.Key, kvp.Value);
-                }
-            }
 
             // Apply default styles if specified
             if (!string.IsNullOrEmpty(snippet.DefaultStyles))
@@ -227,15 +240,44 @@ namespace RCLayoutPreview.Controls
             return xaml;
         }
 
+        /// <summary>
+        /// Process a snippet for insertion into the editor, with content replacement.
+        /// This version preserves the original Placeholder1, Placeholder2, etc. format 
+        /// which is required for the JSON lookup and background colors to work.
+        /// Only replace position placeholder {0}, content placeholder {content} and 
+        /// styles placeholder {styles} to ensure field names are properly processed
+        /// against stubdata5.json.
+        /// </summary>
         public string ProcessSnippet(LayoutSnippet snippet, int position, string content)
         {
-            return LayoutSnippet.ProcessSnippet(snippet, position, content);
+            string xaml = snippet.XamlTemplate;
+            
+            // Replace position placeholder
+            xaml = xaml.Replace("{0}", position.ToString());
+            
+            // Replace content placeholder if present
+            if (xaml.Contains("{content}"))
+            {
+                xaml = xaml.Replace("{content}", content ?? "");
+            }
+            
+            // Apply default styles if specified
+            if (!string.IsNullOrEmpty(snippet.DefaultStyles))
+            {
+                xaml = xaml.Replace("{styles}", snippet.DefaultStyles);
+            }
+            else
+            {
+                xaml = xaml.Replace("{styles}", "");
+            }
+            
+            return xaml;
         }
 
         // Explicitly call the correct overload in drag and drop
         private string ProcessSnippetForDrag(LayoutSnippet snippet)
         {
-            return LayoutSnippet.ProcessSnippet(snippet, 1, "");
+            return ProcessSnippet(snippet, 1, "");
         }
     }
 }
