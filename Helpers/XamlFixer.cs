@@ -174,161 +174,56 @@ namespace RCLayoutPreview.Helpers
                     }
                     break;
 
-                case ContentControl cc when cc.Content is FrameworkElement content:
-                    Debug.WriteLine($"[CollectElementsSafe] ContentControl has content: {content.GetType().Name}");
-                    CollectElementsSafe(content, elements, cancellationToken);
-                    break;
-                    
-                default:
-                    Debug.WriteLine($"[CollectElementsSafe] Element {element.GetType().Name} has no children to traverse");
-                    break;
-            }
-            
-            Debug.WriteLine($"[CollectElementsSafe] Total elements collected so far: {elements.Count}");
-        }
+                    if (foundGroup == "RacerData")
+                    {
+                        int playerIndex = GetPlayerIndex(parsedField.FieldType);
+                        var colorBrush = GetColor(playerIndex);
+                        if (element is TextBlock textBlock)
+                        {
+                            textBlock.Background = colorBrush;
+                            textBlock.Foreground = new SolidColorBrush(Colors.White);
+                        }
+                        else if (element is Label label)
+                        {
+                            label.Background = colorBrush;
+                            label.Foreground = new SolidColorBrush(Colors.White);
+                        }
+                    }
 
-        private static void ProcessElementSingle(FrameworkElement element, Dictionary<string, JToken> dataCache, bool debugMode)
-        {
-            if (string.IsNullOrEmpty(element.Name)) return;
-
-            try
-            {
-                Debug.WriteLine($"[ProcessElementSingle] ===== PROCESSING ELEMENT =====");
-                Debug.WriteLine($"[ProcessElementSingle] Element Name: '{element.Name}'");
-                Debug.WriteLine($"[ProcessElementSingle] Element Type: '{element.GetType().Name}'");
-                
-                if (element.Name.StartsWith("Placeholder"))
-                {
-                    Debug.WriteLine($"[ProcessElementSingle] >>> PLACEHOLDER DETECTED - Applying black/white style");
-                    ApplyPlaceholderStyle(element);
-                    return;
+                    if (debugMode)
+                    {
+                        // Show the field name only
+                        if (element is TextBlock textBlock)
+                        {
+                            textBlock.Text = element.Name;
+                        }
+                        else if (element is Label label)
+                        {
+                            label.Content = element.Name;
+                        }
+                        else if (element is ContentControl contentControl)
+                        {
+                            contentControl.Content = element.Name;
+                        }
+                    }
+                    else if (value != null)
+                    {
+                        // Show the value only
+                        string displayText = value.ToString();
+                        if (element is TextBlock textBlock)
+                        {
+                            textBlock.Text = displayText;
+                        }
+                        else if (element is Label label)
+                        {
+                            label.Content = displayText;
+                        }
+                        else if (element is ContentControl contentControl)
+                        {
+                            contentControl.Content = displayText;
+                        }
+                    }
                 }
-
-                if (!FieldNameParser.TryParse(element.Name, out var parsedField))
-                {
-                    Debug.WriteLine($"[ProcessElementSingle] >>> FIELD PARSING FAILED for '{element.Name}'");
-                    return;
-                }
-
-                Debug.WriteLine($"[ProcessElementSingle] >>> FIELD PARSED SUCCESSFULLY");
-                Debug.WriteLine($"[ProcessElementSingle]     FieldType: '{parsedField.FieldType}'");
-                Debug.WriteLine($"[ProcessElementSingle]     InstanceIndex: '{parsedField.InstanceIndex}'");
-
-                string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
-                Debug.WriteLine($"[ProcessElementSingle]     Normalized: '{normalizedFieldType}'");
-                
-                // Try to find the value in our cached data
-                bool foundValue = dataCache.TryGetValue(parsedField.FieldType, out var value) || 
-                                dataCache.TryGetValue(normalizedFieldType, out value);
-
-                string displayText = debugMode ? parsedField.FieldType : value?.ToString() ?? "";
-                Debug.WriteLine($"[ProcessElementSingle]     Found Value: {foundValue}");
-                Debug.WriteLine($"[ProcessElementSingle]     Display Text: '{displayText}'");
-                Debug.WriteLine($"[ProcessElementSingle]     Debug Mode: {debugMode}");
-                
-                bool isRacerField = IsRacerDataField(parsedField.FieldType);
-                Debug.WriteLine($"[ProcessElementSingle] >>> IS RACER FIELD: {isRacerField}");
-                
-                if (isRacerField)
-                {
-                    var brush = GetCachedBrush(parsedField.FieldType);
-                    Debug.WriteLine($"[ProcessElementSingle] >>> APPLYING COLORED BACKGROUND: {brush.Color}");
-                    ApplyElementStyle(element, displayText, brush);
-                }
-                else
-                {
-                    Debug.WriteLine($"[ProcessElementSingle] >>> APPLYING NO BACKGROUND (generic field)");
-                    ApplyElementStyle(element, displayText, null);
-                }
-                Debug.WriteLine($"[ProcessElementSingle] ===== ELEMENT PROCESSING COMPLETE =====");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[ProcessElementSingle] *** ERROR for element '{element.Name}': {ex.Message}");
-                Debug.WriteLine($"[ProcessElementSingle] *** Stack: {ex.StackTrace}");
-            }
-        }
-
-        private static void ApplyPlaceholderStyle(FrameworkElement element)
-        {
-            var blackBrush = _brushCache.GetOrAdd("Black", _ => new SolidColorBrush(Colors.Black));
-            var whiteBrush = _brushCache.GetOrAdd("White", _ => new SolidColorBrush(Colors.White));
-            
-            switch (element)
-            {
-                case TextBlock tb:
-                    tb.Background = blackBrush;
-                    tb.Foreground = whiteBrush;
-                    break;
-                case Label lbl:
-                    lbl.Background = blackBrush;
-                    lbl.Foreground = whiteBrush;
-                    break;
-            }
-        }
-
-        private static bool IsRacerDataField(string fieldType)
-        {
-            // Check for explicit racer-related field patterns
-            if (fieldType.Contains("Lane") || fieldType.Contains("Position") || 
-                fieldType.Contains("Leader") || fieldType.Contains("Nickname"))
-                return true;
-            
-            // Check for common racer field names that should have colored backgrounds
-            var racerFieldPatterns = new[]
-            {
-                "Name", "LapTime", "BestLap", "AvgLap", "LastLap", "Lap", 
-                "Avatar", "CarImage", "FuelLevel", "DeslotCount", "GapLeader",
-                "MedianTime", "BestLapTime", "AverageTime", "ReactionTime", 
-                "Seed", "Standing", "MPH", "Led", "Drift"
-            };
-            
-            foreach (var pattern in racerFieldPatterns)
-            {
-                if (fieldType.StartsWith(pattern, StringComparison.OrdinalIgnoreCase))
-                {
-                    Debug.WriteLine($"[IsRacerDataField] '{fieldType}' matches racer pattern '{pattern}' - applying colored background");
-                    return true;
-                }
-            }
-            
-            // Check if it's a simple numbered field that should get colors (e.g., "Name1", "Time1", etc.)
-            if (Regex.IsMatch(fieldType, @"^[A-Za-z]+\d+$"))
-            {
-                Debug.WriteLine($"[IsRacerDataField] '{fieldType}' is a simple numbered field - applying colored background");
-                return true;
-            }
-            
-            Debug.WriteLine($"[IsRacerDataField] '{fieldType}' is NOT a racer field - no colored background");
-            return false;
-        }
-
-        private static SolidColorBrush GetCachedBrush(string fieldType)
-        {
-            int playerIndex = GetPlayerIndex(fieldType);
-            string colorKey = $"Player_{playerIndex}";
-            
-            return _brushCache.GetOrAdd(colorKey, _ =>
-            {
-                var color = GetPlayerColor(playerIndex);
-                return new SolidColorBrush(color);
-            });
-        }
-
-        private static void ApplyElementStyle(FrameworkElement element, string text, SolidColorBrush background)
-        {
-            // Choose appropriate text color based on background
-            SolidColorBrush textBrush;
-            
-            if (background != null)
-            {
-                // If we have a colored background, use white text for good contrast
-                textBrush = _brushCache.GetOrAdd("White", _ => new SolidColorBrush(Colors.White));
-            }
-            else
-            {
-                // If no background, use dark text so it's visible on light backgrounds
-                textBrush = _brushCache.GetOrAdd("Black", _ => new SolidColorBrush(Colors.Black));
             }
 
             switch (element)
