@@ -94,32 +94,30 @@ namespace RCLayoutPreview.Helpers
 
         private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
         {
-            // Set tooltip for all named elements (including containers)
+            // Ensure all field elements are hit-testable and have a nearly transparent background for hit testing
             if (!string.IsNullOrEmpty(element.Name))
             {
-                if (ToolTipService.GetToolTip(element) == null)
+                if (element is Label lbl)
                 {
-                    var tooltip = new ToolTip { Content = element.Name };
-                    ToolTipService.SetToolTip(element, tooltip);
-                    Debug.WriteLine($"Tooltip set for element: {element.Name}");
-                    element.IsHitTestVisible = true;
-                    element.MouseEnter += (s, e) => { tooltip.IsOpen = true; };
-                    element.MouseLeave += (s, e) => { tooltip.IsOpen = false; };
+                    lbl.IsHitTestVisible = true;
+                    if (lbl.Background == null || (lbl.Background is SolidColorBrush b && b.Color.A == 0))
+                        lbl.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)); // almost transparent
                 }
-                // If debugMode and element is a container, set a semi-transparent background for hit testing
-                if (debugMode && (element is Grid || element is Viewbox || element is DockPanel || element is Border || element is StackPanel))
+                else if (element is TextBlock tb)
                 {
-                    var prop = element.GetType().GetProperty("Background");
-                    if (prop != null && prop.CanWrite)
-                    {
-                        var currentBg = prop.GetValue(element);
-                        if (currentBg == null || (currentBg is SolidColorBrush brush && brush.Color.A == 0))
-                        {
-                            prop.SetValue(element, new SolidColorBrush(Color.FromArgb(32, 0, 0, 0)));
-                        }
-                    }
+                    tb.IsHitTestVisible = true;
+                    if (tb.Background == null || (tb.Background is SolidColorBrush b && b.Color.A == 0))
+                        tb.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
                 }
-
+                else if (element is Button btn && btn.Opacity == 0)
+                {
+                    btn.IsHitTestVisible = false; // invisible buttons should not block hit testing
+                }
+            }
+            // Remove static tooltip logic; rely on dynamic tooltips in MainWindow.xaml.cs
+            // Only process field values and placeholder logic
+            if (!string.IsNullOrEmpty(element.Name))
+            {
                 // Get position from parent tag if available
                 int position = 1;
                 var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
@@ -127,11 +125,9 @@ namespace RCLayoutPreview.Helpers
                 {
                     position = pos;
                 }
-
                 // First check if this is a placeholder element
                 if (element.Name.StartsWith("Placeholder"))
                 {
-                    // Get initial value from Content/Text property
                     string initialValue = "";
                     if (element is Label lbl)
                     {
@@ -141,14 +137,10 @@ namespace RCLayoutPreview.Helpers
                     {
                         initialValue = tb1.Text ?? "";
                     }
-
-                    // Apply formatting if needed
                     if (initialValue.Contains("{0}"))
                     {
                         initialValue = string.Format(initialValue, position);
                     }
-
-                    // Apply styling
                     if (element is TextBlock textBlock)
                     {
                         textBlock.Text = initialValue;
@@ -164,7 +156,6 @@ namespace RCLayoutPreview.Helpers
                 }
                 else if (FieldNameParser.TryParse(element.Name, out var parsedField))
                 {
-                    // --- Begin: Normalize field name for lookup ---
                     string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
                     JToken value = null;
                     string foundGroup = null;
@@ -261,18 +252,6 @@ namespace RCLayoutPreview.Helpers
                             }
                         }
                     }
-                }
-            }
-            // For all TextBlocks (even unnamed), show tooltip with their text content for diagnostics
-            if (element is TextBlock tbDiag && string.IsNullOrEmpty(tbDiag.Name))
-            {
-                if (ToolTipService.GetToolTip(tbDiag) == null && !string.IsNullOrEmpty(tbDiag.Text))
-                {
-                    var tooltip = new ToolTip { Content = tbDiag.Text };
-                    ToolTipService.SetToolTip(tbDiag, tooltip);
-                    tbDiag.IsHitTestVisible = true;
-                    tbDiag.MouseEnter += (s, e) => { tooltip.IsOpen = true; };
-                    tbDiag.MouseLeave += (s, e) => { tooltip.IsOpen = false; };
                 }
             }
             // Recursively process children

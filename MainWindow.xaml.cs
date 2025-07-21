@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Xml;
 using System.Text.RegularExpressions;
 using System.Text;
@@ -21,6 +22,8 @@ namespace RCLayoutPreview
         private EditorWindow editorWindow;
         private bool placeholderRemoved = false;
         private HashSet<string> usedElementNames = new HashSet<string>();
+        private FrameworkElement currentHighlightedElement;
+        private ToolTip currentToolTip;
 
         public MainWindow()
         {
@@ -285,6 +288,8 @@ namespace RCLayoutPreview
                     frameworkElement.DataContext = jsonData;
                     XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
+                // Attach hover behavior for tooltips
+                AddHoverBehavior();
             }
             catch (XamlParseException ex)
             {
@@ -457,6 +462,146 @@ namespace RCLayoutPreview
             // Close the editor window when the preview window is closed
             editorWindow.Close();
             base.OnClosing(e);
+        }
+
+        private void AddHoverBehavior()
+        {
+            if (PreviewHost != null)
+            {
+                PreviewHost.MouseMove -= PreviewHost_SafeMouseMove;
+                PreviewHost.MouseMove += PreviewHost_SafeMouseMove;
+                PreviewHost.MouseLeave -= PreviewHost_MouseLeave;
+                PreviewHost.MouseLeave += PreviewHost_MouseLeave;
+            }
+        }
+
+        private void PreviewHost_SafeMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            var hitTestResult = VisualTreeHelper.HitTest(PreviewHost, e.GetPosition(PreviewHost));
+            FrameworkElement namedElement = null;
+            if (hitTestResult?.VisualHit is FrameworkElement element)
+            {
+                namedElement = FindNamedChildElement(element);
+            }
+            if (namedElement != null)
+            {
+                if (namedElement != currentHighlightedElement)
+                {
+                    // Remove highlight from previous
+                    if (currentHighlightedElement != null)
+                        currentHighlightedElement.Effect = null;
+
+                    // Highlight
+                    currentHighlightedElement = namedElement;
+                    currentHighlightedElement.Effect = new DropShadowEffect
+                    {
+                        Color = Colors.Yellow,
+                        ShadowDepth = 0,
+                        BlurRadius = 12,
+                        Opacity = 0.7
+                    };
+                }
+                // Show tooltip and always update its position
+                ShowElementTooltip(namedElement, e.GetPosition(PreviewHost));
+                e.Handled = true;
+            }
+            else
+            {
+                // No named element found, hide tooltip and remove highlight
+                if (currentHighlightedElement != null)
+                    currentHighlightedElement.Effect = null;
+                currentHighlightedElement = null;
+                if (currentToolTip != null)
+                    currentToolTip.IsOpen = false;
+            }
+        }
+
+        private void PreviewHost_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (currentHighlightedElement != null)
+                currentHighlightedElement.Effect = null;
+            currentHighlightedElement = null;
+            if (currentToolTip != null)
+                currentToolTip.IsOpen = false;
+        }
+
+        private FrameworkElement FindNamedChildElement(FrameworkElement element)
+        {
+            // If hit test lands on a Viewbox, search its child
+            if (element is Viewbox viewbox && VisualTreeHelper.GetChildrenCount(viewbox) > 0)
+            {
+                var child = VisualTreeHelper.GetChild(viewbox, 0) as FrameworkElement;
+                if (child != null)
+                {
+                    var named = FindNamedChildElement(child);
+                    if (named != null)
+                        return named;
+                }
+            }
+            // Traverse up the tree to find the nearest named element
+            var up = element;
+            while (up != null)
+            {
+                if (!string.IsNullOrEmpty(up.Name))
+                    return up;
+                if (up.Parent is FrameworkElement parent)
+                    up = parent;
+                else
+                    break;
+            }
+            // Traverse down the visual tree from the hit element
+            var queue = new Queue<DependencyObject>();
+            queue.Enqueue(element);
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                if (current is FrameworkElement fe && !string.IsNullOrEmpty(fe.Name))
+                    return fe;
+                int count = VisualTreeHelper.GetChildrenCount(current);
+                for (int i = 0; i < count; i++)
+                    queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+            }
+            return null;
+        }
+
+        private void ShowElementTooltip(FrameworkElement element, Point mousePos)
+        {
+            var info = BuildElementInfoSafe(element);
+            if (currentToolTip == null)
+            {
+                currentToolTip = new ToolTip
+                {
+                    Placement = System.Windows.Controls.Primitives.PlacementMode.Relative,
+                    PlacementTarget = PreviewHost,
+                    StaysOpen = true,
+                    Background = new SolidColorBrush(Color.FromRgb(255,255,220)),
+                    Foreground = Brushes.Black,
+                    BorderBrush = Brushes.Gray,
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(8)
+                };
+            }
+            currentToolTip.Content = info;
+            currentToolTip.HorizontalOffset = mousePos.X + 12;
+            currentToolTip.VerticalOffset = mousePos.Y + 12;
+            currentToolTip.IsOpen = true;
+        }
+
+        private string BuildElementInfoSafe(FrameworkElement element)
+        {
+            var info = new StringBuilder();
+            info.AppendLine($"Type: {element.GetType().Name}");
+            if (!string.IsNullOrEmpty(element.Name))
+                info.AppendLine($"Name: {element.Name}");
+            info.AppendLine($"Size: {element.ActualWidth:F0} x {element.ActualHeight:F0}");
+            if (element.Parent is Panel parentPanel)
+            {
+                int idx = parentPanel.Children.IndexOf(element);
+                info.AppendLine($"Position in Parent: {idx + 1} of {parentPanel.Children.Count}");
+            }
+            if (Grid.GetRow(element) >= 0 || Grid.GetColumn(element) >= 0)
+                info.AppendLine($"Grid Position: Row {Grid.GetRow(element)}, Column {Grid.GetColumn(element)}");
+            return info.ToString().TrimEnd();
         }
     }
 }
