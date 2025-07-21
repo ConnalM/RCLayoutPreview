@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/TestNewtonsoftReference.cs
+/Newtonsoft.Json.dll.config
+/NewtonsoftReference.props
+/lib/Newtonsoft.Json.dll
