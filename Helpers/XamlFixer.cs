@@ -1,16 +1,19 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using RCLayoutPreview.Helpers;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Newtonsoft.Json.Linq;
-using System.Diagnostics;
-using System.Collections.Generic;
 using System.Windows.Threading;
-using System.Threading;
-using System.Collections.Concurrent;
+using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
 
 namespace RCLayoutPreview.Helpers
 {
@@ -42,7 +45,7 @@ namespace RCLayoutPreview.Helpers
                     _currentCts.Dispose();
                 }
                 _currentCts = new CancellationTokenSource();
-                
+
                 // Add a timeout to prevent infinite processing
                 _currentCts.CancelAfter(TimeSpan.FromSeconds(10)); // 10 second timeout
             }
@@ -52,23 +55,23 @@ namespace RCLayoutPreview.Helpers
             try
             {
                 Debug.WriteLine("[ProcessNamedFields] Starting field processing...");
-                
+
                 // Pre-fetch all relevant data from JSON to avoid repeated lookups
                 var dataCache = PreProcessJsonData(jsonData);
-                
+
                 // Process all elements in a single batch
                 var elements = new List<FrameworkElement>();
                 CollectElementsSafe(rootElement, elements, cancellationToken);
-                
+
                 if (cancellationToken.IsCancellationRequested)
                 {
                     Debug.WriteLine("[ProcessNamedFields] Processing cancelled during collection");
                     return;
                 }
-                
+
                 int totalElements = elements.Count;
                 int processedCount = 0;
-                
+
                 foreach (var element in elements)
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -79,7 +82,7 @@ namespace RCLayoutPreview.Helpers
 
                     try
                     {
-                        ProcessElementSingle(element, dataCache, debugMode);
+                        ProcessElementSingle(element, dataCache, debugMode, jsonData);
                         processedCount++;
 
                         // Update progress every 50 elements and check for timeout
@@ -109,26 +112,24 @@ namespace RCLayoutPreview.Helpers
         private static Dictionary<string, JToken> PreProcessJsonData(JObject jsonData)
         {
             var cache = new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
-            
+
+            Debug.WriteLine("[PreProcessJsonData] Processing JSON data for field lookup cache");
+
             foreach (var dataGroup in new[] { "RacerData", "GenericData", "Actions" })
             {
                 if (jsonData[dataGroup] is JObject groupData)
                 {
+                    Debug.WriteLine($"[PreProcessJsonData] Processing data group: {dataGroup} with {groupData.Count} properties");
                     foreach (var prop in groupData.Properties())
                     {
                         cache[prop.Name] = prop.Value;
+                        //Debug.WriteLine($"[PreProcessJsonData] Cached field: '{prop.Name}' = '{prop.Value}'");
                     }
                 }
             }
-            
-            return cache;
-        }
 
-        private static void CollectElements(FrameworkElement element, List<FrameworkElement> elements)
-        {
-            // This method has been replaced by CollectElementsSafe to prevent infinite loops
-            // Redirecting to the safe version
-            CollectElementsSafe(element, elements, CancellationToken.None);
+            Debug.WriteLine($"[PreProcessJsonData] Finished building cache with {cache.Count} entries");
+            return cache;
         }
 
         private static void CollectElementsSafe(FrameworkElement element, List<FrameworkElement> elements, CancellationToken cancellationToken)
@@ -173,59 +174,173 @@ namespace RCLayoutPreview.Helpers
                             CollectElementsSafe(item, elements, cancellationToken);
                     }
                     break;
+            }
+        }
 
-                    if (foundGroup == "RacerData")
-                    {
-                        int playerIndex = GetPlayerIndex(parsedField.FieldType);
-                        var colorBrush = GetColor(playerIndex);
-                        if (element is TextBlock textBlock)
-                        {
-                            textBlock.Background = colorBrush;
-                            textBlock.Foreground = new SolidColorBrush(Colors.White);
-                        }
-                        else if (element is Label label)
-                        {
-                            label.Background = colorBrush;
-                            label.Foreground = new SolidColorBrush(Colors.White);
-                        }
-                    }
+        private static void ProcessElementSingle(FrameworkElement element, Dictionary<string, JToken> dataCache, bool debugMode, JObject jsonData)
+        {
+            if (element == null || string.IsNullOrEmpty(element.Name))
+                return;
 
-                    if (debugMode)
-                    {
-                        // Show the field name only
-                        if (element is TextBlock textBlock)
-                        {
-                            textBlock.Text = element.Name;
-                        }
-                        else if (element is Label label)
-                        {
-                            label.Content = element.Name;
-                        }
-                        else if (element is ContentControl contentControl)
-                        {
-                            contentControl.Content = element.Name;
-                        }
-                    }
-                    else if (value != null)
-                    {
-                        // Show the value only
-                        string displayText = value.ToString();
-                        if (element is TextBlock textBlock)
-                        {
-                            textBlock.Text = displayText;
-                        }
-                        else if (element is Label label)
-                        {
-                            label.Content = displayText;
-                        }
-                        else if (element is ContentControl contentControl)
-                        {
-                            contentControl.Content = displayText;
-                        }
-                    }
+            Debug.WriteLine($"[ProcessElementSingle] ========== Processing element: {element.Name} ({element.GetType().Name}) ==========");
+
+            // Try to parse the field name
+            if (!FieldNameParser.TryParse(element.Name, out var parsedField))
+            {
+                Debug.WriteLine($"[ProcessElementSingle] Could not parse field name: {element.Name}");
+                return;
+            }
+
+            // Get the lookup field name from parsed field type
+            string originalFieldName = element.Name;
+            string lookupFieldName = parsedField.FieldType;
+            
+            Debug.WriteLine($"[ProcessElementSingle] Original field name: {originalFieldName}");
+            Debug.WriteLine($"[ProcessElementSingle] Parsed field type for lookup: {lookupFieldName}");
+
+            // Track value resolution
+            string foundGroup = null;
+            JToken value = null;
+            bool valueFound = false;
+            string resolvedFieldName = lookupFieldName;
+            
+            // Try direct lookup with the field type
+            if (dataCache.TryGetValue(lookupFieldName, out value))
+            {
+                foundGroup = DetermineDataGroup(lookupFieldName, jsonData);
+                valueFound = true;
+                Debug.WriteLine($"[ProcessElementSingle] DIRECT LOOKUP: Found value for {lookupFieldName} in group {foundGroup}: '{value}'");
+            }
+            else
+            {
+                // If not found, check if it's a RacerData field by pattern
+                if (IsRacerDataField(lookupFieldName))
+                {
+                    foundGroup = "RacerData";
+                    Debug.WriteLine($"[ProcessElementSingle] No value found, but field '{lookupFieldName}' matched RacerData pattern");
+                }
+                else
+                {
+                    foundGroup = "GenericData"; // Default
+                    Debug.WriteLine($"[ProcessElementSingle] No value found for '{lookupFieldName}', using default GenericData group");
                 }
             }
 
+            // Apply styling based on the element type and data
+            ApplyElementStyle(element, parsedField, foundGroup, value, valueFound, resolvedFieldName, debugMode);
+        }
+
+        private static string DetermineDataGroup(string fieldType, JObject jsonData)
+        {
+            // First check directly in the JSON data by field type
+            if (jsonData["RacerData"] is JObject racerData && racerData[fieldType] != null)
+            {
+                Debug.WriteLine($"[DetermineDataGroup] Field '{fieldType}' found in RacerData group");
+                return "RacerData";
+            }
+            
+            if (jsonData["GenericData"] is JObject genericData && genericData[fieldType] != null)
+            {
+                Debug.WriteLine($"[DetermineDataGroup] Field '{fieldType}' found in GenericData group");
+                return "GenericData";
+            }
+                
+            if (jsonData["Actions"] is JObject actions && actions[fieldType] != null)
+            {
+                Debug.WriteLine($"[DetermineDataGroup] Field '{fieldType}' found in Actions group");
+                return "Actions";
+            }
+            
+            // If not found, check if it matches any RacerData patterns
+            if (IsRacerDataField(fieldType))
+            {
+                Debug.WriteLine($"[DetermineDataGroup] Field '{fieldType}' matched RacerData pattern");
+                return "RacerData";
+            }
+            
+            // Default
+            Debug.WriteLine($"[DetermineDataGroup] Field '{fieldType}' using default GenericData group");
+            return "GenericData";
+        }
+
+        private static bool IsRacerDataField(string fieldType)
+        {
+            // Field patterns that indicate racer-specific data
+            string[] racerPatterns = {
+                @"^Lane\d+",
+                @"^Position\d+",
+                @"^RaceLeader\d+",
+                @"^SeasonLeader\d+",
+                @"^SeasonRaceLeader\d+",
+                @"^NextHeat",
+                @"^OnDeck",
+                @"^Pos\d+",
+                @"^Avatar_Lane\d+",
+                @"^LapTime_\d+",
+                @"^Name\d+",
+                @"^Nickname\d+",
+                @"^Nickname_Lane\d+",
+                @"^LapTime_Lane\d+"
+            };
+
+            foreach (var pattern in racerPatterns)
+            {
+                if (Regex.IsMatch(fieldType, pattern))
+                {
+                    Debug.WriteLine($"[IsRacerDataField] Field '{fieldType}' matched pattern '{pattern}'");
+                    return true;
+                }
+            }
+            
+            Debug.WriteLine($"[IsRacerDataField] Field '{fieldType}' did not match any RacerData patterns");
+            return false;
+        }
+
+        private static void ApplyElementStyle(FrameworkElement element, FieldNameParser parsedField, string foundGroup, JToken value, bool valueFound, string resolvedFieldName, bool debugMode)
+        {
+            string text;
+            
+            // Debug field information
+            Debug.WriteLine($"[ApplyElementStyle] Styling element '{element.Name}' with resolvedField '{resolvedFieldName}'");
+            Debug.WriteLine($"[ApplyElementStyle] Value found: {valueFound}, Value: '{value}', Group: {foundGroup}");
+            
+            // Determine the text to display
+            if (debugMode)
+            {
+                // In debug mode, show the element name itself
+                text = element.Name;
+                Debug.WriteLine($"[ApplyElementStyle] Debug mode enabled, using element name as text: '{text}'");
+            }
+            else if (valueFound && value != null)
+            {
+                // Use the value from JSON if found
+                text = value.ToString();
+                Debug.WriteLine($"[ApplyElementStyle] Using JSON value for {resolvedFieldName}: '{text}'");
+            }
+            else
+            {
+                // For fields with no value, use empty string
+                text = string.Empty;
+                Debug.WriteLine($"[ApplyElementStyle] Using default text: '{text}'");
+            }
+
+            // Apply color styling based on the field group and type
+            SolidColorBrush textBrush = new SolidColorBrush(Colors.Black);
+            SolidColorBrush background = null;
+
+            if (foundGroup == "RacerData")
+            {
+                int playerIndex = GetPlayerIndex(resolvedFieldName);
+                background = GetColor(playerIndex);
+                textBrush = new SolidColorBrush(Colors.White);
+                Debug.WriteLine($"[ApplyElementStyle] Applied RacerData styling for '{resolvedFieldName}' with playerIndex {playerIndex}, background color: {background.Color}");
+            }
+            else
+            {
+                Debug.WriteLine($"[ApplyElementStyle] Using default styling for non-RacerData field '{resolvedFieldName}'");
+            }
+
+            // Apply styling based on element type
             switch (element)
             {
                 case TextBlock tb:
@@ -247,7 +362,7 @@ namespace RCLayoutPreview.Helpers
                     }
                     Debug.WriteLine($"[ApplyElementStyle] Label '{lbl.Name}' - Content: '{text}', Foreground: {textBrush.Color}, Background: {background?.Color.ToString() ?? "None"}");
                     break;
-                    
+
                 case ContentControl cc:
                     cc.Content = text;
                     Debug.WriteLine($"[ApplyElementStyle] ContentControl '{cc.Name}' - Content: '{text}'");
@@ -257,19 +372,21 @@ namespace RCLayoutPreview.Helpers
 
         private static int GetPlayerIndex(string fieldType)
         {
+            Debug.WriteLine($"[GetPlayerIndex] Determining player index for field: '{fieldType}'");
+            
             // Check for Lane/Position patterns first
             var laneMatch = Regex.Match(fieldType, @"(?:Lane|Position|RaceLeader|SeasonLeader|SeasonRaceLeader)(\d+)");
             if (laneMatch.Success && int.TryParse(laneMatch.Groups[1].Value, out int laneNum))
             {
-                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Lane/Position pattern, index: {laneNum}");
+                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Lane/Position pattern matched, index: {laneNum}");
                 return laneNum;
             }
 
-            // Check for Nickname patterns
+            // Check for Nickname patterns with NextHeat, OnDeck, etc.
             var nameMatch = Regex.Match(fieldType, @"(?:NextHeatNickname|OnDeckNickname|Pos)(\d+)");
             if (nameMatch.Success && int.TryParse(nameMatch.Groups[1].Value, out int nameNum))
             {
-                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Nickname pattern, index: {nameNum}");
+                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Nickname pattern matched, index: {nameNum}");
                 return nameNum;
             }
 
@@ -277,7 +394,7 @@ namespace RCLayoutPreview.Helpers
             var simpleNumberMatch = Regex.Match(fieldType, @"^[A-Za-z]+(\d+)$");
             if (simpleNumberMatch.Success && int.TryParse(simpleNumberMatch.Groups[1].Value, out int simpleNum))
             {
-                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Simple numbered pattern, index: {simpleNum}");
+                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Simple numbered pattern matched, index: {simpleNum}");
                 return simpleNum;
             }
 
@@ -285,23 +402,32 @@ namespace RCLayoutPreview.Helpers
             var underscoreNumberMatch = Regex.Match(fieldType, @"_(\d+)$");
             if (underscoreNumberMatch.Success && int.TryParse(underscoreNumberMatch.Groups[1].Value, out int underscoreNum))
             {
-                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Underscore number pattern, index: {underscoreNum}");
+                Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Underscore number pattern matched, index: {underscoreNum}");
                 return underscoreNum;
             }
 
             // Use a hash of the field type for consistent color assignment as fallback
             var hash = Math.Abs(fieldType.GetHashCode());
             int fallbackIndex = (hash % 20) + 1;
-            Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - Using hash fallback, index: {fallbackIndex}");
+            Debug.WriteLine($"[GetPlayerIndex] '{fieldType}' - No pattern matched, using hash fallback, index: {fallbackIndex}");
             return fallbackIndex;
+        }
+
+        private static SolidColorBrush GetColor(int playerIndex)
+        {
+            // Use cached brush if available to improve performance
+            string key = $"Player{playerIndex}";
+            var brush = _brushCache.GetOrAdd(key, _ => new SolidColorBrush(GetPlayerColor(playerIndex)));
+            Debug.WriteLine($"[GetColor] Player index {playerIndex} maps to color: {brush.Color}");
+            return brush;
         }
 
         private static Color GetPlayerColor(int playerIndex)
         {
             // Map player index to a color (0-7)
             int colorIndex = (playerIndex - 1) % 8;
-
-            return colorIndex switch
+            
+            Color color = colorIndex switch
             {
                 0 => Color.FromRgb(192, 0, 0),      // Red
                 1 => Color.FromRgb(0, 112, 192),    // Blue
@@ -312,6 +438,9 @@ namespace RCLayoutPreview.Helpers
                 6 => Color.FromRgb(146, 208, 80),   // Light Green
                 _ => Color.FromRgb(255, 102, 0)     // Orange (for index 7 or fallback)
             };
+            
+            Debug.WriteLine($"[GetPlayerColor] Color index {colorIndex} maps to RGB color: ({color.R},{color.G},{color.B})");
+            return color;
         }
 
         public static string Preprocess(string rawXaml)

@@ -16,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml;
 using System.Windows.Controls.Primitives;
+using System.Diagnostics;
 
 namespace RCLayoutPreview
 {
@@ -557,11 +558,17 @@ namespace RCLayoutPreview
 
         private string FormatFieldNameWithSuffix(string fieldName)
         {
-            // Scan the entire editor text for existing field names with suffixes
+            // No need to try to extract the numeric suffix from the fieldName
+            // Simply use the fieldName as is and add the instance suffix
+            
+            // Scan the entire editor text for existing field names with instance suffixes
+            // e.g., "NextHeatNumber1_1", "NextHeatNumber1_2", etc.
             string text = Editor.Text;
-            // Regex to match fieldName_1, fieldName_2, etc.
-            var suffixRegex = new Regex($@"{Regex.Escape(fieldName)}_(\d+)");
+            string pattern = $@"{Regex.Escape(fieldName)}_(\d+)";
+
+            var suffixRegex = new Regex(pattern);
             var matches = suffixRegex.Matches(text);
+
             int maxSuffix = 0;
             foreach (Match match in matches)
             {
@@ -571,9 +578,15 @@ namespace RCLayoutPreview
                         maxSuffix = suffix;
                 }
             }
+
             // Next available suffix
             int nextSuffix = maxSuffix + 1;
-            return $"{fieldName}_{nextSuffix}";
+
+            // Format as fieldName_suffix
+            string result = $"{fieldName}_{nextSuffix}";
+
+            Debug.WriteLine($"[FormatFieldNameWithSuffix] Formatted field name: '{result}'");
+            return result;
         }
 
         private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
@@ -597,32 +610,44 @@ namespace RCLayoutPreview
             }
         }
 
-        private string GetCurrentIndentation()
+        private void CheckForValidFields(string content)
         {
-            // Get the current line
-            var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
-            if (line == null) return string.Empty;
-
-            // Extract text from the start of the line to the caret position
-            string lineText = Editor.Document.GetText(line.Offset, Math.Min(line.Length, Editor.CaretOffset - line.Offset));
-
-            // Extract only the whitespace at the beginning
-            return new string(lineText.TakeWhile(c => c == ' ' || c == '\t').ToArray());
+            if (PlaceholderSwapManager.ContainsValidField(content))
+            {
+                if (!fieldDetected)
+                {
+                    fieldDetected = true;
+                    string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
+                    string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
+                    LogStatus($"Field detected: {message ?? fieldName}");
+                    ValidFieldDetected?.Invoke(this, fieldName);
+                }
+            }
+            else
+            {
+                fieldDetected = false;
+            }
         }
 
-        private string ApplyIndentation(string text, string indentation)
+        private void PopulateJsonFieldsTree()
         {
-            // Split the text by newlines
-            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            if (jsonData == null) return;
 
-            // Apply indentation to each line except the first one (which will inherit the caret's indentation)
-            for (int i = 1; i < lines.Length; i++)
+            JsonFieldsTree.Items.Clear();
+
+            foreach (var property in jsonData.Properties())
             {
-                lines[i] = indentation + lines[i];
+                var groupItem = new TreeViewItem { Header = property.Name };
+                if (property.Value is JObject groupObj)
+                {
+                    foreach (var field in groupObj.Properties())
+                    {
+                        var fieldItem = new TreeViewItem { Header = field.Name };
+                        groupItem.Items.Add(fieldItem);
+                    }
+                }
+                JsonFieldsTree.Items.Add(groupItem);
             }
-
-            // Join the lines back together
-            return string.Join(Environment.NewLine, lines);
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
@@ -691,25 +716,32 @@ namespace RCLayoutPreview
             }
         }
 
-        private void PopulateJsonFieldsTree()
+        private string GetCurrentIndentation()
         {
-            if (jsonData == null) return;
+            // Get the current line
+            var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
+            if (line == null) return string.Empty;
 
-            JsonFieldsTree.Items.Clear();
+            // Extract text from the start of the line to the caret position
+            string lineText = Editor.Document.GetText(line.Offset, Math.Min(line.Length, Editor.CaretOffset - line.Offset));
 
-            foreach (var property in jsonData.Properties())
+            // Extract only the whitespace at the beginning
+            return new string(lineText.TakeWhile(c => c == ' ' || c == '\t').ToArray());
+        }
+
+        private string ApplyIndentation(string text, string indentation)
+        {
+            // Split the text by newlines
+            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+            // Apply indentation to each line except the first one (which will inherit the caret's indentation)
+            for (int i = 1; i < lines.Length; i++)
             {
-                var groupItem = new TreeViewItem { Header = property.Name };
-                if (property.Value is JObject groupObj)
-                {
-                    foreach (var field in groupObj.Properties())
-                    {
-                        var fieldItem = new TreeViewItem { Header = field.Name };
-                        groupItem.Items.Add(fieldItem);
-                    }
-                }
-                JsonFieldsTree.Items.Add(groupItem);
+                lines[i] = indentation + lines[i];
             }
+
+            // Join the lines back together
+            return string.Join(Environment.NewLine, lines);
         }
 
         private void PreviewButton_Click(object sender, RoutedEventArgs e)
@@ -748,25 +780,6 @@ namespace RCLayoutPreview
                 searchPanel = null;
             }
             base.OnClosed(e);
-        }
-
-        private void CheckForValidFields(string content)
-        {
-            if (PlaceholderSwapManager.ContainsValidField(content))
-            {
-                if (!fieldDetected)
-                {
-                    fieldDetected = true;
-                    string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
-                    string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
-                    LogStatus($"Field detected: {message ?? fieldName}");
-                    ValidFieldDetected?.Invoke(this, fieldName);
-                }
-            }
-            else
-            {
-                fieldDetected = false;
-            }
         }
     }
 }

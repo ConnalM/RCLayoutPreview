@@ -157,23 +157,25 @@ namespace RCLayoutPreview
                     return;
                 }
 
-                // Step 1: Clean placeholders
-                LogPerformance($"[{opId}] Step 1: Cleaning placeholders");
-                xamlContent = Regex.Replace(xamlContent, @"<([a-zA-Z0-9_]+)\s*([^>]*)?\{[a-zA-Z0-9_]+\}([^>]*)?>", 
-                    m => $"<!-- Invalid tag removed: {m.Value} -->");
-                xamlContent = Regex.Replace(xamlContent, @"\{[a-zA-Z0-9_]+\}", "");
+                // Step 1: Process placeholders if they exist
+                string processedXaml = xamlContent;
+                if (PlaceholderSwapManager.ContainsPlaceholder(xamlContent))
+                {
+                    processedXaml = PlaceholderSwapManager.RemovePlaceholder(xamlContent);
+                    placeholderRemoved = true;
+                }
 
-                // Step 2: Duplicate field name detection
-                LogPerformance($"[{opId}] Step 2: Duplicate name detection");
+                // Step 2: Check for duplicate field names
+                LogPerformance($"[{opId}] Step 2: Checking for duplicate names");
                 var nameRegex = new Regex(@"Name=""([^""]+)""");
-                var nameMatches = nameRegex.Matches(xamlContent);
+                var nameMatches = nameRegex.Matches(processedXaml);
                 var nameSet = new HashSet<string>();
                 var duplicateNames = new List<string>();
                 
                 foreach (Match match in nameMatches)
                 {
                     string name = match.Groups[1].Value;
-                    if (!string.IsNullOrWhiteSpace(name) && !name.StartsWith("Placeholder"))
+                    if (!string.IsNullOrWhiteSpace(name))
                     {
                         if (nameSet.Contains(name))
                             duplicateNames.Add(name);
@@ -192,49 +194,18 @@ namespace RCLayoutPreview
                 // Step 3: Clear previous content
                 LogPerformance($"[{opId}] Step 3: Clearing previous content");
                 PreviewHost.Content = null;
-                usedElementNames.Clear();
 
-                // Step 4: Process XAML
+                // Step 4: Process XAML and fix common issues
                 LogPerformance($"[{opId}] Step 4: Processing XAML");
-                string processedXaml = XamlFixer.Preprocess(xamlContent);
-                LogStatus("XAML processed for preview");
-
-                // Step 5: Fix common issues
-                LogPerformance($"[{opId}] Step 5: Fixing common issues");
+                processedXaml = XamlFixer.Preprocess(processedXaml);
+                
                 if (processedXaml.Contains("FontSize=\"\""))
                 {
                     processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
                 }
 
-                processedXaml = processedXaml.Replace("{styles}", "");
-                processedXaml = processedXaml.Replace("{content}", "");
-                processedXaml = EnsureUniqueElementNames(processedXaml);
-
-                // Step 6: Handle placeholders
-                LogPerformance($"[{opId}] Step 6: Handling placeholders");
-                if (PlaceholderSwapManager.ContainsValidField(processedXaml))
-                {
-                    try
-                    {
-                        string fieldMessage = PlaceholderSwapManager.GenerateFieldDetectedMessage(processedXaml);
-                        if (!string.IsNullOrEmpty(fieldMessage) && !placeholderRemoved)
-                        {
-                            LogStatus($"Field detected: {fieldMessage}");
-                            placeholderRemoved = true;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error generating field message: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    placeholderRemoved = false;
-                }
-
-                // Step 7: Ensure valid structure
-                LogPerformance($"[{opId}] Step 7: Ensuring valid structure");
+                // Step 5: Ensure valid structure
+                LogPerformance($"[{opId}] Step 5: Ensuring valid structure");
                 if (!IsValidRootElement(processedXaml))
                 {
                     processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
@@ -247,21 +218,12 @@ namespace RCLayoutPreview
                     processedXaml = Regex.Replace(processedXaml, $"<{rootTag}", $"<{rootTag} {xmlnsDeclaration}");
                 }
 
-                processedXaml = FixBindingExpressions(processedXaml);
-                
-                var emptyNameMatches = Regex.Matches(processedXaml, @"Name\s*=\s*""\s*""");
-                if (emptyNameMatches.Count > 0)
-                {
-                    processedXaml = Regex.Replace(processedXaml, @"Name\s*=\s*""\s*""", "");
-                }
-
-                // Step 8: Parse XAML
-                LogPerformance($"[{opId}] Step 8: Parsing XAML");
+                // Step 6: Parse XAML
+                LogPerformance($"[{opId}] Step 6: Parsing XAML");
                 object element = null;
                 try
                 {
                     element = XamlReader.Parse(processedXaml);
-                    LogStatus("XAML parsed successfully");
                 }
                 catch (Exception parseEx)
                 {
@@ -276,50 +238,20 @@ namespace RCLayoutPreview
                     using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(processedXaml)))
                     {
                         element = XamlReader.Load(stream, context);
-                        LogStatus("XAML parsed successfully with alternate method");
                     }
                 }
 
-                // Step 9: Handle parsed element
-                LogPerformance($"[{opId}] Step 9: Handling parsed element");
+                // Step 7: Handle parsed element and update fields
+                LogPerformance($"[{opId}] Step 7: Handling parsed element");
                 if (element is Window window)
                 {
-                    LogStatus("XAML contains a Window element");
                     var content = window.Content as FrameworkElement;
                     if (content != null)
                     {
-                        Debug.WriteLine($"[TryPreviewXaml] Window content extracted: {content.GetType().Name}");
-                        Debug.WriteLine($"[TryPreviewXaml] Window content is: {content}");
-                        
-                        // Check if the content has children BEFORE we extract it
-                        if (content is Panel panel)
-                        {
-                            Debug.WriteLine($"[TryPreviewXaml] Content Panel has {panel.Children.Count} children");
-                            for (int i = 0; i < panel.Children.Count; i++)
-                            {
-                                var child = panel.Children[i];
-                                Debug.WriteLine($"[TryPreviewXaml] Child {i}: {child.GetType().Name} - Name: '{(child as FrameworkElement)?.Name ?? "(no name)"}'");
-                            }
-                        }
-                        else if (content is ContentControl cc && cc.Content != null)
-                        {
-                            Debug.WriteLine($"[TryPreviewXaml] ContentControl contains: {cc.Content.GetType().Name}");
-                        }
-                        else
-                        {
-                            Debug.WriteLine($"[TryPreviewXaml] Content has no obvious children to traverse");
-                        }
-                        
                         AddHoverBehavior(content);
                         PreviewHost.Content = content;
                         content.DataContext = jsonData;
-                        
-                        LogPerformance($"[{opId}] About to update fields for Window content");
                         UpdatePreviewFields(content, opId);
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"[TryPreviewXaml] Window content is null or not a FrameworkElement");
                     }
                     ApplyWindowProperties(window);
                 }
@@ -327,22 +259,16 @@ namespace RCLayoutPreview
                 {
                     AddHoverBehavior(fe);
                     PreviewHost.Content = fe;
-                    LogStatus("Preview updated with parsed element");
                     fe.DataContext = jsonData;
-                    
-                    LogPerformance($"[{opId}] About to update fields for FrameworkElement");
                     UpdatePreviewFields(fe, opId);
                 }
                 
                 stopwatch.Stop();
                 LogPerformance($"[{opId}] TryPreviewXaml completed in {stopwatch.ElapsedMilliseconds}ms");
-                LogPerformance($"[{opId}] METHOD COMPLETED - RETURNING TO CALLER");
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                var error = $"[{opId}] Error previewing XAML after {stopwatch.ElapsedMilliseconds}ms: {ex.Message}\nStack: {ex.StackTrace}";
-                Debug.WriteLine(error);
                 LogStatus($"Preview error: {ex.Message}");
                 ShowErrorPopup($"Preview error: {ex.Message}");
             }
