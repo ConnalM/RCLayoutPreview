@@ -96,6 +96,13 @@ namespace RCLayoutPreview.Helpers
         {
             if (!string.IsNullOrEmpty(element.Name))
             {
+                // Add tooltip to display the element's name
+                if (string.IsNullOrEmpty(ToolTipService.GetToolTip(element)?.ToString()))
+                {
+                    ToolTipService.SetToolTip(element, element.Name);
+                    Debug.WriteLine($"Tooltip set for element: {element.Name}");
+                }
+
                 // Get position from parent tag if available
                 int position = 1;
                 var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
