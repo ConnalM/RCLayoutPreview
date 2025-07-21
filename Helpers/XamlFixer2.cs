@@ -94,7 +94,7 @@ namespace RCLayoutPreview.Helpers
 
         private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
         {
-            // Set tooltip for all named elements
+            // Set tooltip for all named elements (including containers)
             if (!string.IsNullOrEmpty(element.Name))
             {
                 if (ToolTipService.GetToolTip(element) == null)
@@ -106,17 +106,173 @@ namespace RCLayoutPreview.Helpers
                     element.MouseEnter += (s, e) => { tooltip.IsOpen = true; };
                     element.MouseLeave += (s, e) => { tooltip.IsOpen = false; };
                 }
+                // If debugMode and element is a container, set a semi-transparent background for hit testing
+                if (debugMode && (element is Grid || element is Viewbox || element is DockPanel || element is Border || element is StackPanel))
+                {
+                    var prop = element.GetType().GetProperty("Background");
+                    if (prop != null && prop.CanWrite)
+                    {
+                        var currentBg = prop.GetValue(element);
+                        if (currentBg == null || (currentBg is SolidColorBrush brush && brush.Color.A == 0))
+                        {
+                            prop.SetValue(element, new SolidColorBrush(Color.FromArgb(32, 0, 0, 0)));
+                        }
+                    }
+                }
+
+                // Get position from parent tag if available
+                int position = 1;
+                var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
+                if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
+                {
+                    position = pos;
+                }
+
+                // First check if this is a placeholder element
+                if (element.Name.StartsWith("Placeholder"))
+                {
+                    // Get initial value from Content/Text property
+                    string initialValue = "";
+                    if (element is Label lbl)
+                    {
+                        initialValue = lbl.Content?.ToString() ?? "";
+                    }
+                    else if (element is TextBlock tb1)
+                    {
+                        initialValue = tb1.Text ?? "";
+                    }
+
+                    // Apply formatting if needed
+                    if (initialValue.Contains("{0}"))
+                    {
+                        initialValue = string.Format(initialValue, position);
+                    }
+
+                    // Apply styling
+                    if (element is TextBlock textBlock)
+                    {
+                        textBlock.Text = initialValue;
+                        textBlock.Background = new SolidColorBrush(Colors.Black);
+                        textBlock.Foreground = new SolidColorBrush(Colors.White);
+                    }
+                    else if (element is Label label)
+                    {
+                        label.Content = initialValue;
+                        label.Background = new SolidColorBrush(Colors.Black);
+                        label.Foreground = new SolidColorBrush(Colors.White);
+                    }
+                }
+                else if (FieldNameParser.TryParse(element.Name, out var parsedField))
+                {
+                    // --- Begin: Normalize field name for lookup ---
+                    string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
+                    JToken value = null;
+                    string foundGroup = null;
+                    if (jsonData["RacerData"] is JObject racerData)
+                    {
+                        if (racerData.TryGetValue(parsedField.FieldType, out value) ||
+                            racerData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "RacerData";
+                        }
+                    }
+                    if (value == null && jsonData["GenericData"] is JObject genericData)
+                    {
+                        if (genericData.TryGetValue(parsedField.FieldType, out value) ||
+                            genericData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "GenericData";
+                        }
+                    }
+                    if (value == null && jsonData["Actions"] is JObject actionsData)
+                    {
+                        if (actionsData.TryGetValue(parsedField.FieldType, out value) ||
+                            actionsData.TryGetValue(normalizedFieldType, out value))
+                        {
+                            foundGroup = "Actions";
+                        }
+                    }
+                    // --- End: Normalize field name for lookup ---
+
+                    // Always set default foreground to white for preview
+                    if (element is TextBlock textBlock)
+                    {
+                        textBlock.Foreground = new SolidColorBrush(Colors.White);
+                    }
+                    else if (element is Label label)
+                    {
+                        label.Foreground = new SolidColorBrush(Colors.White);
+                    }
+
+                    if (debugMode)
+                    {
+                        // Diagnostics mode: show field name only
+                        string displayText = parsedField.FieldType;
+                        if (element is TextBlock tb2)
+                        {
+                            tb2.Text = displayText;
+                        }
+                        else if (element is Label lbl)
+                        {
+                            lbl.Content = displayText;
+                        }
+                        else if (element is ContentControl contentControl)
+                        {
+                            contentControl.Content = displayText;
+                        }
+                    }
+                    else if (value != null)
+                    {
+                        // Normal mode: show value
+                        string displayText = value.ToString();
+                        if (foundGroup == "RacerData")
+                        {
+                            int playerIndex = GetPlayerIndex(parsedField.FieldType);
+                            var colorBrush = GetColor(playerIndex);
+
+                            if (element is TextBlock tb3)
+                            {
+                                tb3.Text = displayText;
+                                tb3.Background = colorBrush;
+                            }
+                            else if (element is Label lbl)
+                            {
+                                lbl.Content = displayText;
+                                lbl.Background = colorBrush;
+                            }
+                            else if (element is ContentControl contentControl)
+                            {
+                                contentControl.Content = displayText;
+                            }
+                        }
+                        else
+                        {
+                            if (element is TextBlock tb4)
+                            {
+                                tb4.Text = displayText;
+                            }
+                            else if (element is Label lbl)
+                            {
+                                lbl.Content = displayText;
+                            }
+                            else if (element is ContentControl contentControl)
+                            {
+                                contentControl.Content = displayText;
+                            }
+                        }
+                    }
+                }
             }
             // For all TextBlocks (even unnamed), show tooltip with their text content for diagnostics
-            if (element is TextBlock tb && string.IsNullOrEmpty(tb.Name))
+            if (element is TextBlock tbDiag && string.IsNullOrEmpty(tbDiag.Name))
             {
-                if (ToolTipService.GetToolTip(tb) == null && !string.IsNullOrEmpty(tb.Text))
+                if (ToolTipService.GetToolTip(tbDiag) == null && !string.IsNullOrEmpty(tbDiag.Text))
                 {
-                    var tooltip = new ToolTip { Content = tb.Text };
-                    ToolTipService.SetToolTip(tb, tooltip);
-                    tb.IsHitTestVisible = true;
-                    tb.MouseEnter += (s, e) => { tooltip.IsOpen = true; };
-                    tb.MouseLeave += (s, e) => { tooltip.IsOpen = false; };
+                    var tooltip = new ToolTip { Content = tbDiag.Text };
+                    ToolTipService.SetToolTip(tbDiag, tooltip);
+                    tbDiag.IsHitTestVisible = true;
+                    tbDiag.MouseEnter += (s, e) => { tooltip.IsOpen = true; };
+                    tbDiag.MouseLeave += (s, e) => { tooltip.IsOpen = false; };
                 }
             }
             // Recursively process children
