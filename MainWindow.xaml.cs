@@ -53,7 +53,7 @@ namespace RCLayoutPreview
             if (PreviewHost?.Content is FrameworkElement frameworkElement)
             {
                 frameworkElement.DataContext = jsonData;
-                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
             }
         }
 
@@ -112,7 +112,7 @@ namespace RCLayoutPreview
                 usedElementNames.Clear();
 
                 // Process the XAML through any utility methods
-                string processedXaml = XamlFixer.Preprocess(xamlContent);
+                string processedXaml = XamlFixer2.Preprocess(xamlContent);
                 LogStatus("XAML processed for preview");
 
                 // Fix common XAML issues
@@ -231,7 +231,14 @@ namespace RCLayoutPreview
                     LogStatus("XAML contains a Window element. Extracting content.");
                     PreviewHost.Content = null; // Clear existing content
                     PreviewHost.Content = window.Content; // Use the Window's content
-
+                    // Ensure tooltips can show
+                    PreviewHost.IsHitTestVisible = true;
+                    PreviewHost.IsEnabled = true;
+                    if (window.Content is FrameworkElement fe)
+                    {
+                        fe.IsHitTestVisible = true;
+                        fe.IsEnabled = true;
+                    }
                     // Apply Window properties to the preview
                     if (window.Title != null)
                     {
@@ -262,13 +269,21 @@ namespace RCLayoutPreview
                 {
                     PreviewHost.Content = element; // Use the parsed element directly
                     LogStatus("Preview updated with parsed element.");
+                    // Ensure tooltips can show
+                    PreviewHost.IsHitTestVisible = true;
+                    PreviewHost.IsEnabled = true;
+                    if (element is FrameworkElement fe)
+                    {
+                        fe.IsHitTestVisible = true;
+                        fe.IsEnabled = true;
+                    }
                 }
 
                 // Always apply diagnostics mode after preview update
                 if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
                 {
                     frameworkElement.DataContext = jsonData;
-                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                    XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
             }
             catch (XamlParseException ex)
@@ -426,7 +441,7 @@ namespace RCLayoutPreview
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
-                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
+                XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, debugMode);
                 PreviewHost.Content = null; // Clear the content
                 PreviewHost.Content = frameworkElement; // Reapply the content
                 LogStatus("Preview refreshed with updated diagnostics mode.");
