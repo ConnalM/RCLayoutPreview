@@ -475,29 +475,14 @@ namespace RCLayoutPreview
             }
         }
 
-        private FrameworkElement DeepHitTestForNamedElement(Point pt)
-        {
-            var results = new List<FrameworkElement>();
-            VisualTreeHelper.HitTest(PreviewHost, null,
-                new HitTestResultCallback(hit =>
-                {
-                    if (hit.VisualHit is FrameworkElement fe)
-                    {
-                        // Only consider visible, hit-testable, non-zero opacity elements
-                        if (!string.IsNullOrEmpty(fe.Name) && fe.IsHitTestVisible && fe.Opacity > 0)
-                            results.Add(fe);
-                    }
-                    return HitTestResultBehavior.Continue;
-                }),
-                new PointHitTestParameters(pt));
-            // Return the deepest (last) named element
-            return results.Count > 0 ? results[results.Count - 1] : null;
-        }
-
         private void PreviewHost_SafeMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
-            var pt = e.GetPosition(PreviewHost);
-            FrameworkElement namedElement = DeepHitTestForNamedElement(pt);
+            var hitTestResult = VisualTreeHelper.HitTest(PreviewHost, e.GetPosition(PreviewHost));
+            FrameworkElement namedElement = null;
+            if (hitTestResult?.VisualHit is FrameworkElement element)
+            {
+                namedElement = FindNamedChildElement(element);
+            }
             if (namedElement != null)
             {
                 if (namedElement != currentHighlightedElement)
@@ -517,7 +502,7 @@ namespace RCLayoutPreview
                     };
                 }
                 // Show tooltip and always update its position
-                ShowElementTooltip(namedElement, pt);
+                ShowElementTooltip(namedElement, e.GetPosition(PreviewHost));
                 e.Handled = true;
             }
             else
