@@ -91,7 +91,7 @@
     <Compile Include="Helpers\PlaceholderSwapManager.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\XamlDesignSafePreParser.cs" />
-    <Compile Include="Helpers\XamlFixer2.cs" />
+    <Compile Include="Helpers\XamlFixer.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

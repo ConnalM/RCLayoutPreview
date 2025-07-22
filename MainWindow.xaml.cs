@@ -56,7 +56,7 @@ namespace RCLayoutPreview
             if (PreviewHost?.Content is FrameworkElement frameworkElement)
             {
                 frameworkElement.DataContext = jsonData;
-                XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
             }
         }
 
@@ -115,7 +115,7 @@ namespace RCLayoutPreview
                 usedElementNames.Clear();
 
                 // Process the XAML through any utility methods
-                string processedXaml = XamlFixer2.Preprocess(xamlContent);
+                string processedXaml = XamlFixer.Preprocess(xamlContent);
                 LogStatus("XAML processed for preview");
 
                 // Fix common XAML issues
@@ -286,7 +286,7 @@ namespace RCLayoutPreview
                 if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
                 {
                     frameworkElement.DataContext = jsonData;
-                    XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
                 // Attach hover behavior for tooltips
                 AddHoverBehavior();
@@ -446,7 +446,7 @@ namespace RCLayoutPreview
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
-                XamlFixer2.ProcessNamedFields(frameworkElement, jsonData, debugMode);
+                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
                 PreviewHost.Content = null; // Clear the content
                 PreviewHost.Content = frameworkElement; // Reapply the content
                 LogStatus("Preview refreshed with updated diagnostics mode.");
