@@ -36,6 +36,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Dirkster.AvalonDock.Themes.Metro">
+      <Version>4.72.1</Version>
+    </PackageReference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -91,7 +94,7 @@
     <Compile Include="Helpers\PlaceholderSwapManager.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\XamlDesignSafePreParser.cs" />
-    <Compile Include="Helpers\XamlFixer.cs" />
+    <Compile Include="Helpers\XamlFixer2.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

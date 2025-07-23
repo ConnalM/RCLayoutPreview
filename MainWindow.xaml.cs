@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using RCLayoutPreview.Helpers;
+﻿using RCLayoutPreview.Helpers;
+using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
 using System.Windows;
@@ -56,7 +56,67 @@ namespace RCLayoutPreview
             if (PreviewHost?.Content is FrameworkElement frameworkElement)
             {
                 frameworkElement.DataContext = jsonData;
-                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                // Modular field/placeholder processing
+                ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+            }
+        }
+
+        // Modular field/placeholder processing method
+        private void ProcessFieldsAndPlaceholders(FrameworkElement rootElement, JObject jsonData, bool debugMode)
+        {
+            if (rootElement == null) return;
+            // Recursively process all children
+            ProcessElementRecursively(rootElement, jsonData, debugMode);
+        }
+
+        // Recursively process each element for placeholder and stubdata field logic
+        private void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
+        {
+            if (element == null) return;
+            // Ensure hit-testable for tooltips
+            if (!string.IsNullOrEmpty(element.Name))
+            {
+                if (element is Label lbl)
+                {
+                    lbl.IsHitTestVisible = true;
+                    if (lbl.Background == null || (lbl.Background is SolidColorBrush b && b.Color.A == 0))
+                        lbl.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+                }
+                else if (element is TextBlock tb)
+                {
+                    tb.IsHitTestVisible = true;
+                    if (tb.Background == null || (tb.Background is SolidColorBrush b && b.Color.A == 0))
+                        tb.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+                }
+                else if (element is Button btn && btn.Opacity == 0)
+                {
+                    btn.IsHitTestVisible = false;
+                }
+            }
+            // Get position from parent tag if available
+            int position = 1;
+            var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
+            if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
+            {
+                position = pos;
+            }
+            // Handle placeholders
+            if (PlaceholderHandler.IsPlaceholderElement(element))
+            {
+                PlaceholderHandler.DisplayPlaceholder(element, position);
+            }
+            // Handle stubdata fields
+            else if (StubDataFieldHandler.IsStubDataField(element))
+            {
+                StubDataFieldHandler.DisplayStubDataField(element, jsonData, debugMode);
+            }
+            // Recursively process children
+            foreach (var child in LogicalTreeHelper.GetChildren(element))
+            {
+                if (child is FrameworkElement childElement)
+                {
+                    ProcessElementRecursively(childElement, jsonData, debugMode);
+                }
             }
         }
 
@@ -286,7 +346,8 @@ namespace RCLayoutPreview
                 if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
                 {
                     frameworkElement.DataContext = jsonData;
-                    XamlFixer.ProcessNamedFields(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                    // Modular field/placeholder processing
+                    ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
                 // Attach hover behavior for tooltips
                 AddHoverBehavior();
@@ -446,7 +507,8 @@ namespace RCLayoutPreview
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
-                XamlFixer.ProcessNamedFields(frameworkElement, jsonData, debugMode);
+                // Modular field/placeholder processing
+                ProcessFieldsAndPlaceholders(frameworkElement, jsonData, debugMode);
                 PreviewHost.Content = null; // Clear the content
                 PreviewHost.Content = frameworkElement; // Reapply the content
                 LogStatus("Preview refreshed with updated diagnostics mode.");

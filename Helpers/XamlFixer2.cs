@@ -11,10 +11,20 @@ using System.Collections.Generic;
 
 namespace RCLayoutPreview.Helpers
 {
+    /// <summary>
+    /// Handles generic XAML preprocessing and attribute cleanup.
+    /// This class should only contain logic that is not specific to placeholders or stubdata fields.
+    /// </summary>
     public static class XamlFixer
     {
         private static Dictionary<string, LayoutSnippet> snippetCache;
 
+        /// <summary>
+        /// Preprocesses raw XAML string to ensure it is valid and well-formed for WPF parsing.
+        /// Adds missing root and namespaces, and cleans up invalid attributes.
+        /// </summary>
+        /// <param name="rawXaml">Raw XAML string</param>
+        /// <returns>Processed XAML string</returns>
         public static string Preprocess(string rawXaml)
         {
             if (string.IsNullOrWhiteSpace(rawXaml))
@@ -61,6 +71,9 @@ namespace RCLayoutPreview.Helpers
             }
         }
 
+        /// <summary>
+        /// Checks if a VerticalAlignment value is valid for StackPanel.
+        /// </summary>
         private static bool IsAllowedAlignment(string value)
         {
             return value switch
@@ -69,224 +82,172 @@ namespace RCLayoutPreview.Helpers
                 _ => false
             };
         }
+    }
 
-        public static void ProcessNamedFields(FrameworkElement rootElement, JObject jsonData, bool debugMode)
+    /// <summary>
+    /// Handles detection, lookup, and display of placeholder elements in XAML.
+    /// This class is completely independent of stubdata field logic.
+    /// </summary>
+    public static class PlaceholderHandler
+    {
+        /// <summary>
+        /// Determines if the given FrameworkElement is a placeholder (by name convention).
+        /// </summary>
+        public static bool IsPlaceholderElement(FrameworkElement element)
         {
-            if (rootElement == null || jsonData == null)
-                throw new ArgumentNullException("Root element or JSON data cannot be null.");
-
-            Debug.WriteLine("[ProcessNamedFields] Starting field processing...");
-            ProcessElementRecursively(rootElement, jsonData, debugMode);
-            Debug.WriteLine("[ProcessNamedFields] Field processing completed.");
+            return element != null && !string.IsNullOrEmpty(element.Name) && element.Name.StartsWith("Placeholder");
         }
 
-        private static LayoutSnippet GetSnippetByName(string name)
+        /// <summary>
+        /// Displays the placeholder value in the element, using position if needed.
+        /// </summary>
+        public static void DisplayPlaceholder(FrameworkElement element, int position = 1)
         {
-            if (snippetCache == null)
+            if (element == null) return;
+            string initialValue = "";
+            // Get the initial value from the element
+            if (element is Label lbl)
+                initialValue = lbl.Content?.ToString() ?? "";
+            else if (element is TextBlock tb)
+                initialValue = tb.Text ?? "";
+            // Replace {0} with position if present
+            if (initialValue.Contains("{0}"))
+                initialValue = string.Format(initialValue, position);
+            // Set the value and style for preview
+            if (element is TextBlock textBlock)
             {
-                // Cache all snippets by name for faster lookup
-                snippetCache = LayoutSnippet.GetDefaultSnippets()
-                    .ToDictionary(s => s.Name, s => s);
+                textBlock.Text = initialValue;
+                textBlock.Background = new SolidColorBrush(Colors.Black);
+                textBlock.Foreground = new SolidColorBrush(Colors.White);
             }
+            else if (element is Label label)
+            {
+                label.Content = initialValue;
+                label.Background = new SolidColorBrush(Colors.Black);
+                label.Foreground = new SolidColorBrush(Colors.White);
+            }
+        }
+    }
 
-            return snippetCache.TryGetValue(name, out var snippet) ? snippet : null;
+    /// <summary>
+    /// Handles detection, lookup, and display of stubdata5 (JSON) fields in XAML.
+    /// This class is completely independent of placeholder logic.
+    /// </summary>
+    public static class StubDataFieldHandler
+    {
+        /// <summary>
+        /// Determines if the given FrameworkElement is a stubdata field (by parsing its name).
+        /// </summary>
+        public static bool IsStubDataField(FrameworkElement element)
+        {
+            return element != null && FieldNameParser.TryParse(element.Name, out _);
         }
 
-        private static void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
+        /// <summary>
+        /// Looks up the field value in the provided JSON and displays it in the element.
+        /// </summary>
+        public static void DisplayStubDataField(FrameworkElement element, JObject jsonData, bool debugMode)
         {
-            // Ensure all field elements are hit-testable and have a nearly transparent background for hit testing
-            if (!string.IsNullOrEmpty(element.Name))
+            if (element == null || jsonData == null) return;
+            if (!FieldNameParser.TryParse(element.Name, out var parsedField)) return;
+            string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
+            JToken value = null;
+            string foundGroup = null;
+            // Try to find the value in RacerData, GenericData, or Actions
+            if (jsonData["RacerData"] is JObject racerData)
             {
-                if (element is Label lbl)
+                if (racerData.TryGetValue(parsedField.FieldType, out value) ||
+                    racerData.TryGetValue(normalizedFieldType, out value))
                 {
-                    lbl.IsHitTestVisible = true;
-                    if (lbl.Background == null || (lbl.Background is SolidColorBrush b && b.Color.A == 0))
-                        lbl.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)); // almost transparent
-                }
-                else if (element is TextBlock tb)
-                {
-                    tb.IsHitTestVisible = true;
-                    if (tb.Background == null || (tb.Background is SolidColorBrush b && b.Color.A == 0))
-                        tb.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
-                }
-                else if (element is Button btn && btn.Opacity == 0)
-                {
-                    btn.IsHitTestVisible = false; // invisible buttons should not block hit testing
+                    foundGroup = "RacerData";
                 }
             }
-            // Remove static tooltip logic; rely on dynamic tooltips in MainWindow.xaml.cs
-            // Only process field values and placeholder logic
-            if (!string.IsNullOrEmpty(element.Name))
+            if (value == null && jsonData["GenericData"] is JObject genericData)
             {
-                // Get position from parent tag if available
-                int position = 1;
-                var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
-                if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
+                if (genericData.TryGetValue(parsedField.FieldType, out value) ||
+                    genericData.TryGetValue(normalizedFieldType, out value))
                 {
-                    position = pos;
-                }
-                // First check if this is a placeholder element
-                if (element.Name.StartsWith("Placeholder"))
-                {
-                    string initialValue = "";
-                    if (element is Label lbl)
-                    {
-                        initialValue = lbl.Content?.ToString() ?? "";
-                    }
-                    else if (element is TextBlock tb1)
-                    {
-                        initialValue = tb1.Text ?? "";
-                    }
-                    if (initialValue.Contains("{0}"))
-                    {
-                        initialValue = string.Format(initialValue, position);
-                    }
-                    if (element is TextBlock textBlock)
-                    {
-                        textBlock.Text = initialValue;
-                        textBlock.Background = new SolidColorBrush(Colors.Black);
-                        textBlock.Foreground = new SolidColorBrush(Colors.White);
-                    }
-                    else if (element is Label label)
-                    {
-                        label.Content = initialValue;
-                        label.Background = new SolidColorBrush(Colors.Black);
-                        label.Foreground = new SolidColorBrush(Colors.White);
-                    }
-                }
-                else if (FieldNameParser.TryParse(element.Name, out var parsedField))
-                {
-                    string normalizedFieldType = Regex.Replace(parsedField.FieldType, @"(_\d+)$", "");
-                    JToken value = null;
-                    string foundGroup = null;
-                    if (jsonData["RacerData"] is JObject racerData)
-                    {
-                        if (racerData.TryGetValue(parsedField.FieldType, out value) ||
-                            racerData.TryGetValue(normalizedFieldType, out value))
-                        {
-                            foundGroup = "RacerData";
-                        }
-                    }
-                    if (value == null && jsonData["GenericData"] is JObject genericData)
-                    {
-                        if (genericData.TryGetValue(parsedField.FieldType, out value) ||
-                            genericData.TryGetValue(normalizedFieldType, out value))
-                        {
-                            foundGroup = "GenericData";
-                        }
-                    }
-                    if (value == null && jsonData["Actions"] is JObject actionsData)
-                    {
-                        if (actionsData.TryGetValue(parsedField.FieldType, out value) ||
-                            actionsData.TryGetValue(normalizedFieldType, out value))
-                        {
-                            foundGroup = "Actions";
-                        }
-                    }
-                    // --- End: Normalize field name for lookup ---
-
-                    // Always set default foreground to white for preview
-                    if (element is TextBlock textBlock)
-                    {
-                        textBlock.Foreground = new SolidColorBrush(Colors.White);
-                    }
-                    else if (element is Label label)
-                    {
-                        label.Foreground = new SolidColorBrush(Colors.White);
-                    }
-
-                    if (debugMode)
-                    {
-                        // Diagnostics mode: show field name only
-                        string displayText = parsedField.FieldType;
-                        if (element is TextBlock tb2)
-                        {
-                            tb2.Text = displayText;
-                        }
-                        else if (element is Label lbl)
-                        {
-                            lbl.Content = displayText;
-                        }
-                        else if (element is ContentControl contentControl)
-                        {
-                            contentControl.Content = displayText;
-                        }
-                    }
-                    else if (value != null)
-                    {
-                        // Normal mode: show value
-                        string displayText = value.ToString();
-                        if (foundGroup == "RacerData")
-                        {
-                            int playerIndex = GetPlayerIndex(parsedField.FieldType);
-                            var colorBrush = GetColor(playerIndex);
-
-                            if (element is TextBlock tb3)
-                            {
-                                tb3.Text = displayText;
-                                tb3.Background = colorBrush;
-                            }
-                            else if (element is Label lbl)
-                            {
-                                lbl.Content = displayText;
-                                lbl.Background = colorBrush;
-                            }
-                            else if (element is ContentControl contentControl)
-                            {
-                                contentControl.Content = displayText;
-                            }
-                        }
-                        else
-                        {
-                            if (element is TextBlock tb4)
-                            {
-                                tb4.Text = displayText;
-                            }
-                            else if (element is Label lbl)
-                            {
-                                lbl.Content = displayText;
-                            }
-                            else if (element is ContentControl contentControl)
-                            {
-                                contentControl.Content = displayText;
-                            }
-                        }
-                    }
+                    foundGroup = "GenericData";
                 }
             }
-            // Recursively process children
-            foreach (var child in LogicalTreeHelper.GetChildren(element))
+            if (value == null && jsonData["Actions"] is JObject actionsData)
             {
-                if (child is FrameworkElement childElement)
+                if (actionsData.TryGetValue(parsedField.FieldType, out value) ||
+                    actionsData.TryGetValue(normalizedFieldType, out value))
                 {
-                    ProcessElementRecursively(childElement, jsonData, debugMode);
+                    foundGroup = "Actions";
+                }
+            }
+            // Always set default foreground to white for preview
+            if (element is TextBlock textBlock)
+                textBlock.Foreground = new SolidColorBrush(Colors.White);
+            else if (element is Label label)
+                label.Foreground = new SolidColorBrush(Colors.White);
+            // Display diagnostics mode (field name only)
+            if (debugMode)
+            {
+                string displayText = parsedField.FieldType;
+                if (element is TextBlock tb2)
+                    tb2.Text = displayText;
+                else if (element is Label lbl)
+                    lbl.Content = displayText;
+                else if (element is ContentControl contentControl)
+                    contentControl.Content = displayText;
+            }
+            // Display actual value if found
+            else if (value != null)
+            {
+                string displayText = value.ToString();
+                if (foundGroup == "RacerData")
+                {
+                    int playerIndex = GetPlayerIndex(parsedField.FieldType);
+                    var colorBrush = GetColor(playerIndex);
+                    if (element is TextBlock tb3)
+                    {
+                        tb3.Text = displayText;
+                        tb3.Background = colorBrush;
+                    }
+                    else if (element is Label lbl)
+                    {
+                        lbl.Content = displayText;
+                        lbl.Background = colorBrush;
+                    }
+                    else if (element is ContentControl contentControl)
+                    {
+                        contentControl.Content = displayText;
+                    }
+                }
+                else
+                {
+                    if (element is TextBlock tb4)
+                        tb4.Text = displayText;
+                    else if (element is Label lbl)
+                        lbl.Content = displayText;
+                    else if (element is ContentControl contentControl)
+                        contentControl.Content = displayText;
                 }
             }
         }
-        
+
+        /// <summary>
+        /// Gets the player index from the field type for color assignment.
+        /// </summary>
         private static int GetPlayerIndex(string fieldType)
         {
-            // Match patterns like Lane1, Position2, RaceLeader3, etc.
             var laneMatch = Regex.Match(fieldType, @"(?:Lane|Position|RaceLeader|SeasonLeader|SeasonRaceLeader)(\d+)");
             if (laneMatch.Success && int.TryParse(laneMatch.Groups[1].Value, out int laneNum))
-            {
                 return laneNum;
-            }
-
-            // Match patterns like NextHeatNickname1, OnDeckNickname2, etc.
             var nameMatch = Regex.Match(fieldType, @"(?:NextHeatNickname|OnDeckNickname|Pos)(\d+)");
             if (nameMatch.Success && int.TryParse(nameMatch.Groups[1].Value, out int nameNum))
-            {
                 return nameNum;
-            }
-
-            // If no specific pattern matches, use a hash of the field type for a consistent color
             return Math.Abs(fieldType.GetHashCode() % 20) + 1;
         }
-        
+
+        /// <summary>
+        /// Gets a color brush for the player index.
+        /// </summary>
         private static SolidColorBrush GetColor(int playerIndex)
         {
-            // Use a fixed set of distinct colors for players
             switch ((playerIndex - 1) % 8)
             {
                 case 0: return new SolidColorBrush(Color.FromRgb(192, 0, 0));      // Red
