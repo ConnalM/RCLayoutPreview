@@ -41,7 +41,6 @@ namespace RCLayoutPreview
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
-        public event EventHandler<string> ValidFieldDetected;
 
         public EditorWindow(MainWindow previewWindow)
         {

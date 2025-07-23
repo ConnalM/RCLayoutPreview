@@ -26,7 +26,6 @@ namespace RCLayoutPreview.Controls
         private TextEditor editor;
 
         public event PropertyChangedEventHandler PropertyChanged;
-        public event EventHandler<LayoutSnippet> SnippetSelected;
 
         public string SearchText
         {

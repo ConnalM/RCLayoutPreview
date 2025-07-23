@@ -20,38 +20,33 @@ namespace RCLayoutPreview.Helpers
         {
             return element != null && !string.IsNullOrEmpty(element.Name) && !element.Name.StartsWith("Placeholder");
         }
-        public static void DisplayStubDataField(System.Windows.FrameworkElement element, JObject jsonData, bool debugMode)
+        public static void DisplayStubDataField(System.Windows.FrameworkElement element, JObject jsonData, bool debugMode, string normalizedFieldName)
         {
             if (element == null || jsonData == null) return;
-            string fieldName = element.Name;
-            // Use EditorWindow.RemoveFieldSuffix to get base field name for lookup
-            string baseFieldName = fieldName;
-            // Try to remove suffix if present
-            baseFieldName = System.Text.RegularExpressions.Regex.Replace(fieldName, "_\\d+$", "");
             JToken value = null;
             string foundGroup = null;
             bool found = false;
-            Debug.WriteLine($"[StubDataFieldHandler] Looking up field: {baseFieldName}");
-            UILogStatus?.Invoke($"Looking up field: {baseFieldName}");
+            Debug.WriteLine($"[StubDataFieldHandler] Looking up field: {normalizedFieldName}");
+            UILogStatus?.Invoke($"Looking up field: {normalizedFieldName}");
             // Search all top-level groups for the field
             foreach (var prop in jsonData.Properties())
             {
                 if (prop.Value is JObject group)
                 {
-                    if (group.TryGetValue(baseFieldName, out value))
+                    if (group.TryGetValue(normalizedFieldName, out value))
                     {
                         foundGroup = prop.Name;
                         found = true;
-                        Debug.WriteLine($"[StubDataFieldHandler] Found field '{baseFieldName}' in group '{foundGroup}'.");
-                        UILogStatus?.Invoke($"Found field '{baseFieldName}' in group '{foundGroup}'.");
+                        Debug.WriteLine($"[StubDataFieldHandler] Found field '{normalizedFieldName}' in group '{foundGroup}'.");
+                        UILogStatus?.Invoke($"Found field '{normalizedFieldName}' in group '{foundGroup}'.");
                         break;
                     }
                 }
             }
             if (!found)
             {
-                Debug.WriteLine($"[StubDataFieldHandler] Field '{baseFieldName}' not found in any stubdata group.");
-                UILogStatus?.Invoke($"Field '{baseFieldName}' not found in any stubdata group.");
+                Debug.WriteLine($"[StubDataFieldHandler] Field '{normalizedFieldName}' not found in any stubdata group.");
+                UILogStatus?.Invoke($"Field '{normalizedFieldName}' not found in any stubdata group.");
             }
             if (element is TextBlock textBlock)
                 textBlock.Foreground = new SolidColorBrush(Colors.White);
@@ -59,7 +54,7 @@ namespace RCLayoutPreview.Helpers
                 label.Foreground = new SolidColorBrush(Colors.White);
             if (debugMode)
             {
-                string displayText = fieldName;
+                string displayText = normalizedFieldName;
                 if (element is TextBlock tb2)
                     tb2.Text = displayText;
                 else if (element is Label lbl)
@@ -70,19 +65,44 @@ namespace RCLayoutPreview.Helpers
             else if (value != null)
             {
                 string displayText = value.ToString();
-                if (element is TextBlock tb3)
+                // Assign background color only for Nickname fields with a trailing number
+                var nicknameMatch = System.Text.RegularExpressions.Regex.Match(normalizedFieldName, @"^(NextHeatNickname|OnDeckNickname|Pos)(\d+)$");
+                if (nicknameMatch.Success)
                 {
-                    tb3.Text = displayText;
-                    tb3.Background = new SolidColorBrush(Colors.Black);
+                    int playerIndex = int.Parse(nicknameMatch.Groups[2].Value);
+                    var colorBrush = RCLayoutPreview.Helpers.XamlFixer.GetColor(playerIndex);
+                    if (element is TextBlock tb3)
+                    {
+                        tb3.Text = displayText;
+                        tb3.Background = colorBrush;
+                    }
+                    else if (element is Label lbl)
+                    {
+                        lbl.Content = displayText;
+                        lbl.Background = colorBrush;
+                    }
+                    else if (element is ContentControl contentControl)
+                    {
+                        contentControl.Content = displayText;
+                    }
                 }
-                else if (element is Label lbl)
+                else
                 {
-                    lbl.Content = displayText;
-                    lbl.Background = new SolidColorBrush(Colors.Black);
-                }
-                else if (element is ContentControl contentControl)
-                {
-                    contentControl.Content = displayText;
+                    // No background color for other fields
+                    if (element is TextBlock tb3)
+                    {
+                        tb3.Text = displayText;
+                        tb3.Background = null;
+                    }
+                    else if (element is Label lbl)
+                    {
+                        lbl.Content = displayText;
+                        lbl.Background = null;
+                    }
+                    else if (element is ContentControl contentControl)
+                    {
+                        contentControl.Content = displayText;
+                    }
                 }
             }
         }

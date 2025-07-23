@@ -284,7 +284,7 @@ namespace RCLayoutPreview.Helpers
             return Math.Abs(fieldType.GetHashCode() % 20) + 1;
         }
 
-        private static SolidColorBrush GetColor(int playerIndex)
+        public static SolidColorBrush GetColor(int playerIndex)
         {
             // Use a fixed set of distinct colors for players
             switch ((playerIndex - 1) % 8)

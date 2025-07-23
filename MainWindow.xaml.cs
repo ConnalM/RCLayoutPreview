@@ -107,6 +107,7 @@ namespace RCLayoutPreview
             // Ensure hit-testable for tooltips and highlight
             if (!string.IsNullOrEmpty(element.Name))
             {
+                string normalizedFieldName = RemoveFieldSuffix(element.Name);
                 if (element is Label lbl)
                 {
                     lbl.IsHitTestVisible = true;
@@ -123,23 +124,23 @@ namespace RCLayoutPreview
                 {
                     btn.IsHitTestVisible = false;
                 }
-            }
-            // Get position from parent tag if available (for placeholder formatting)
-            int position = 1;
-            var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
-            if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
-            {
-                position = pos;
-            }
-            // Handle placeholders
-            if (PlaceholderHandler.IsPlaceholderElement(element))
-            {
-                PlaceholderHandler.DisplayPlaceholder(element, position);
-            }
-            // Handle stubdata fields
-            else if (StubDataFieldHandler.IsStubDataField(element))
-            {
-                StubDataFieldHandler.DisplayStubDataField(element, jsonData, debugMode);
+                // Get position from parent tag if available (for placeholder formatting)
+                int position = 1;
+                var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
+                if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
+                {
+                    position = pos;
+                }
+                // Handle placeholders
+                if (PlaceholderHandler.IsPlaceholderElement(element))
+                {
+                    PlaceholderHandler.DisplayPlaceholder(element, position);
+                }
+                // Handle stubdata fields
+                else if (StubDataFieldHandler.IsStubDataField(element))
+                {
+                    StubDataFieldHandler.DisplayStubDataField(element, jsonData, debugMode, normalizedFieldName);
+                }
             }
             // Recursively process children
             foreach (var child in LogicalTreeHelper.GetChildren(element))
@@ -762,6 +763,12 @@ namespace RCLayoutPreview
         {
             if (PopupOverlay != null)
                 PopupOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private string RemoveFieldSuffix(string fieldName)
+        {
+            // Removes trailing _N (where N is an integer) from a field name
+            return Regex.Replace(fieldName, "_\\d+$", "");
         }
     }
 }
