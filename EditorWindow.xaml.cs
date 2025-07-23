@@ -264,10 +264,11 @@ namespace RCLayoutPreview
                 {
                     fieldDetected = true;
                     string fieldName = PlaceholderSwapManager.GetFirstFieldName(content);
+                    string baseFieldName = RemoveFieldSuffix(fieldName); // <-- Use truncated field name
                     string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
 
                     // Update the status with a notification
-                    LogStatus($"Field detected: {(string.IsNullOrEmpty(message) ? fieldName : message)}");
+                    LogStatus($"Field detected: {(string.IsNullOrEmpty(message) ? baseFieldName : message)}");
 
                     // If we're editing, update immediately rather than waiting for the timer
                     if (autoUpdateEnabled)
@@ -592,7 +593,7 @@ namespace RCLayoutPreview
         {
             // Scan the entire editor text for existing field names with suffixes
             string text = Editor.Text;
-            // Regex to match fieldName_1, fieldName_2, etc.
+            // Regex to match fieldNam1e_1, fieldName1_2, etc.
             var suffixRegex = new Regex($@"{Regex.Escape(fieldName)}_(\d+)");
             var matches = suffixRegex.Matches(text);
             int maxSuffix = 0;
@@ -777,6 +778,17 @@ namespace RCLayoutPreview
                 searchPanel = null;
             }
             base.OnClosed(e);
+        }
+
+        /// <summary>
+        /// Removes trailing _N (where N is an integer) from a field name, e.g. Name1_1 -> Name1.
+        /// Used to get the base field name for stubdata lookup.
+        /// </summary>
+        /// <param name="fieldName">Field name with possible numeric suffix</param>
+        /// <returns>Field name without trailing _N</returns>
+        private string RemoveFieldSuffix(string fieldName)
+        {
+            return Regex.Replace(fieldName, @"_\d+$", "");
         }
     }
 }

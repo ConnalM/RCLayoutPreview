@@ -17,18 +17,30 @@ namespace RCLayoutPreview
 {
     public partial class MainWindow : Window
     {
+        // Path to the current stubdata JSON file
         private string currentJsonPath;
+        // Parsed stubdata as JObject
         private JObject jsonData;
+        // Reference to the editor window
         private EditorWindow editorWindow;
+        // Tracks if placeholder has been removed for current preview
         private bool placeholderRemoved = false;
+        // Tracks used element names to ensure uniqueness
         private HashSet<string> usedElementNames = new HashSet<string>();
+        // For UI hover highlighting
         private FrameworkElement currentHighlightedElement;
         private ToolTip currentToolTip;
 
+        /// <summary>
+        /// Main window constructor. Initializes UI, loads stubdata, sets up editor window and event handlers.
+        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
             LoadStubData();
+
+            // Set up UI logging for stubdata field handler
+            StubDataFieldHandler.UILogStatus = LogStatus;
 
             // Create and show editor window
             editorWindow = new EditorWindow(this);
@@ -39,16 +51,25 @@ namespace RCLayoutPreview
             this.Loaded += MainWindow_Loaded;
         }
 
+        /// <summary>
+        /// Called when the main window is loaded. Used for initial status logging.
+        /// </summary>
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             LogStatus("Layout initialized.");
         }
 
+        /// <summary>
+        /// Event handler for XAML content changes in the editor window. Triggers preview update.
+        /// </summary>
         private void EditorWindow_XamlContentChanged(object sender, string xamlContent)
         {
             TryPreviewXaml(xamlContent);
         }
 
+        /// <summary>
+        /// Event handler for stubdata JSON changes in the editor window. Updates data context and refreshes preview.
+        /// </summary>
         private void EditorWindow_JsonDataChanged(object sender, JObject newJsonData)
         {
             jsonData = newJsonData;
@@ -61,7 +82,12 @@ namespace RCLayoutPreview
             }
         }
 
-        // Modular field/placeholder processing method
+        /// <summary>
+        /// Processes all fields and placeholders in the root element, recursively.
+        /// </summary>
+        /// <param name="rootElement">Root UI element to process</param>
+        /// <param name="jsonData">Stubdata JSON</param>
+        /// <param name="debugMode">If true, show debug info in UI</param>
         private void ProcessFieldsAndPlaceholders(FrameworkElement rootElement, JObject jsonData, bool debugMode)
         {
             if (rootElement == null) return;
@@ -69,11 +95,16 @@ namespace RCLayoutPreview
             ProcessElementRecursively(rootElement, jsonData, debugMode);
         }
 
-        // Recursively process each element for placeholder and stubdata field logic
+        /// <summary>
+        /// Recursively processes each element for placeholder and stubdata field logic.
+        /// </summary>
+        /// <param name="element">Current UI element</param>
+        /// <param name="jsonData">Stubdata JSON</param>
+        /// <param name="debugMode">If true, show debug info in UI</param>
         private void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
         {
             if (element == null) return;
-            // Ensure hit-testable for tooltips
+            // Ensure hit-testable for tooltips and highlight
             if (!string.IsNullOrEmpty(element.Name))
             {
                 if (element is Label lbl)
@@ -93,7 +124,7 @@ namespace RCLayoutPreview
                     btn.IsHitTestVisible = false;
                 }
             }
-            // Get position from parent tag if available
+            // Get position from parent tag if available (for placeholder formatting)
             int position = 1;
             var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
             if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
@@ -120,6 +151,10 @@ namespace RCLayoutPreview
             }
         }
 
+        /// <summary>
+        /// Main method for previewing XAML. Cleans, validates, parses, and displays XAML, then binds stubdata and processes fields.
+        /// </summary>
+        /// <param name="xamlContent">Full XAML document as string</param>
         private void TryPreviewXaml(string xamlContent)
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
@@ -128,228 +163,55 @@ namespace RCLayoutPreview
                 return;
             }
 
-            // Remove any unreplaced curly-brace placeholders (e.g., {menuName}) to avoid XAML parse errors
-            xamlContent = Regex.Replace(xamlContent, @"<([a-zA-Z0-9_]+)\s*([^>]*)?\{[a-zA-Z0-9_]+\}([^>]*)?>", m =>
-            {
-                // Replace the tag with a comment so the user knows what was removed
-                return $"<!-- Invalid tag removed: {m.Value} -->";
-            });
-            xamlContent = Regex.Replace(xamlContent, @"\{[a-zA-Z0-9_]+\}", "");
+            // 1. Clean up placeholders and curly-brace tokens
+            xamlContent = CleanXamlPlaceholders(xamlContent);
 
-            // --- Begin: Duplicate field name detection ---
-            var nameRegex = new Regex("Name=\"([^\"]+)\"");
-            var nameMatches = nameRegex.Matches(xamlContent);
-            var nameSet = new HashSet<string>();
-            var duplicateNames = new List<string>();
-            foreach (Match match in nameMatches)
-            {
-                string name = match.Groups[1].Value;
-                if (!string.IsNullOrWhiteSpace(name))
-                {
-                    // Allow duplicate placeholders (e.g., Placeholder1, Placeholder2, Placeholder3)
-                    if (name.StartsWith("Placeholder"))
-                        continue;
-                    // Only error if the exact same field name (including suffix) is duplicated
-                    if (nameSet.Contains(name))
-                    {
-                        duplicateNames.Add(name);
-                    }
-                    else
-                    {
-                        nameSet.Add(name);
-                    }
-                }
-            }
+            // 2. Detect duplicate field names
+            var duplicateNames = DetectDuplicateNames(xamlContent);
             if (duplicateNames.Count > 0)
             {
                 ShowErrorPopup($"Error: Duplicate field names detected in XAML: {string.Join(", ", duplicateNames)}. Please ensure all element names are unique.");
                 LogStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
                 return;
             }
-            // --- End: Duplicate field name detection ---
 
             try
             {
-                // Clear any previous content
-                PreviewHost.Content = null;
-                usedElementNames.Clear();
-
-                // Process the XAML through any utility methods
-                string processedXaml = XamlFixer.Preprocess(xamlContent);
+                // 3. Preprocess and fix XAML
+                string processedXaml = PreprocessAndFixXaml(xamlContent);
                 LogStatus("XAML processed for preview");
 
-                // Fix common XAML issues
-                if (processedXaml.Contains("FontSize=\"\""))
-                {
-                    LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
-                    processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
-                }
+                // 4. Handle placeholders
+                processedXaml = HandlePlaceholders(processedXaml);
 
-                // Replace any remaining template placeholders
-                processedXaml = processedXaml.Replace("{styles}", "");
-                processedXaml = processedXaml.Replace("{content}", "");
+                // 5. Ensure root and namespaces
+                processedXaml = EnsureRootAndNamespaces(processedXaml);
 
-                // Fix duplicate element names
-                processedXaml = EnsureUniqueElementNames(processedXaml);
-
-                // Check if the XAML contains any valid field names and handle the placeholder
-                if (PlaceholderSwapManager.ContainsValidField(processedXaml))
-                {
-                    if (PlaceholderSwapManager.ContainsPlaceholder(processedXaml))
-                    {
-                        // Generate a message based on the field detected
-                        string fieldMessage = PlaceholderSwapManager.GenerateFieldDetectedMessage(processedXaml);
-                        
-                        if (!string.IsNullOrEmpty(fieldMessage))
-                        {
-                            // Option 1: Replace placeholder with a message about the detected field
-                            processedXaml = PlaceholderSwapManager.ReplacePlaceholderWithMessage(processedXaml, fieldMessage);
-                            
-                            // Option 2: Remove the placeholder entirely (choose this or the above)
-                            // processedXaml = PlaceholderSwapManager.RemovePlaceholder(processedXaml);
-                            
-                            if (!placeholderRemoved)
-                            {
-                                LogStatus($"Field detected: {fieldMessage}");
-                                placeholderRemoved = true;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // Reset the placeholderRemoved flag if no valid fields are present
-                    placeholderRemoved = false;
-                }
-
-                // Make sure the XAML has a root element that is a FrameworkElement
-                if (!IsValidRootElement(processedXaml))
-                {
-                    processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
-                    LogStatus("Added Grid container to wrap content");
-                }
-
-                // Make sure namespaces are present
-                if (!processedXaml.Contains("xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\""))
-                {
-                    string rootTag = Regex.Match(processedXaml, @"<(\w+)").Groups[1].Value;
-                    string xmlnsDeclaration = "xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
-                    processedXaml = Regex.Replace(processedXaml,
-                        $"<{rootTag}",
-                        $"<{rootTag} {xmlnsDeclaration}");
-                    LogStatus("Added XAML namespaces to content");
-                }
-
-                // Fix any Binding expressions that might be causing issues
+                // 6. Fix binding expressions
                 processedXaml = FixBindingExpressions(processedXaml);
 
-                // Detect and handle empty Name attributes before parsing
-                var emptyNameMatches = Regex.Matches(processedXaml, "Name\\s*=\\s*\"\\s*\"");
-                if (emptyNameMatches.Count > 0)
-                {
-                    ShowErrorPopup($"Warning: {emptyNameMatches.Count} empty Name attribute(s) were found and removed from the XAML. Please check your layout for missing names.");
-                    processedXaml = Regex.Replace(processedXaml, "Name\\s*=\\s*\"\\s*\"", "");
-                }
+                // 7. Remove empty Name attributes
+                processedXaml = RemoveEmptyNameAttributes(processedXaml);
 
-                object element = null;
+                // 8. Parse XAML
+                object element = ParseXaml(processedXaml);
 
-                try
-                {
-                    // Try direct parsing first
-                    element = XamlReader.Parse(processedXaml);
-                    LogStatus("XAML parsed successfully with XamlReader.Parse");
-                }
-                catch (Exception parseEx)
-                {
-                    LogStatus($"Direct parsing failed: {parseEx.Message}. Trying alternate method...");
-
-                    try
-                    {
-                        // Create a proper ParserContext for better control
-                        var context = new ParserContext
-                        {
-                            BaseUri = new Uri("pack://application:,,,/")
-                        };
-                        context.XmlnsDictionary.Add("", "http://schemas.microsoft.com/winfx/2006/xaml/presentation");
-                        context.XmlnsDictionary.Add("x", "http://schemas.microsoft.com/winfx/2006/xaml");
-
-                        // Use memory stream approach
-                        byte[] bytes = Encoding.UTF8.GetBytes(processedXaml);
-                        using (var stream = new MemoryStream(bytes))
-                        {
-                            element = XamlReader.Load(stream, context);
-                            LogStatus("XAML parsed successfully with XamlReader.Load");
-                        }
-                    }
-                    catch (Exception loadEx)
-                    {
-                        LogStatus($"All parsing attempts failed: {loadEx.Message}");
-                        throw new XamlParseException($"Failed to parse XAML: {parseEx.Message}", parseEx);
-                    }
-                }
-
-                // Handle Window elements
+                // 9. If Window, apply window properties
                 if (element is Window window)
                 {
-                    LogStatus("XAML contains a Window element. Extracting content.");
-                    PreviewHost.Content = null; // Clear existing content
-                    PreviewHost.Content = window.Content; // Use the Window's content
-                    // Ensure tooltips can show
-                    PreviewHost.IsHitTestVisible = true;
-                    PreviewHost.IsEnabled = true;
-                    if (window.Content is FrameworkElement fe)
-                    {
-                        fe.IsHitTestVisible = true;
-                        fe.IsEnabled = true;
-                    }
-                    // Apply Window properties to the preview
-                    if (window.Title != null)
-                    {
-                        this.Title = window.Title;
-                        LogStatus($"Window Title applied: {window.Title}");
-                    }
-                    // Only apply Width/Height if toggle is checked
-                    if (ApplyWindowSizeToggle != null && ApplyWindowSizeToggle.IsChecked == true)
-                    {
-                        if (window.Width > 0)
-                        {
-                            this.Width = window.Width;
-                            LogStatus($"Window Width applied: {window.Width}");
-                        }
-                        if (window.Height > 0)
-                        {
-                            this.Height = window.Height;
-                            LogStatus($"Window Height applied: {window.Height}");
-                        }
-                    }
-                    if (window.Background != null)
-                    {
-                        this.Background = window.Background;
-                        LogStatus("Window Background applied.");
-                    }
+                    ApplyWindowProperties(window);
                 }
                 else
                 {
-                    PreviewHost.Content = element; // Use the parsed element directly
-                    LogStatus("Preview updated with parsed element.");
-                    // Ensure tooltips can show
-                    PreviewHost.IsHitTestVisible = true;
-                    PreviewHost.IsEnabled = true;
-                    if (element is FrameworkElement fe)
-                    {
-                        fe.IsHitTestVisible = true;
-                        fe.IsEnabled = true;
-                    }
+                    SetupPreviewHost(element);
                 }
 
-                // Always apply diagnostics mode after preview update
+                // 10. Diagnostics and field processing
                 if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
                 {
                     frameworkElement.DataContext = jsonData;
-                    // Modular field/placeholder processing
                     ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
                 }
-                // Attach hover behavior for tooltips
                 AddHoverBehavior();
             }
             catch (XamlParseException ex)
@@ -362,114 +224,205 @@ namespace RCLayoutPreview
             }
         }
 
-        // New method to ensure unique element names
-        private string EnsureUniqueElementNames(string xaml)
+        // --- Helper methods for TryPreviewXaml refactor ---
+
+        private string CleanXamlPlaceholders(string xamlContent)
         {
-            // Regular expression to find Name attributes
-            var nameRegex = new Regex(@"Name=""([^""]+)""");
-            
-            // Use a match evaluator to replace names that are duplicates
-            return nameRegex.Replace(xaml, match => {
-                string originalName = match.Groups[1].Value;
-                string uniqueName = originalName;
-                int counter = 1;
-                
-                // If this name is already used, generate a unique one by adding a suffix
-                while (usedElementNames.Contains(uniqueName))
-                {
-                    uniqueName = $"{originalName}_{counter++}";
-                }
-                
-                // Add the unique name to our used names collection
-                usedElementNames.Add(uniqueName);
-                
-                // Return the attribute with the potentially modified name
-                return $"Name=\"{uniqueName}\"";
+            xamlContent = Regex.Replace(xamlContent, @"<([a-zA-Z0-9_]+)\s*([^>]*)?\{[a-zA-Z0-9_]+\}([^>]*)?>", m =>
+            {
+                return $"<!-- Invalid tag removed: {m.Value} -->";
             });
+            xamlContent = Regex.Replace(xamlContent, @"\{[a-zA-Z0-9_]+\}", "");
+            return xamlContent;
         }
 
-        // Helper method to fix binding expressions that might be causing issues
-        private string FixBindingExpressions(string xaml)
+        private List<string> DetectDuplicateNames(string xamlContent)
         {
-            // Fix any unescaped binding expressions
-            xaml = Regex.Replace(xaml, "{Binding([^}]*)}", m =>
+            var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            var nameMatches = nameRegex.Matches(xamlContent);
+            var nameSet = new HashSet<string>();
+            var duplicateNames = new List<string>();
+            foreach (Match match in nameMatches)
             {
-                // Check if this is already properly escaped
-                if (xaml.IndexOf(m.Value) > 0 && xaml[xaml.IndexOf(m.Value) - 1] == '{')
-                    return m.Value; // Already escaped
-
-                return "{Binding" + m.Groups[1].Value + "}";
-            });
-
-            return xaml;
-        }
-
-        private bool IsValidRootElement(string xaml)
-        {
-            // Check if the XAML has a valid root element
-            string pattern = @"^\s*<\s*([a-zA-Z0-9_]+)";
-            Match match = Regex.Match(xaml, pattern);
-            if (match.Success)
-            {
-                string rootElement = match.Groups[1].Value;
-                switch (rootElement.ToLower())
+                string name = match.Groups[1].Value;
+                if (!string.IsNullOrWhiteSpace(name))
                 {
-                    case "grid":
-                    case "stackpanel":
-                    case "border":
-                    case "dockpanel":
-                    case "canvas":
-                    case "wrappanel":
-                    case "viewbox":
-                    case "window":
-                    case "page":
-                    case "usercontrol":
-                        return true;
-                    default:
-                        return false;
+                    if (name.StartsWith("Placeholder"))
+                        continue;
+                    if (nameSet.Contains(name))
+                        duplicateNames.Add(name);
+                    else
+                        nameSet.Add(name);
                 }
             }
-            return false;
+            return duplicateNames;
         }
 
-        public static T FindElementByName<T>(DependencyObject parent, string name) where T : FrameworkElement
+        private string PreprocessAndFixXaml(string xamlContent)
         {
-            if (parent == null) return null;
-
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            PreviewHost.Content = null;
+            usedElementNames.Clear();
+            string processedXaml = XamlPreprocessor.Preprocess(xamlContent);
+            if (processedXaml.Contains("FontSize=\"\""))
             {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T fe && fe.Name == name)
-                    return fe;
-
-                var result = FindElementByName<T>(child, name);
-                if (result != null)
-                    return result;
+                LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
+                processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
             }
-
-            return null;
+            processedXaml = processedXaml.Replace("{styles}", "");
+            processedXaml = processedXaml.Replace("{content}", "");
+            processedXaml = EnsureUniqueElementNames(processedXaml);
+            return processedXaml;
         }
 
-        private void ShowErrorPopup(string errorMessage)
+        private string HandlePlaceholders(string processedXaml)
         {
-            PopupMessage.Text = errorMessage;
-            PopupOverlay.Visibility = Visibility.Visible;
-            LogStatus("Popup overlay displayed with message: " + errorMessage);
+            if (PlaceholderSwapManager.ContainsValidField(processedXaml))
+            {
+                if (PlaceholderSwapManager.ContainsPlaceholder(processedXaml))
+                {
+                    string fieldMessage = PlaceholderSwapManager.GenerateFieldDetectedMessage(processedXaml);
+                    if (!string.IsNullOrEmpty(fieldMessage))
+                    {
+                        processedXaml = PlaceholderSwapManager.ReplacePlaceholderWithMessage(processedXaml, fieldMessage);
+                        if (!placeholderRemoved)
+                        {
+                            LogStatus($"Field detected: {fieldMessage}");
+                            placeholderRemoved = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                placeholderRemoved = false;
+            }
+            return processedXaml;
         }
 
-        private void PopupOkButton_Click(object sender, RoutedEventArgs e)
+        private string EnsureRootAndNamespaces(string processedXaml)
         {
-            PopupOverlay.Visibility = Visibility.Collapsed;
+            if (!IsValidRootElement(processedXaml))
+            {
+                processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
+                LogStatus("Added Grid container to wrap content");
+            }
+            if (!processedXaml.Contains("xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\""))
+            {
+                string rootTag = Regex.Match(processedXaml, @"<(\w+)").Groups[1].Value;
+                string xmlnsDeclaration = "xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
+                processedXaml = Regex.Replace(processedXaml,
+                    $"<{rootTag}",
+                    $"<{rootTag} {xmlnsDeclaration}");
+                LogStatus("Added XAML namespaces to content");
+            }
+            return processedXaml;
         }
 
+        private string RemoveEmptyNameAttributes(string processedXaml)
+        {
+            var emptyNameMatches = Regex.Matches(processedXaml, "Name\\s*=\\s*\"\\s*\"");
+            if (emptyNameMatches.Count > 0)
+            {
+                ShowErrorPopup($"Warning: {emptyNameMatches.Count} empty Name attribute(s) were found and removed from the XAML. Please check your layout for missing names.");
+                processedXaml = Regex.Replace(processedXaml, "Name\\s*=\\s*\"\\s*\"", "");
+            }
+            return processedXaml;
+        }
+
+        private object ParseXaml(string processedXaml)
+        {
+            try
+            {
+                var element = XamlReader.Parse(processedXaml);
+                LogStatus("XAML parsed successfully with XamlReader.Parse");
+                return element;
+            }
+            catch (Exception parseEx)
+            {
+                LogStatus($"Direct parsing failed: {parseEx.Message}. Trying alternate method...");
+                try
+                {
+                    var context = new ParserContext
+                    {
+                        BaseUri = new Uri("pack://application:,,,/")
+                    };
+                    context.XmlnsDictionary.Add("", "http://schemas.microsoft.com/winfx/2006/xaml/presentation");
+                    context.XmlnsDictionary.Add("x", "http://schemas.microsoft.com/winfx/2006/xaml");
+                    byte[] bytes = Encoding.UTF8.GetBytes(processedXaml);
+                    using (var stream = new MemoryStream(bytes))
+                    {
+                        var element = XamlReader.Load(stream, context);
+                        LogStatus("XAML parsed successfully with XamlReader.Load");
+                        return element;
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    LogStatus($"All parsing attempts failed: {loadEx.Message}");
+                    throw new XamlParseException($"Failed to parse XAML: {parseEx.Message}", parseEx);
+                }
+            }
+        }
+
+        private void ApplyWindowProperties(Window window)
+        {
+            LogStatus("XAML contains a Window element. Extracting content.");
+            PreviewHost.Content = null;
+            PreviewHost.Content = window.Content;
+            PreviewHost.IsHitTestVisible = true;
+            PreviewHost.IsEnabled = true;
+            if (window.Content is FrameworkElement fe)
+            {
+                fe.IsHitTestVisible = true;
+                fe.IsEnabled = true;
+            }
+            if (window.Title != null)
+            {
+                this.Title = window.Title;
+                LogStatus($"Window Title applied: {window.Title}");
+            }
+            if (ApplyWindowSizeToggle != null && ApplyWindowSizeToggle.IsChecked == true)
+            {
+                if (window.Width > 0)
+                {
+                    this.Width = window.Width;
+                    LogStatus($"Window Width applied: {window.Width}");
+                }
+                if (window.Height > 0)
+                {
+                    this.Height = window.Height;
+                    LogStatus($"Window Height applied: {window.Height}");
+                }
+            }
+            if (window.Background != null)
+            {
+                this.Background = window.Background;
+                LogStatus("Window Background applied.");
+            }
+        }
+
+        private void SetupPreviewHost(object element)
+        {
+            PreviewHost.Content = element;
+            LogStatus("Preview updated with parsed element.");
+            PreviewHost.IsHitTestVisible = true;
+            PreviewHost.IsEnabled = true;
+            if (element is FrameworkElement fe)
+            {
+                fe.IsHitTestVisible = true;
+                fe.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// Loads stubdata JSON from disk and parses it into jsonData.
+        /// </summary>
         private void LoadStubData()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             LogStatus($"Base directory: {baseDirectory}");
-
             string jsonPath = Path.Combine(baseDirectory, "stubdata5.json");
             LogStatus($"Checking path: {jsonPath}");
-
             if (File.Exists(jsonPath))
             {
                 try
@@ -490,6 +443,10 @@ namespace RCLayoutPreview
             }
         }
 
+        /// <summary>
+        /// Logs a status message to the UI and console.
+        /// </summary>
+        /// <param name="message">Message to log</param>
         private void LogStatus(string message)
         {
             if (StatusLabel != null)
@@ -499,11 +456,13 @@ namespace RCLayoutPreview
             Console.WriteLine($"Status: {message}");
         }
 
+        /// <summary>
+        /// Event handler for debug mode toggle. Refreshes preview with debug info if enabled.
+        /// </summary>
         private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
         {
             var debugMode = (sender as CheckBox)?.IsChecked == true;
             LogStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
-
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
@@ -519,6 +478,9 @@ namespace RCLayoutPreview
             }
         }
 
+        /// <summary>
+        /// Called when the main window is closing. Closes the editor window.
+        /// </summary>
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             // Close the editor window when the preview window is closed
@@ -526,6 +488,9 @@ namespace RCLayoutPreview
             base.OnClosing(e);
         }
 
+        /// <summary>
+        /// Attaches hover behavior for tooltips to the preview host.
+        /// </summary>
         private void AddHoverBehavior()
         {
             if (PreviewHost != null)
@@ -537,6 +502,11 @@ namespace RCLayoutPreview
             }
         }
 
+        /// <summary>
+        /// Performs a deep hit test to find the deepest named element at a given point in the preview.
+        /// </summary>
+        /// <param name="pt">Point to hit test</param>
+        /// <returns>Deepest named FrameworkElement at the point, or null</returns>
         private FrameworkElement DeepHitTestForNamedElement(Point pt)
         {
             var results = new List<FrameworkElement>();
@@ -556,6 +526,9 @@ namespace RCLayoutPreview
             return results.Count > 0 ? results[results.Count - 1] : null;
         }
 
+        /// <summary>
+        /// Mouse move handler for preview host. Highlights and shows tooltip for named elements under cursor.
+        /// </summary>
         private void PreviewHost_SafeMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
             var pt = e.GetPosition(PreviewHost);
@@ -567,7 +540,6 @@ namespace RCLayoutPreview
                     // Remove highlight from previous
                     if (currentHighlightedElement != null)
                         currentHighlightedElement.Effect = null;
-
                     // Highlight
                     currentHighlightedElement = namedElement;
                     currentHighlightedElement.Effect = new DropShadowEffect
@@ -593,6 +565,9 @@ namespace RCLayoutPreview
             }
         }
 
+        /// <summary>
+        /// Mouse leave handler for preview host. Removes highlight and hides tooltip.
+        /// </summary>
         private void PreviewHost_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
         {
             if (currentHighlightedElement != null)
@@ -602,6 +577,11 @@ namespace RCLayoutPreview
                 currentToolTip.IsOpen = false;
         }
 
+        /// <summary>
+        /// Finds the nearest named child element in the visual tree, searching up and down.
+        /// </summary>
+        /// <param name="element">Element to start search from</param>
+        /// <returns>Nearest named FrameworkElement, or null</returns>
         private FrameworkElement FindNamedChildElement(FrameworkElement element)
         {
             // If hit test lands on a Viewbox, search its child
@@ -641,6 +621,11 @@ namespace RCLayoutPreview
             return null;
         }
 
+        /// <summary>
+        /// Shows a tooltip for the given element at the specified mouse position.
+        /// </summary>
+        /// <param name="element">Element to show tooltip for</param>
+        /// <param name="mousePos">Mouse position relative to preview host</param>
         private void ShowElementTooltip(FrameworkElement element, Point mousePos)
         {
             var info = BuildElementInfoSafe(element);
@@ -664,6 +649,11 @@ namespace RCLayoutPreview
             currentToolTip.IsOpen = true;
         }
 
+        /// <summary>
+        /// Builds a string with diagnostic info about the given element (type, name, size, position).
+        /// </summary>
+        /// <param name="element">Element to describe</param>
+        /// <returns>Diagnostic info string</returns>
         private string BuildElementInfoSafe(FrameworkElement element)
         {
             var info = new StringBuilder();
@@ -679,6 +669,99 @@ namespace RCLayoutPreview
             if (Grid.GetRow(element) >= 0 || Grid.GetColumn(element) >= 0)
                 info.AppendLine($"Grid Position: Row {Grid.GetRow(element)}, Column {Grid.GetColumn(element)}");
             return info.ToString().TrimEnd();
+        }
+
+        /// <summary>
+        /// Shows an error popup overlay with the given message and logs the status.
+        /// </summary>
+        /// <param name="errorMessage">Error message to display</param>
+        private void ShowErrorPopup(string errorMessage)
+        {
+            // Try to set the popup message and show overlay if available
+            if (PopupMessage != null && PopupOverlay != null)
+            {
+                PopupMessage.Text = errorMessage;
+                PopupOverlay.Visibility = Visibility.Visible;
+            }
+            LogStatus("Popup overlay displayed with message: " + errorMessage);
+        }
+
+        /// <summary>
+        /// Ensures all element names in the XAML are unique by appending a suffix to duplicates.
+        /// </summary>
+        /// <param name="xaml">XAML string to process</param>
+        /// <returns>XAML string with unique element names</returns>
+        private string EnsureUniqueElementNames(string xaml)
+        {
+            var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            return nameRegex.Replace(xaml, match => {
+                string originalName = match.Groups[1].Value;
+                string uniqueName = originalName;
+                int counter = 1;
+                while (usedElementNames.Contains(uniqueName))
+                {
+                    uniqueName = $"{originalName}_{counter++}";
+                }
+                usedElementNames.Add(uniqueName);
+                return $"Name=\"{uniqueName}\"";
+            });
+        }
+
+        /// <summary>
+        /// Fixes binding expressions in the XAML that might be malformed or unescaped.
+        /// </summary>
+        /// <param name="xaml">XAML string to process</param>
+        /// <returns>XAML string with fixed binding expressions</returns>
+        private string FixBindingExpressions(string xaml)
+        {
+            xaml = Regex.Replace(xaml, "{Binding([^}]*)}", m =>
+            {
+                if (xaml.IndexOf(m.Value) > 0 && xaml[xaml.IndexOf(m.Value) - 1] == '{')
+                    return m.Value;
+                return "{Binding" + m.Groups[1].Value + "}";
+            });
+            return xaml;
+        }
+
+        /// <summary>
+        /// Checks if the XAML string has a valid root element (e.g., Grid, StackPanel, Window).
+        /// </summary>
+        /// <param name="xaml">XAML string to check</param>
+        /// <returns>True if root element is valid, false otherwise</returns>
+        private bool IsValidRootElement(string xaml)
+        {
+            string pattern = @"^\s*<\s*([a-zA-Z0-9_]+)";
+            Match match = Regex.Match(xaml, pattern);
+            if (match.Success)
+            {
+                string rootElement = match.Groups[1].Value;
+                switch (rootElement.ToLower())
+                {
+                    case "grid":
+                    case "stackpanel":
+                    case "border":
+                    case "dockpanel":
+                    case "canvas":
+                    case "wrappanel":
+                    case "viewbox":
+                    case "window":
+                    case "page":
+                    case "usercontrol":
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Event handler for OK button on error popup. Hides the popup.
+        /// </summary>
+        private void PopupOkButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (PopupOverlay != null)
+                PopupOverlay.Visibility = Visibility.Collapsed;
         }
     }
 }

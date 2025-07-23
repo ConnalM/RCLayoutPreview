@@ -3,11 +3,26 @@ using System.Diagnostics;
 
 namespace RCLayoutPreview.Helpers // Updated namespace to avoid conflict
 {
+    /// <summary>
+    /// Parses Race Coordinator field names into type and index for stubdata lookup.
+    /// </summary>
     public class FieldNameParser
     {
+        /// <summary>
+        /// The parsed field type (e.g. LapTime_1)
+        /// </summary>
         public string FieldType { get; private set; }
+        /// <summary>
+        /// The instance index (default 1)
+        /// </summary>
         public int InstanceIndex { get; private set; } = 1;
 
+        /// <summary>
+        /// Attempts to parse a raw field name into type and index.
+        /// </summary>
+        /// <param name="rawName">Raw field name string</param>
+        /// <param name="parsed">Parsed FieldNameParser object</param>
+        /// <returns>True if parsing succeeded, false otherwise</returns>
         public static bool TryParse(string rawName, out FieldNameParser parsed)
         {
             parsed = null;

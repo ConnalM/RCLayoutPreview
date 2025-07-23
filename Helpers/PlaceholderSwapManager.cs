@@ -10,22 +10,12 @@ namespace RCLayoutPreview.Helpers
     /// </summary>
     public static class PlaceholderSwapManager
     {
-        // The placeholder element pattern to search for and replace
+        // Regex pattern for the default placeholder element
         private static readonly string DefaultPlaceholderPattern =
             @"<TextBlock\s+Text=""Race Layout Preview Loaded""[^>]*(?:/>|>[^<]*</TextBlock>)";
 
-        // Patterns for valid field names in Race Coordinator - updated for correct format
-        private static readonly string[] ValidFieldPatterns = new[]
-        {
-            @"Name=""(?:LapTime|BestLap|AvgLap|LastLap|Position|Nickname)_\d+(?:_\d+)?""",
-            @"Name=""(?:NextHeatName|NextHeatNickname\d+|OnDeckName|OnDeckNickname\d+)(?:_\d+)?""",
-            @"Name=""(?:RaceTimer|LapRecord|LapRecordHolder|CurrentEventName|CurrentTrackName)(?:_\d+)?""",
-            @"Name=""(?:Avatar)_\d+(?:_\d+)?""",
-            @"Name=""(?:SeasonLeader\d+|RaceLeader\d+|SeasonRaceLeader\d+)(?:_\d+)?"""
-        };
-
         /// <summary>
-        /// Checks if the XAML contains a valid field name based on predefined patterns.
+        /// Checks if the XAML contains any non-placeholder field name (generic detection).
         /// </summary>
         /// <param name="xamlContent">The XAML content to check</param>
         /// <returns>True if a valid field is found, false otherwise</returns>
@@ -33,21 +23,19 @@ namespace RCLayoutPreview.Helpers
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
                 return false;
-
-            foreach (var pattern in ValidFieldPatterns)
+            // Detect any element with Name that is not a placeholder
+            var matches = Regex.Matches(xamlContent, "Name=\"([^\"]+)\"");
+            foreach (Match match in matches)
             {
-                if (Regex.IsMatch(xamlContent, pattern, RegexOptions.IgnoreCase))
-                {
-                    Debug.WriteLine($"[PlaceholderSwapManager] Valid field detected with pattern: {pattern}");
+                var name = match.Groups[1].Value;
+                if (!string.IsNullOrWhiteSpace(name) && !name.StartsWith("Placeholder"))
                     return true;
-                }
             }
-
             return false;
         }
 
         /// <summary>
-        /// Gets the first field name found in the XAML content.
+        /// Gets the first non-placeholder field name found in the XAML content.
         /// </summary>
         /// <param name="xamlContent">The XAML content to check</param>
         /// <returns>The detected field name, or null if none is found</returns>
@@ -55,20 +43,13 @@ namespace RCLayoutPreview.Helpers
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
                 return null;
-
-            foreach (var pattern in ValidFieldPatterns)
+            var matches = Regex.Matches(xamlContent, "Name=\"([^\"]+)\"");
+            foreach (Match match in matches)
             {
-                var match = Regex.Match(xamlContent, pattern, RegexOptions.IgnoreCase);
-                if (match.Success)
-                {
-                    var nameMatch = Regex.Match(match.Value, @"Name=""([^""]*)""");
-                    if (nameMatch.Success && nameMatch.Groups.Count > 1)
-                    {
-                        return nameMatch.Groups[1].Value;
-                    }
-                }
+                var name = match.Groups[1].Value;
+                if (!string.IsNullOrWhiteSpace(name) && !name.StartsWith("Placeholder"))
+                    return name;
             }
-
             return null;
         }
 
@@ -81,7 +62,6 @@ namespace RCLayoutPreview.Helpers
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
                 return false;
-
             return Regex.IsMatch(xamlContent, DefaultPlaceholderPattern);
         }
 
@@ -95,36 +75,8 @@ namespace RCLayoutPreview.Helpers
             var fieldName = GetFirstFieldName(xamlContent);
             if (string.IsNullOrEmpty(fieldName))
                 return null;
-
-            // Parse the field name to get its components
-            var fieldParts = fieldName.Split('_');
-            if (fieldParts.Length == 0)
-                return null;
-
-            string fieldType = fieldParts[0];
-            string dataType = "";
-
-            // Determine the data type based on the field name
-            if (fieldType.StartsWith("LapTime"))
-                dataType = "Lap Time";
-            else if (fieldType.StartsWith("BestLap"))
-                dataType = "Best Lap";
-            else if (fieldType.StartsWith("AvgLap"))
-                dataType = "Average Lap";
-            else if (fieldType.StartsWith("LastLap"))
-                dataType = "Last Lap";
-            else if (fieldType.StartsWith("Nickname"))
-                dataType = "Racer Name";
-            else if (fieldType.StartsWith("Position"))
-                dataType = "Position";
-            else if (fieldType.StartsWith("NextHeat"))
-                dataType = "Next Heat";
-            else if (fieldType.StartsWith("RaceTimer"))
-                dataType = "Race Timer";
-            else
-                dataType = fieldType;
-
-            return $"Now showing: {dataType} data";
+            // Message is generic, just shows the field name
+            return $"Now showing: {fieldName} data";
         }
 
         /// <summary>
@@ -135,8 +87,9 @@ namespace RCLayoutPreview.Helpers
         /// <returns>The modified XAML content</returns>
         public static string ReplacePlaceholderWithMessage(string xamlContent, string message)
         {
-            // Do not replace the placeholder; keep the original text intact
-            return xamlContent;
+            // Replace the placeholder with a TextBlock showing the message
+            return Regex.Replace(xamlContent, DefaultPlaceholderPattern,
+                $"<TextBlock Text=\"{message}\" FontSize=\"20\" Foreground=\"Gray\" HorizontalAlignment=\"Center\" />");
         }
 
         /// <summary>
@@ -148,7 +101,6 @@ namespace RCLayoutPreview.Helpers
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
                 return xamlContent;
-
             return Regex.Replace(xamlContent, DefaultPlaceholderPattern, "");
         }
     }

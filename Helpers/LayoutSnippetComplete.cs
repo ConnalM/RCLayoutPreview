@@ -6,6 +6,9 @@ using System.Diagnostics;
 
 namespace RCLayoutPreview.Helpers
 {
+    /// <summary>
+    /// Represents a reusable XAML layout snippet, with placeholders and required fields.
+    /// </summary>
     public class LayoutSnippet
     {
         public string Name { get; set; }
@@ -629,7 +632,13 @@ namespace RCLayoutPreview.Helpers
             };
         }
 
-        // Process a snippet, handling any placeholders
+        /// <summary>
+        /// Processes a snippet, replacing placeholders and applying styles/content.
+        /// </summary>
+        /// <param name="snippet">LayoutSnippet to process</param>
+        /// <param name="position">Position value for formatting</param>
+        /// <param name="content">Content to insert for {content} placeholder</param>
+        /// <returns>Processed XAML string</returns>
         public static string ProcessSnippet(LayoutSnippet snippet, int position = 1, string content = "")
         {
             string xaml = snippet.XamlTemplate;
@@ -682,7 +691,9 @@ namespace RCLayoutPreview.Helpers
             }
         }
 
-        // This method contains the entire class as a string to avoid truncation issues
+        /// <summary>
+        /// Returns the entire class definition as a string to avoid truncation issues.
+        /// </summary>
         private static string GetCompleteLayoutSnippetContent()
         {
             return @"using System.Collections.Generic;\n\nnamespace RCLayoutPreview.Helpers\n{\n    public class LayoutSnippet\n    {\n        public string Name { get; set; }\n        public string Description { get; set; }\n        public string Category { get; set; }\n        public string XamlTemplate { get; set; }\n        public List<string> RequiredFields { get; set; } = new List<string>();\n        public Dictionary<string, string> Placeholders { get; set; } = new Dictionary<string, string>();\n        public string DefaultStyles { get; set; }\n        // ... (rest of the class definition as string) ...\n    }\n}";
