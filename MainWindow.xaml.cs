@@ -12,6 +12,7 @@ using System.Xml;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RCLayoutPreview
 {
@@ -93,6 +94,11 @@ namespace RCLayoutPreview
             if (rootElement == null) return;
             // Recursively process all children
             ProcessElementRecursively(rootElement, jsonData, debugMode);
+            // Synchronize widths after layout is updated
+            rootElement.LayoutUpdated += (s, e) =>
+            {
+                SynchronizeEchoFieldWidths(rootElement);
+            };
         }
 
         /// <summary>
@@ -769,6 +775,66 @@ namespace RCLayoutPreview
         {
             // Removes trailing _N (where N is an integer) from a field name
             return Regex.Replace(fieldName, "_\\d+$", "");
+        }
+
+        /// <summary>
+        /// Synchronizes the widths of all TextBlocks in the same container that match the echo/real field pattern.
+        /// </summary>
+        private void SynchronizeEchoFieldWidths(FrameworkElement rootElement)
+        {
+            if (rootElement == null) return;
+            // Only process Panels (Grid, StackPanel, DockPanel, etc.)
+            if (rootElement is Panel panel)
+            {
+                // Find all descendant TextBlocks with Name matching pattern <base>_<num>_<suffix>
+                var allTextBlocks = new List<TextBlock>();
+                var queue = new Queue<DependencyObject>();
+                foreach (var child in panel.Children)
+                    queue.Enqueue(child as DependencyObject);
+                while (queue.Count > 0)
+                {
+                    var current = queue.Dequeue();
+                    if (current is TextBlock tb && !string.IsNullOrEmpty(tb.Name))
+                        allTextBlocks.Add(tb);
+                    int count = VisualTreeHelper.GetChildrenCount(current);
+                    for (int i = 0; i < count; i++)
+                        queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+                }
+                // Group by base name and number (e.g., OnDeckNickname6)
+                var groups = new Dictionary<string, List<TextBlock>>();
+                var regex = new System.Text.RegularExpressions.Regex(@"^(.*?)(\d+)_([12])$");
+                foreach (var tb in allTextBlocks)
+                {
+                    var match = regex.Match(tb.Name);
+                    if (match.Success)
+                    {
+                        string baseName = match.Groups[1].Value + match.Groups[2].Value; // e.g., OnDeckNickname6
+                        if (!groups.ContainsKey(baseName))
+                            groups[baseName] = new List<TextBlock>();
+                        groups[baseName].Add(tb);
+                    }
+                }
+                // For each group, set all widths to the max ActualWidth
+                foreach (var group in groups.Values)
+                {
+                    if (group.Count >= 2)
+                    {
+                        double maxWidth = group.Max(tb => tb.ActualWidth);
+                        foreach (var tb in group)
+                        {
+                            tb.Width = maxWidth;
+                        }
+                    }
+                }
+            }
+            // Recursively process children
+            foreach (var child in LogicalTreeHelper.GetChildren(rootElement))
+            {
+                if (child is FrameworkElement childElement)
+                {
+                    SynchronizeEchoFieldWidths(childElement);
+                }
+            }
         }
     }
 }
