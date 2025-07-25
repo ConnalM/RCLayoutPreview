@@ -458,10 +458,18 @@ namespace RCLayoutPreview
         private void AutoUpdateToggle_Changed(object sender, RoutedEventArgs e)
         {
             autoUpdateEnabled = (sender as CheckBox)?.IsChecked == true;
-            if (autoUpdateEnabled)
+            if (previewTimer != null)
             {
-                lastEditTime = DateTime.Now;
-                XamlContentChanged?.Invoke(this, Editor.Text);
+                if (autoUpdateEnabled)
+                {
+                    previewTimer.Start();
+                    lastEditTime = DateTime.Now;
+                    XamlContentChanged?.Invoke(this, Editor.Text);
+                }
+                else
+                {
+                    previewTimer.Stop();
+                }
             }
             LogStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
         }
@@ -788,6 +796,12 @@ namespace RCLayoutPreview
         private string RemoveFieldSuffix(string fieldName)
         {
             return Regex.Replace(fieldName, @"_\d+$", "");
+        }
+
+        private void ClearEditor_Click(object sender, RoutedEventArgs e)
+        {
+            Editor.Clear();
+            LogStatus("Editor cleared.");
         }
     }
 }
