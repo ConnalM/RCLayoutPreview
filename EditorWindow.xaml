@@ -20,12 +20,12 @@
             <Button Content="Save Layout" Click="SaveLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Save As" Click="SaveAsLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Clear Editor" Click="ClearEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>
+            <Button Name="PreviewButton" Content="Preview" Width="100" Height="30" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,8,0" Click="PreviewButton_Click"/>
             <CheckBox x:Name="AutoUpdateToggle" Content="Auto-Update" IsChecked="True" Margin="10,0,0,0" VerticalAlignment="Center" 
                       Checked="AutoUpdateToggle_Changed" Unchecked="AutoUpdateToggle_Changed" Height="30"/>
             <TextBlock Text="Delay (ms): " Margin="10,0,0,0" VerticalAlignment="Center" Height="30"/>
             <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" TextChanged="DelayInput_TextChanged" Height="30"/>
             <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center" Height="30"/>
-            <Button Name="PreviewButton" Content="Preview" Width="100" Height="30" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0" Click="PreviewButton_Click"/>
         </StackPanel>
 
         <!-- Editor area -->
