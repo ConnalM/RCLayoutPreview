@@ -1,6 +1,7 @@
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Search;
 using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Folding;
 using Newtonsoft.Json.Linq;
 using RCLayoutPreview.Helpers;
 using RCLayoutPreview.Controls;
@@ -38,6 +39,8 @@ namespace RCLayoutPreview
         private List<string> xamlKeywords;
         private List<string> fieldNames;
         private List<string> allCompletions;
+        private FoldingManager foldingManager;
+        private XmlFoldingStrategy foldingStrategy;
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -52,6 +55,11 @@ namespace RCLayoutPreview
             Editor.ShowLineNumbers = true;
             Editor.TextChanged += Editor_TextChanged;
             Editor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("XML");
+
+            // Add folding support
+            foldingManager = FoldingManager.Install(Editor.TextArea);
+            foldingStrategy = new XmlFoldingStrategy();
+            UpdateFoldings();
 
             // Add search panel
             searchPanel = SearchPanel.Install(Editor);
@@ -249,8 +257,19 @@ namespace RCLayoutPreview
                 lastEditTime = DateTime.Now;
                 lastEditorContent = currentContent;
 
+                // Update foldings
+                UpdateFoldings();
+
                 // Check for valid fields and notify if found for the first time
                 CheckForValidFields(currentContent);
+            }
+        }
+
+        private void UpdateFoldings()
+        {
+            if (foldingManager != null && foldingStrategy != null)
+            {
+                foldingStrategy.UpdateFoldings(foldingManager, Editor.Document);
             }
         }
 

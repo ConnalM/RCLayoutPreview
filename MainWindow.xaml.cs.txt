@@ -1,0 +1,777 @@
+using RCLayoutPreview.Helpers;
+using Newtonsoft.Json.Linq;
+using System;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using System.Windows.Markup;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
+using System.Xml;
+using System.Text.RegularExpressions;
+using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace RCLayoutPreview
+{
+    public partial class MainWindow : Window
+    {
+        private string currentJsonPath;
+        private JObject jsonData;
+        private EditorWindow editorWindow;
+        private bool placeholderRemoved = false;
+        private HashSet<string> usedElementNames = new HashSet<string>();
+        private FrameworkElement currentHighlightedElement;
+        private ToolTip currentToolTip;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            LoadStubData();
+
+            StubDataFieldHandler.UILogStatus = LogStatus;
+
+            editorWindow = new EditorWindow(this);
+            editorWindow.XamlContentChanged += EditorWindow_XamlContentChanged;
+            editorWindow.JsonDataChanged += EditorWindow_JsonDataChanged;
+            editorWindow.Show();
+
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            LogStatus("Layout initialized.");
+
+            // Test loading ThemeDictionary.xaml
+            try
+            {
+                LogStatus("Attempting to load ThemeDictionary.xaml...");
+                var themeDict = new ResourceDictionary
+                {
+                    Source = new Uri("pack://application:,,,/RCLayoutPreview;component/ThemeDictionary.xaml", UriKind.Absolute)
+                };
+
+                LogStatus("ThemeDictionary.xaml loaded successfully. Keys:");
+                foreach (var key in themeDict.Keys)
+                {
+                    LogStatus($"Key: {key}, Value: {themeDict[key]?.ToString() ?? "null"}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"Failed to load ThemeDictionary.xaml: {ex.Message}");
+            }
+        }
+
+        private void EditorWindow_XamlContentChanged(object sender, string xamlContent)
+        {
+            TryPreviewXaml(xamlContent);
+        }
+
+        private void EditorWindow_JsonDataChanged(object sender, JObject newJsonData)
+        {
+            jsonData = newJsonData;
+            if (PreviewHost?.Content is FrameworkElement frameworkElement)
+            {
+                frameworkElement.DataContext = jsonData;
+                ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+            }
+        }
+
+        private void ProcessFieldsAndPlaceholders(FrameworkElement rootElement, JObject jsonData, bool debugMode)
+        {
+            if (rootElement == null) return;
+            ProcessElementRecursively(rootElement, jsonData, debugMode);
+            rootElement.LayoutUpdated += (s, e) =>
+            {
+                SynchronizeEchoFieldWidths(rootElement);
+            };
+        }
+
+        private void ProcessElementRecursively(FrameworkElement element, JObject jsonData, bool debugMode)
+        {
+            if (element == null) return;
+            if (!string.IsNullOrEmpty(element.Name))
+            {
+                string normalizedFieldName = RemoveFieldSuffix(element.Name);
+                if (element is Label lbl)
+                {
+                    lbl.IsHitTestVisible = true;
+                    if (lbl.Background == null || (lbl.Background is SolidColorBrush b && b.Color.A == 0))
+                        lbl.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+                }
+                else if (element is TextBlock tb)
+                {
+                    tb.IsHitTestVisible = true;
+                    if (tb.Background == null || (tb.Background is SolidColorBrush b && b.Color.A == 0))
+                        tb.Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
+                }
+                else if (element is Button btn && btn.Opacity == 0)
+                {
+                    btn.IsHitTestVisible = false;
+                }
+
+                int position = 1;
+                var parentTag = (element.Parent as FrameworkElement)?.Tag?.ToString() ?? "";
+                if (int.TryParse(Regex.Match(parentTag, @"\((\d+)\)").Groups[1].Value, out int pos))
+                {
+                    position = pos;
+                }
+
+                if (PlaceholderHandler.IsPlaceholderElement(element))
+                {
+                    PlaceholderHandler.DisplayPlaceholder(element, position);
+                }
+                else if (StubDataFieldHandler.IsStubDataField(element))
+                {
+                    StubDataFieldHandler.DisplayStubDataField(element, jsonData, debugMode, normalizedFieldName);
+                }
+            }
+
+            foreach (var child in LogicalTreeHelper.GetChildren(element))
+            {
+                if (child is FrameworkElement childElement)
+                {
+                    ProcessElementRecursively(childElement, jsonData, debugMode);
+                }
+            }
+        }
+
+        private void TryPreviewXaml(string xamlContent)
+        {
+            if (string.IsNullOrWhiteSpace(xamlContent))
+            {
+                LogStatus("XAML content is empty or null.");
+                return;
+            }
+
+            xamlContent = CleanXamlPlaceholders(xamlContent);
+
+            var duplicateNames = DetectDuplicateNames(xamlContent);
+            if (duplicateNames.Count > 0)
+            {
+                ShowErrorPopup($"Error: Duplicate field names detected in XAML: {string.Join(", ", duplicateNames)}. Please ensure all element names are unique.");
+                LogStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
+                return;
+            }
+
+            try
+            {
+                string processedXaml = PreprocessAndFixXaml(xamlContent);
+                LogStatus("XAML processed for preview");
+
+                processedXaml = HandlePlaceholders(processedXaml);
+
+                processedXaml = EnsureRootAndNamespaces(processedXaml);
+
+                processedXaml = FixBindingExpressions(processedXaml);
+
+                processedXaml = RemoveEmptyNameAttributes(processedXaml);
+
+                object element = ParseXaml(processedXaml);
+                if (element is Window window)
+                {
+                    ApplyWindowProperties(window);
+                }
+                else
+                {
+                    string wrappedXaml = WrapXamlWithTheme(processedXaml);
+                    FrameworkElement previewElement = ParseWrappedXaml(wrappedXaml);
+                    if (previewElement != null)
+                        SetupPreviewHost(previewElement);
+                }
+
+                if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
+                {
+                    frameworkElement.DataContext = jsonData;
+                    ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+                }
+
+                AddHoverBehavior();
+            }
+            catch (XamlParseException ex)
+            {
+                ShowErrorPopup($"XAML parsing error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                ShowErrorPopup($"Preview error: {ex.Message}");
+            }
+        }
+
+        private string CleanXamlPlaceholders(string xamlContent)
+        {
+            xamlContent = Regex.Replace(xamlContent, @"<([a-zA-Z0-9_]+)\s*([^>]*)?\{[a-zA-Z0-9_]+\}([^>]*)?>", m =>
+            {
+                return $"<!-- Invalid tag removed: {m.Value} -->";
+            });
+            xamlContent = Regex.Replace(xamlContent, @"\{[a-zA-Z0-9_]+\}", "");
+            return xamlContent;
+        }
+
+        private List<string> DetectDuplicateNames(string xamlContent)
+        {
+            var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            var nameMatches = nameRegex.Matches(xamlContent);
+            var nameSet = new HashSet<string>();
+            var duplicateNames = new List<string>();
+            foreach (Match match in nameMatches)
+            {
+                string name = match.Groups[1].Value;
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    if (name.StartsWith("Placeholder"))
+                        continue;
+                    if (nameSet.Contains(name))
+                        duplicateNames.Add(name);
+                    else
+                        nameSet.Add(name);
+                }
+            }
+            return duplicateNames;
+        }
+
+        private string PreprocessAndFixXaml(string xamlContent)
+        {
+            PreviewHost.Content = null;
+            usedElementNames.Clear();
+            string processedXaml = XamlPreprocessor.Preprocess(xamlContent);
+            if (processedXaml.Contains("FontSize=\"\""))
+            {
+                LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
+                processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
+            }
+            processedXaml = processedXaml.Replace("{styles}", "");
+            processedXaml = processedXaml.Replace("{content}", "");
+            processedXaml = EnsureUniqueElementNames(processedXaml);
+            return processedXaml;
+        }
+
+        private string HandlePlaceholders(string processedXaml)
+        {
+            if (PlaceholderSwapManager.ContainsValidField(processedXaml))
+            {
+                if (PlaceholderSwapManager.ContainsPlaceholder(processedXaml))
+                {
+                    string fieldMessage = PlaceholderSwapManager.GenerateFieldDetectedMessage(processedXaml);
+                    if (!string.IsNullOrEmpty(fieldMessage))
+                    {
+                        processedXaml = PlaceholderSwapManager.ReplacePlaceholderWithMessage(processedXaml, fieldMessage);
+                        if (!placeholderRemoved)
+                        {
+                            LogStatus($"Field detected: {fieldMessage}");
+                            placeholderRemoved = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                placeholderRemoved = false;
+            }
+            return processedXaml;
+        }
+
+        private string EnsureRootAndNamespaces(string processedXaml)
+        {
+            if (!IsValidRootElement(processedXaml))
+            {
+                processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
+                LogStatus("Added Grid container to wrap content");
+            }
+            if (!processedXaml.Contains("xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\""))
+            {
+                string rootTag = Regex.Match(processedXaml, @"<(\w+)").Groups[1].Value;
+                string xmlnsDeclaration = "xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
+                processedXaml = Regex.Replace(processedXaml,
+                    $"<{rootTag}",
+                    $"<{rootTag} {xmlnsDeclaration}");
+                LogStatus("Added XAML namespaces to content");
+            }
+            return processedXaml;
+        }
+
+        private string RemoveEmptyNameAttributes(string processedXaml)
+        {
+            var emptyNameMatches = Regex.Matches(processedXaml, "Name\\s*=\\s*\"\\s*\"");
+            if (emptyNameMatches.Count > 0)
+            {
+                ShowErrorPopup($"Warning: {emptyNameMatches.Count} empty Name attribute(s) were found and removed from the XAML. Please check your layout for missing names.");
+                processedXaml = Regex.Replace(processedXaml, "Name\\s*=\\s*\"\\s*\"", "");
+            }
+            return processedXaml;
+        }
+        private object ParseXaml(string processedXaml)
+        {
+            try
+            {
+                var element = XamlReader.Parse(processedXaml);
+                LogStatus("XAML parsed successfully with XamlReader.Parse");
+                return element;
+            }
+            catch (Exception parseEx)
+            {
+                LogStatus($"Direct parsing failed: {parseEx.Message}. Trying alternate method...");
+                try
+                {
+                    var context = new ParserContext
+                    {
+                        BaseUri = new Uri("pack://application:,,,/")
+                    };
+                    context.XmlnsDictionary.Add("", "http://schemas.microsoft.com/winfx/2006/xaml/presentation");
+                    context.XmlnsDictionary.Add("x", "http://schemas.microsoft.com/winfx/2006/xaml");
+                    byte[] bytes = Encoding.UTF8.GetBytes(processedXaml);
+                    using (var stream = new MemoryStream(bytes))
+                    {
+                        var element = XamlReader.Load(stream, context);
+                        LogStatus("XAML parsed successfully with XamlReader.Load");
+                        return element;
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    LogStatus($"All parsing attempts failed: {loadEx.Message}");
+                    throw new XamlParseException($"Failed to parse XAML: {parseEx.Message}", parseEx);
+                }
+            }
+        }
+
+        private void ApplyWindowProperties(Window window)
+        {
+            LogStatus("XAML contains a Window element. Extracting content.");
+            PreviewHost.Content = null;
+            PreviewHost.Content = window.Content;
+            PreviewHost.IsHitTestVisible = true;
+            PreviewHost.IsEnabled = true;
+            if (window.Content is FrameworkElement fe)
+            {
+                fe.IsHitTestVisible = true;
+                fe.IsEnabled = true;
+            }
+            if (window.Title != null)
+            {
+                this.Title = window.Title;
+                LogStatus($"Window Title applied: {window.Title}");
+            }
+            if (ApplyWindowSizeToggle != null && ApplyWindowSizeToggle.IsChecked == true)
+            {
+                if (window.Width > 0)
+                {
+                    this.Width = window.Width;
+                    LogStatus($"Window Width applied: {window.Width}");
+                }
+                if (window.Height > 0)
+                {
+                    this.Height = window.Height;
+                    LogStatus($"Window Height applied: {window.Height}");
+                }
+            }
+            if (window.Background != null)
+            {
+                this.Background = window.Background;
+                LogStatus("Window Background applied.");
+            }
+        }
+
+        private void SetupPreviewHost(object element)
+        {
+            LogStatus("Updating PreviewHost with parsed element...");
+            PreviewHost.Content = element;
+
+            if (element is FrameworkElement fe)
+            {
+                LogStatus("Setting DataContext for the parsed element...");
+                fe.DataContext = jsonData;
+                LogStatus("DataContext set successfully.");
+            }
+
+            LogStatus("Forcing UI refresh for PreviewHost...");
+            PreviewHost.InvalidateVisual();
+            PreviewHost.UpdateLayout();
+
+            LogStatus("PreviewHost.Content details:");
+            LogStatus(PreviewHost.Content?.ToString() ?? "PreviewHost.Content is null");
+
+            LogStatus("Preview updated with parsed element.");
+            PreviewHost.IsHitTestVisible = true;
+            PreviewHost.IsEnabled = true;
+            if (element is FrameworkElement fe)
+            {
+                fe.IsHitTestVisible = true;
+                fe.IsEnabled = true;
+            }
+        }
+
+        private void LoadStubData()
+        {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            LogStatus($"Base directory: {baseDirectory}");
+            string jsonPath = Path.Combine(baseDirectory, "stubdata5.json");
+            LogStatus($"Checking path: {jsonPath}");
+            if (File.Exists(jsonPath))
+            {
+                try
+                {
+                    currentJsonPath = jsonPath;
+                    string jsonContent = File.ReadAllText(jsonPath);
+                    jsonData = JObject.Parse(jsonContent);
+                    LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
+                }
+                catch (Exception ex)
+                {
+                    LogStatus($"Error parsing JSON file: {ex.Message}");
+                }
+            }
+            else
+            {
+                LogStatus($"File does not exist: {jsonPath}");
+            }
+        }
+
+        private void LogStatus(string message)
+        {
+            if (StatusLabel != null)
+            {
+                StatusLabel.Text = message;
+            }
+            Console.WriteLine($"Status: {message}");
+        }
+
+        private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            var debugMode = (sender as CheckBox)?.IsChecked == true;
+            LogStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
+            if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
+            {
+                ProcessFieldsAndPlaceholders(frameworkElement, jsonData, debugMode);
+                PreviewHost.Content = null;
+                PreviewHost.Content = frameworkElement;
+                LogStatus("Preview refreshed with updated diagnostics mode.");
+            }
+            else
+            {
+                LogStatus("Preview content is not available to refresh.");
+            }
+        }
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            editorWindow.Close();
+            base.OnClosing(e);
+        }
+
+        private void AddHoverBehavior()
+        {
+            if (PreviewHost != null)
+            {
+                PreviewHost.MouseMove -= PreviewHost_SafeMouseMove;
+                PreviewHost.MouseMove += PreviewHost_SafeMouseMove;
+                PreviewHost.MouseLeave -= PreviewHost_MouseLeave;
+                PreviewHost.MouseLeave += PreviewHost_MouseLeave;
+            }
+        }
+
+        private FrameworkElement DeepHitTestForNamedElement(Point pt)
+        {
+            var results = new List<FrameworkElement>();
+            VisualTreeHelper.HitTest(PreviewHost, null,
+                new HitTestResultCallback(hit =>
+                {
+                    if (hit.VisualHit is FrameworkElement fe)
+                    {
+                        if (!string.IsNullOrEmpty(fe.Name) && fe.IsHitTestVisible && fe.Opacity > 0)
+                            results.Add(fe);
+                    }
+                    return HitTestResultBehavior.Continue;
+                }),
+                new PointHitTestParameters(pt));
+            return results.Count > 0 ? results[results.Count - 1] : null;
+        }
+
+        private void PreviewHost_SafeMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            var pt = e.GetPosition(PreviewHost);
+            FrameworkElement namedElement = DeepHitTestForNamedElement(pt);
+            if (namedElement != null)
+            {
+                if (namedElement != currentHighlightedElement)
+                {
+                    if (currentHighlightedElement != null)
+                        currentHighlightedElement.Effect = null;
+                    currentHighlightedElement = namedElement;
+                    currentHighlightedElement.Effect = new DropShadowEffect
+                    {
+                        Color = Colors.Yellow,
+                        ShadowDepth = 0,
+                        BlurRadius = 12,
+                        Opacity = 0.7
+                    };
+                }
+                ShowElementTooltip(namedElement, pt);
+                e.Handled = true;
+            }
+            else
+            {
+                if (currentHighlightedElement != null)
+                    currentHighlightedElement.Effect = null;
+                currentHighlightedElement = null;
+                if (currentToolTip != null)
+                    currentToolTip.IsOpen = false;
+            }
+        }
+
+        private void PreviewHost_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (currentHighlightedElement != null)
+                currentHighlightedElement.Effect = null;
+            currentHighlightedElement = null;
+            if (currentToolTip != null)
+                currentToolTip.IsOpen = false;
+        }
+
+        private FrameworkElement FindNamedChildElement(FrameworkElement element)
+        {
+            if (element is Viewbox viewbox && VisualTreeHelper.GetChildrenCount(viewbox) > 0)
+            {
+                var child = VisualTreeHelper.GetChild(viewbox, 0) as FrameworkElement;
+                if (child != null)
+                {
+                    var named = FindNamedChildElement(child);
+                    if (named != null)
+                        return named;
+                }
+            }
+            var up = element;
+            while (up != null)
+            {
+                if (!string.IsNullOrEmpty(up.Name))
+                    return up;
+                if (up.Parent is FrameworkElement parent)
+                    up = parent;
+                else
+                    break;
+            }
+            var queue = new Queue<DependencyObject>();
+            queue.Enqueue(element);
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                if (current is FrameworkElement fe && !string.IsNullOrEmpty(fe.Name))
+                    return fe;
+                int count = VisualTreeHelper.GetChildrenCount(current);
+                for (int i = 0; i < count; i++)
+                    queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+            }
+            return null;
+        }
+        private void ShowElementTooltip(FrameworkElement element, Point mousePos)
+        {
+            var info = BuildElementInfoSafe(element);
+            if (currentToolTip == null)
+            {
+                currentToolTip = new ToolTip
+                {
+                    Placement = System.Windows.Controls.Primitives.PlacementMode.Relative,
+                    PlacementTarget = PreviewHost,
+                    StaysOpen = true,
+                    Background = new SolidColorBrush(Color.FromRgb(255, 255, 220)),
+                    Foreground = Brushes.Black,
+                    BorderBrush = Brushes.Gray,
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(8)
+                };
+            }
+            currentToolTip.Content = info;
+            currentToolTip.HorizontalOffset = mousePos.X + 12;
+            currentToolTip.VerticalOffset = mousePos.Y + 12;
+            currentToolTip.IsOpen = true;
+        }
+
+        private string BuildElementInfoSafe(FrameworkElement element)
+        {
+            var info = new StringBuilder();
+            info.AppendLine($"Type: {element.GetType().Name}");
+            if (!string.IsNullOrEmpty(element.Name))
+                info.AppendLine($"Name: {element.Name}");
+            info.AppendLine($"Size: {element.ActualWidth:F0} x {element.ActualHeight:F0}");
+            if (element.Parent is Panel parentPanel)
+            {
+                int idx = parentPanel.Children.IndexOf(element);
+                info.AppendLine($"Position in Parent: {idx + 1} of {parentPanel.Children.Count}");
+            }
+            if (Grid.GetRow(element) >= 0 || Grid.GetColumn(element) >= 0)
+                info.AppendLine($"Grid Position: Row {Grid.GetRow(element)}, Column {Grid.GetColumn(element)}");
+            return info.ToString().TrimEnd();
+        }
+
+        private void ShowErrorPopup(string errorMessage)
+        {
+            if (PopupMessage != null && PopupOverlay != null)
+            {
+                PopupMessage.Text = errorMessage;
+                PopupOverlay.Visibility = Visibility.Visible;
+            }
+            LogStatus("Popup overlay displayed with message: " + errorMessage);
+        }
+
+        private string EnsureUniqueElementNames(string xaml)
+        {
+            var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            return nameRegex.Replace(xaml, match => {
+                string originalName = match.Groups[1].Value;
+                string uniqueName = originalName;
+                int counter = 1;
+                while (usedElementNames.Contains(uniqueName))
+                {
+                    uniqueName = $"{originalName}_{counter++}";
+                }
+                usedElementNames.Add(uniqueName);
+                return $"Name=\"{uniqueName}\"";
+            });
+        }
+
+        private string FixBindingExpressions(string xaml)
+        {
+            xaml = Regex.Replace(xaml, "{Binding([^}]*)}", m =>
+            {
+                if (xaml.IndexOf(m.Value) > 0 && xaml[xaml.IndexOf(m.Value) - 1] == '{')
+                    return m.Value;
+                return "{Binding" + m.Groups[1].Value + "}";
+            });
+            return xaml;
+        }
+
+        private bool IsValidRootElement(string xaml)
+        {
+            string pattern = @"^\s*<\s*([a-zA-Z0-9_]+)";
+            Match match = Regex.Match(xaml, pattern);
+            if (match.Success)
+            {
+                string rootElement = match.Groups[1].Value;
+                switch (rootElement.ToLower())
+                {
+                    case "grid":
+                    case "stackpanel":
+                    case "border":
+                    case "dockpanel":
+                    case "canvas":
+                    case "wrappanel":
+                    case "viewbox":
+                    case "window":
+                    case "page":
+                    case "usercontrol":
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            return false;
+        }
+
+        private void PopupOkButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (PopupOverlay != null)
+                PopupOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private string RemoveFieldSuffix(string fieldName)
+        {
+            return Regex.Replace(fieldName, "_\\d+$", "");
+        }
+        private void SynchronizeEchoFieldWidths(FrameworkElement rootElement)
+        {
+            if (rootElement == null) return;
+            if (rootElement is Panel panel)
+            {
+                var allTextBlocks = new List<TextBlock>();
+                var queue = new Queue<DependencyObject>();
+                foreach (var child in panel.Children)
+                    queue.Enqueue(child as DependencyObject);
+                while (queue.Count > 0)
+                {
+                    var current = queue.Dequeue();
+                    if (current is TextBlock tb && !string.IsNullOrEmpty(tb.Name))
+                        allTextBlocks.Add(tb);
+                    int count = VisualTreeHelper.GetChildrenCount(current);
+                    for (int i = 0; i < count; i++)
+                        queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+                }
+
+                var groups = new Dictionary<string, List<TextBlock>>();
+                var regex = new Regex(@"^(.*?)(\d+)_([12])$");
+                foreach (var tb in allTextBlocks)
+                {
+                    var match = regex.Match(tb.Name);
+                    if (match.Success)
+                    {
+                        string baseName = match.Groups[1].Value + match.Groups[2].Value;
+                        if (!groups.ContainsKey(baseName))
+                            groups[baseName] = new List<TextBlock>();
+                        groups[baseName].Add(tb);
+                    }
+                }
+
+                foreach (var group in groups.Values)
+                {
+                    if (group.Count >= 2)
+                    {
+                        double maxWidth = group.Max(tb => tb.ActualWidth);
+                        foreach (var tb in group)
+                        {
+                            tb.Width = maxWidth;
+                        }
+                    }
+                }
+            }
+
+            foreach (var child in LogicalTreeHelper.GetChildren(rootElement))
+            {
+                if (child is FrameworkElement childElement)
+                {
+                    SynchronizeEchoFieldWidths(childElement);
+                }
+            }
+        }
+
+        private string WrapXamlWithTheme(string rawXaml)
+        {
+            LogStatus("Wrapping XAML with ThemeDictionary...");
+            string wrappedXaml = $@"
+            <Grid xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                 xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>
+                <Grid.Resources>
+                <ResourceDictionary>
+                  <ResourceDictionary.MergedDictionaries>
+                    <ResourceDictionary Source='pack://application:,,,/RCLayoutPreview;component/ThemeDictionary.xaml' />
+                  </ResourceDictionary.MergedDictionaries>
+                </ResourceDictionary>
+              </Grid.Resources>
+              {rawXaml}
+            </Grid>";
+
+            LogStatus("ThemeDictionary wrapped XAML:");
+            LogStatus(wrappedXaml);
+
+            return wrappedXaml;
+        }
+
+        private FrameworkElement ParseWrappedXaml(string wrappedXaml)
+        {
+            try
+            {
+                LogStatus("Parsing wrapped XAML...");
+                var element = (FrameworkElement)XamlReader.Parse(wrappedXaml);
+                LogStatus("XAML parsed successfully with embedded ThemeDictionary.");
+                return element;
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"ParseWrappedXaml failed: {ex.Message}");
+                ShowErrorPopup($"XAML parsing failed: {ex.Message}");
+                return null;
+            }
+        }
+    }
+}
