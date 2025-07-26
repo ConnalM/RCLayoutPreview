@@ -628,6 +628,35 @@ namespace RCLayoutPreview.Helpers
                     XamlTemplate =
                         "<Border BorderBrush=\"Green\" BorderThickness=\"10\" Margin=\"5\">\n{content}\n</Border>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
+                },
+                // New snippet for Grid
+                new LayoutSnippet
+                {
+                    Name = "Grid",
+                    Description = "Wraps content in a Grid layout.",
+                    Category = "Layout Containers",
+                    XamlTemplate = "<Grid>\n{content}\n</Grid>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
+                },
+
+                // New snippet for DockPanel
+                new LayoutSnippet
+                {
+                    Name = "DockPanel",
+                    Description = "Wraps content in a DockPanel layout.",
+                    Category = "Layout Containers",
+                    XamlTemplate = "<DockPanel LastChildFill=\"True\">\n{content}\n</DockPanel>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
+                },
+
+                // New snippet for Viewbox
+                new LayoutSnippet
+                {
+                    Name = "Viewbox",
+                    Description = "Wraps content in a Viewbox for scaling.",
+                    Category = "Layout Containers",
+                    XamlTemplate = "<Viewbox Stretch=\"Uniform\">\n{content}\n</Viewbox>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 }
             };
         }
