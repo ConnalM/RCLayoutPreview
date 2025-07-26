@@ -40,14 +40,28 @@ namespace RCLayoutPreview
             InitializeComponent();
             LoadStubData();
 
-            // Set up UI logging for stubdata field handler
-            StubDataFieldHandler.UILogStatus = LogStatus;
+            // Get screen dimensions
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
 
-            // Create and show editor window
+            // Create and show editor window FIRST, on the left
             editorWindow = new EditorWindow(this);
+            editorWindow.Left = 0;
+            editorWindow.Top = 0;
+            editorWindow.Width = screenWidth * 0.66;
+            editorWindow.Height = screenHeight;
             editorWindow.XamlContentChanged += EditorWindow_XamlContentChanged;
             editorWindow.JsonDataChanged += EditorWindow_JsonDataChanged;
             editorWindow.Show();
+
+            // Now position the preview window (this) to the right of the editor window
+            this.Left = editorWindow.Width;
+            this.Top = 0;
+            this.Width = screenWidth * 0.33;
+            this.Height = screenHeight;
+
+            // Set up UI logging for stubdata field handler
+            StubDataFieldHandler.UILogStatus = LogStatus;
 
             this.Loaded += MainWindow_Loaded;
         }

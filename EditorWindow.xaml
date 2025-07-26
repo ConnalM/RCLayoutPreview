@@ -31,11 +31,11 @@
         <!-- Editor area -->
         <Grid Grid.Row="1" Margin="5">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="250" MinWidth="100"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="250" MinWidth="100"/>
-                <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="*" MinWidth="200"/>
+                <ColumnDefinition Width="15*" MinWidth="100"/> <!-- JSON Fields -->
+                <ColumnDefinition Width="5"/> <!-- First GridSplitter -->
+                <ColumnDefinition Width="20*" MinWidth="100"/> <!-- Snippet Gallery -->
+                <ColumnDefinition Width="5"/> <!-- Second GridSplitter -->
+                <ColumnDefinition Width="65*" MinWidth="200"/> <!-- XAML Editor -->
             </Grid.ColumnDefinitions>
 
             <!-- JSON Fields Panel -->

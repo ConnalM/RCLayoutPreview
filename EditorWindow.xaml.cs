@@ -49,6 +49,17 @@ namespace RCLayoutPreview
         {
             InitializeComponent();
             this.previewWindow = previewWindow;
+
+            // Get screen dimensions
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
+
+            // Set the opening position and size of EditorWindow
+            this.Left = previewWindow.Left + previewWindow.Width + 20; // Position EditorWindow to the right of MainWindow
+            this.Top = previewWindow.Top; // Align EditorWindow vertically with MainWindow
+            this.Width = screenWidth * 0.34 - 20; // Remaining width for Preview Window
+            this.Height = previewWindow.Height; // Match height with MainWindow
+
             statusLabel = FindName("StatusLabel") as TextBlock;
 
             // Set up editor
