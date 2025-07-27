@@ -88,12 +88,14 @@
     <Compile Include="EditorWindow.xaml.cs">
       <DependentUpon>EditorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\AppConstants.cs" />
     <Compile Include="Helpers\LayoutSnippetComplete.cs" />
     <Compile Include="Helpers\PlaceholderHandler.cs" />
     <Compile Include="Helpers\PlaceholderHelper.cs" />
     <Compile Include="Helpers\PlaceholderSwapManager.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\StubDataFieldHandler.cs" />
+    <Compile Include="Helpers\StubDataService.cs" />
     <Compile Include="Helpers\WindowPlacementHelper.cs" />
     <Compile Include="Helpers\XamlFixer.cs" />
     <Compile Include="Helpers\XamlPreprocessor.cs" />

@@ -111,7 +111,7 @@ namespace RCLayoutPreview
             fieldNames = new List<string>();
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stubdata5.json");
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppConstants.StubDataFileName);
                 if (File.Exists(jsonPath))
                 {
                     var json = JObject.Parse(File.ReadAllText(jsonPath));
@@ -299,7 +299,7 @@ namespace RCLayoutPreview
                     string message = PlaceholderSwapManager.GenerateFieldDetectedMessage(content);
 
                     // Update the status with a notification
-                    LogStatus($"Field detected: {(string.IsNullOrEmpty(message) ? baseFieldName : message)}");
+                    UpdateStatus($"Field detected: {(string.IsNullOrEmpty(message) ? baseFieldName : message)}");
 
                     // If we're editing, update immediately rather than waiting for the timer
                     if (autoUpdateEnabled)
@@ -330,11 +330,11 @@ namespace RCLayoutPreview
                     if (XamlValidationHelper.IsValidXml(currentContent, out string error))
                     {
                         XamlContentChanged?.Invoke(this, currentContent);
-                        LogStatus("Preview updated");
+                        UpdateStatus("Preview updated");
                     }
                     else
                     {
-                        LogStatus($"Invalid XAML: {error}");
+                        UpdateStatus($"Invalid XAML: {error}");
                     }
                 }
             }
@@ -343,33 +343,22 @@ namespace RCLayoutPreview
         private void LoadStubData()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            LogStatus($"Base directory: {baseDirectory}");
-
-            string jsonPath = Path.Combine(baseDirectory, "stubdata5.json");
-            LogStatus($"Checking path: {jsonPath}");
-
-            if (File.Exists(jsonPath))
+            UpdateStatus($"Base directory: {baseDirectory}");
+            jsonData = StubDataService.LoadStubData(baseDirectory, UpdateStatus);
+            if (jsonData != null)
             {
-                try
-                {
-                    currentJsonPath = jsonPath;
-                    string jsonContent = File.ReadAllText(jsonPath);
-                    jsonData = JObject.Parse(jsonContent);
-                    LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
-                    PopulateJsonFieldsTree();
-                    JsonDataChanged?.Invoke(this, jsonData);
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    LogStatus($"Error parsing JSON file: {ex.Message}");
-                }
+                currentJsonPath = Path.Combine(baseDirectory, AppConstants.StubDataFileName);
+                PopulateJsonFieldsTree();
+                JsonDataChanged?.Invoke(this, jsonData);
+                return;
             }
-
-            LogStatus("No JSON data files found.");
+            UpdateStatus("No JSON data files found.");
         }
 
-        private void LogStatus(string message)
+        /// <summary>
+        /// Updates the status message in the UI and logs to the console.
+        /// /// <param name="message">Message to display</param>
+        private void UpdateStatus(string message)
         {
             if (statusLabel != null)
             {
@@ -394,7 +383,7 @@ namespace RCLayoutPreview
                     Editor.Text = xamlContent;
                     currentXamlPath = dlg.FileName;
                     UpdateWindowTitleWithFileName();
-                    LogStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
+                    UpdateStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
                     XamlContentChanged?.Invoke(this, xamlContent);
 
                     // Check for valid fields in the loaded file
@@ -402,7 +391,7 @@ namespace RCLayoutPreview
                 }
                 catch (Exception ex)
                 {
-                    LogStatus($"Error loading layout: {ex.Message}");
+                    UpdateStatus($"Error loading layout: {ex.Message}");
                 }
             }
         }
@@ -414,7 +403,7 @@ namespace RCLayoutPreview
                 if (!string.IsNullOrEmpty(currentXamlPath))
                 {
                     File.WriteAllText(currentXamlPath, Editor.Text);
-                    LogStatus($"Saved layout to: {Path.GetFileName(currentXamlPath)}");
+                    UpdateStatus($"Saved layout to: {Path.GetFileName(currentXamlPath)}");
                     UpdateWindowTitleWithFileName();
                 }
                 else
@@ -429,14 +418,14 @@ namespace RCLayoutPreview
                     {
                         File.WriteAllText(dlg.FileName, Editor.Text);
                         currentXamlPath = dlg.FileName;
-                        LogStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
+                        UpdateStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
                         UpdateWindowTitleWithFileName();
                     }
                 }
             }
             else
             {
-                LogStatus("Nothing to save. Editor is empty.");
+                UpdateStatus("Nothing to save. Editor is empty.");
             }
         }
 
@@ -454,13 +443,13 @@ namespace RCLayoutPreview
                 {
                     File.WriteAllText(dlg.FileName, Editor.Text);
                     currentXamlPath = dlg.FileName;
-                    LogStatus($"Saved layout as: {Path.GetFileName(dlg.FileName)}");
+                    UpdateStatus($"Saved layout as: {Path.GetFileName(dlg.FileName)}");
                     UpdateWindowTitleWithFileName();
                 }
             }
             else
             {
-                LogStatus("Nothing to save. Editor is empty.");
+                UpdateStatus("Nothing to save. Editor is empty.");
             }
         }
 
@@ -492,7 +481,7 @@ namespace RCLayoutPreview
                     previewTimer.Stop();
                 }
             }
-            LogStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
+            UpdateStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
         }
 
         private void DelayInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -500,11 +489,11 @@ namespace RCLayoutPreview
             if (int.TryParse(DelayInput.Text, out var delay))
             {
                 previewDelayMilliseconds = delay;
-                LogStatus($"Preview delay updated to {previewDelayMilliseconds} ms.");
+                UpdateStatus($"Preview delay updated to {previewDelayMilliseconds} ms.");
             }
             else
             {
-                LogStatus("Invalid delay input. Please enter a valid number.");
+                UpdateStatus("Invalid delay input. Please enter a valid number.");
             }
         }
 
@@ -546,14 +535,14 @@ namespace RCLayoutPreview
                         // Replace the selected field name with the new field name (with suffix)
                         Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
                         Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
-                        LogStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
+                        UpdateStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
                     }
                     else
                     {
                         // If not a field name, just insert at selection
                         Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
                         Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
-                        LogStatus($"Inserted field name '{actualFieldName}' at selection");
+                        UpdateStatus($"Inserted field name '{actualFieldName}' at selection");
                     }
                 }
                 else
@@ -564,14 +553,14 @@ namespace RCLayoutPreview
                     {
                         // Replace the placeholder with the field name
                         ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
-                        LogStatus($"Replaced {placeholder} with {actualFieldName}");
+                        UpdateStatus($"Replaced {placeholder} with {actualFieldName}");
                     }
                     else
                     {
                         // No selection and no placeholder, insert at caret position
                         Editor.Document.Insert(caretOffset, actualFieldName);
                         Editor.CaretOffset = caretOffset + actualFieldName.Length;
-                        LogStatus($"Inserted field name '{actualFieldName}' at cursor");
+                        UpdateStatus($"Inserted field name '{actualFieldName}' at cursor");
                     }
                 }
 
@@ -656,7 +645,7 @@ namespace RCLayoutPreview
                         Editor.Document.Insert(offset, processedSnippet);
                     }
 
-                    LogStatus($"Inserted {snippet.Name} snippet");
+                    UpdateStatus($"Inserted {snippet.Name} snippet");
 
                     // Check if this snippet triggers the placeholder removal
                     CheckForValidFields(Editor.Text);
@@ -715,11 +704,11 @@ namespace RCLayoutPreview
                     if (XamlValidationHelper.IsValidXml(currentContent, out string error))
                     {
                         XamlContentChanged?.Invoke(this, currentContent);
-                        LogStatus("Preview refreshed manually");
+                        UpdateStatus("Preview refreshed manually");
                     }
                     else
                     {
-                        LogStatus($"Invalid XAML: {error}");
+                        UpdateStatus($"Invalid XAML: {error}");
                     }
                 }
             }
@@ -771,7 +760,7 @@ namespace RCLayoutPreview
         private void ClearEditor_Click(object sender, RoutedEventArgs e)
         {
             Editor.Clear();
-            LogStatus("Editor cleared.");
+            UpdateStatus("Editor cleared.");
         }
 
         private string GetCurrentIndentation()

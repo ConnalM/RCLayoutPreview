@@ -1,12 +1,13 @@
 using System.Text.RegularExpressions;
+using RCLayoutPreview.Helpers;
 
 namespace RCLayoutPreview.Helpers
 {
     public static class PlaceholderHelper
     {
-        // Use double backslash for C# string, or use verbatim string with double quotes
-        private static readonly Regex PlaceholderRegex = new Regex("Name=\"Placeholder\\d+\"", RegexOptions.Compiled);
-        private static readonly Regex PlaceholderNameOnlyRegex = new Regex("Placeholder\\d+", RegexOptions.Compiled);
+        // Use constants for magic strings
+        private static readonly Regex PlaceholderRegex = new Regex($"Name=\"{AppConstants.PlaceholderPrefix}\\d+\"", RegexOptions.Compiled);
+        private static readonly Regex PlaceholderNameOnlyRegex = new Regex($"{AppConstants.PlaceholderPrefix}\\d+", RegexOptions.Compiled);
 
         public static bool ContainsPlaceholder(string xaml)
         {

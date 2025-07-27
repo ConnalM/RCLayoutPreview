@@ -66,7 +66,7 @@ namespace RCLayoutPreview
             editorWindow.Show();
 
             // Set up UI logging for stubdata field handler
-            StubDataFieldHandler.UILogStatus = LogStatus;
+            StubDataFieldHandler.UILogStatus = UpdateStatus;
 
             this.Loaded += MainWindow_Loaded;
         }
@@ -76,7 +76,7 @@ namespace RCLayoutPreview
         /// </summary>
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            LogStatus("Layout initialized.");
+            UpdateStatus("Layout initialized.");
         }
 
         /// <summary>
@@ -203,10 +203,12 @@ namespace RCLayoutPreview
             catch (XamlParseException ex)
             {
                 ShowErrorPopup($"XAML parsing error: {ex.Message}");
+                UpdateStatus($"XAML parsing error: {ex.Message}");
             }
             catch (Exception ex)
             {
                 ShowErrorPopup($"Preview error: {ex.Message}");
+                UpdateStatus($"Preview error: {ex.Message}");
             }
         }
 
@@ -214,7 +216,7 @@ namespace RCLayoutPreview
         {
             if (string.IsNullOrWhiteSpace(xamlContent))
             {
-                LogStatus("XAML content is empty or null.");
+                UpdateStatus("XAML content is empty or null.");
                 return false;
             }
             return true;
@@ -238,7 +240,7 @@ namespace RCLayoutPreview
             string processedXaml = XamlPreprocessor.Preprocess(xamlContent);
             if (processedXaml.Contains("FontSize=\"\""))
             {
-                LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
+                UpdateStatus("Invalid FontSize detected in XAML. Replacing with default value.");
                 processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
             }
             processedXaml = processedXaml.Replace("{styles}", "");
@@ -259,7 +261,7 @@ namespace RCLayoutPreview
                         processedXaml = PlaceholderSwapManager.ReplacePlaceholderWithMessage(processedXaml, fieldMessage);
                         if (!placeholderRemoved)
                         {
-                            LogStatus($"Field detected: {fieldMessage}");
+                            UpdateStatus($"Field detected: {fieldMessage}");
                             placeholderRemoved = true;
                         }
                     }
@@ -277,7 +279,7 @@ namespace RCLayoutPreview
             if (!IsValidRootElement(processedXaml))
             {
                 processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
-                LogStatus("Added Grid container to wrap content");
+                UpdateStatus("Added Grid container to wrap content");
             }
             if (!processedXaml.Contains("xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\""))
             {
@@ -286,7 +288,7 @@ namespace RCLayoutPreview
                 processedXaml = Regex.Replace(processedXaml,
                     $"<{rootTag}",
                     $"<{rootTag} {xmlnsDeclaration}");
-                LogStatus("Added XAML namespaces to content");
+                UpdateStatus("Added XAML namespaces to content");
             }
             return processedXaml;
         }
@@ -296,12 +298,12 @@ namespace RCLayoutPreview
             var element = XamlValidationHelper.ParseXaml(processedXaml, out string error);
             if (element != null)
             {
-                LogStatus("XAML parsed successfully");
+                UpdateStatus("XAML parsed successfully");
                 return element;
             }
             else
             {
-                LogStatus($"XAML parsing failed: {error}");
+                UpdateStatus($"XAML parsing failed: {error}");
                 throw new XamlParseException($"Failed to parse XAML: {error}");
             }
         }
@@ -321,7 +323,7 @@ namespace RCLayoutPreview
         private void HandleDuplicateNames(List<string> duplicateNames)
         {
             ShowErrorPopup($"Error: Duplicate field names detected in XAML: {string.Join(", ", duplicateNames)}. Please ensure all element names are unique.");
-            LogStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
+            UpdateStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
         }
 
         private void PostProcessPreview()
@@ -375,7 +377,7 @@ namespace RCLayoutPreview
             string processedXaml = XamlPreprocessor.Preprocess(xamlContent);
             if (processedXaml.Contains("FontSize=\"\""))
             {
-                LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
+                UpdateStatus("Invalid FontSize detected in XAML. Replacing with default value.");
                 processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
             }
             processedXaml = processedXaml.Replace("{styles}", "");
@@ -396,7 +398,7 @@ namespace RCLayoutPreview
                         processedXaml = PlaceholderSwapManager.ReplacePlaceholderWithMessage(processedXaml, fieldMessage);
                         if (!placeholderRemoved)
                         {
-                            LogStatus($"Field detected: {fieldMessage}");
+                            UpdateStatus($"Field detected: {fieldMessage}");
                             placeholderRemoved = true;
                         }
                     }
@@ -414,7 +416,7 @@ namespace RCLayoutPreview
             if (!IsValidRootElement(processedXaml))
             {
                 processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
-                LogStatus("Added Grid container to wrap content");
+                UpdateStatus("Added Grid container to wrap content");
             }
             if (!processedXaml.Contains("xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\""))
             {
@@ -423,7 +425,7 @@ namespace RCLayoutPreview
                 processedXaml = Regex.Replace(processedXaml,
                     $"<{rootTag}",
                     $"<{rootTag} {xmlnsDeclaration}");
-                LogStatus("Added XAML namespaces to content");
+                UpdateStatus("Added XAML namespaces to content");
             }
             return processedXaml;
         }
@@ -444,19 +446,19 @@ namespace RCLayoutPreview
             var element = XamlValidationHelper.ParseXaml(processedXaml, out string error);
             if (element != null)
             {
-                LogStatus("XAML parsed successfully");
+                UpdateStatus("XAML parsed successfully");
                 return element;
             }
             else
             {
-                LogStatus($"XAML parsing failed: {error}");
+                UpdateStatus($"XAML parsing failed: {error}");
                 throw new XamlParseException($"Failed to parse XAML: {error}");
             }
         }
 
         private void ApplyWindowProperties(Window window)
         {
-            LogStatus("XAML contains a Window element. Extracting content.");
+            UpdateStatus("XAML contains a Window element. Extracting content.");
             PreviewHost.Content = null;
             PreviewHost.Content = window.Content;
             PreviewHost.IsHitTestVisible = true;
@@ -469,32 +471,32 @@ namespace RCLayoutPreview
             if (window.Title != null)
             {
                 this.Title = window.Title;
-                LogStatus($"Window Title applied: {window.Title}");
+                UpdateStatus($"Window Title applied: {window.Title}");
             }
             if (ApplyWindowSizeToggle != null && ApplyWindowSizeToggle.IsChecked == true)
             {
                 if (window.Width > 0)
                 {
                     this.Width = window.Width;
-                    LogStatus($"Window Width applied: {window.Width}");
+                    UpdateStatus($"Window Width applied: {window.Width}");
                 }
                 if (window.Height > 0)
                 {
                     this.Height = window.Height;
-                    LogStatus($"Window Height applied: {window.Height}");
+                    UpdateStatus($"Window Height applied: {window.Height}");
                 }
             }
             if (window.Background != null)
             {
                 this.Background = window.Background;
-                LogStatus("Window Background applied.");
+                UpdateStatus("Window Background applied.");
             }
         }
 
         private void SetupPreviewHost(object element)
         {
             PreviewHost.Content = element;
-            LogStatus("Preview updated with parsed element.");
+            UpdateStatus("Preview updated with parsed element.");
             PreviewHost.IsHitTestVisible = true;
             PreviewHost.IsEnabled = true;
             if (element is FrameworkElement fe)
@@ -510,34 +512,19 @@ namespace RCLayoutPreview
         private void LoadStubData()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            LogStatus($"Base directory: {baseDirectory}");
-            string jsonPath = Path.Combine(baseDirectory, "stubdata5.json");
-            LogStatus($"Checking path: {jsonPath}");
-            if (File.Exists(jsonPath))
+            UpdateStatus($"Base directory: {baseDirectory}");
+            jsonData = StubDataService.LoadStubData(baseDirectory, UpdateStatus);
+            if (jsonData != null)
             {
-                try
-                {
-                    currentJsonPath = jsonPath;
-                    string jsonContent = File.ReadAllText(jsonPath);
-                    jsonData = JObject.Parse(jsonContent);
-                    LogStatus($"Loaded JSON: {Path.GetFileName(jsonPath)}");
-                }
-                catch (Exception ex)
-                {
-                    LogStatus($"Error parsing JSON file: {ex.Message}");
-                }
-            }
-            else
-            {
-                LogStatus($"File does not exist: {jsonPath}");
+                currentJsonPath = Path.Combine(baseDirectory, AppConstants.StubDataFileName);
             }
         }
 
         /// <summary>
-        /// Logs a status message to the UI and console.
+        /// Updates the status message in the UI and logs to the console.
         /// </summary>
-        /// <param name="message">Message to log</param>
-        private void LogStatus(string message)
+        /// <param name="message">Message to display</param>
+        private void UpdateStatus(string message)
         {
             if (StatusLabel != null)
             {
@@ -552,7 +539,7 @@ namespace RCLayoutPreview
         private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
         {
             var debugMode = (sender as CheckBox)?.IsChecked == true;
-            LogStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
+            UpdateStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
@@ -560,11 +547,11 @@ namespace RCLayoutPreview
                 ProcessFieldsAndPlaceholders(frameworkElement, jsonData, debugMode);
                 PreviewHost.Content = null; // Clear the content
                 PreviewHost.Content = frameworkElement; // Reapply the content
-                LogStatus("Preview refreshed with updated diagnostics mode.");
+                UpdateStatus("Preview refreshed with updated diagnostics mode.");
             }
             else
             {
-                LogStatus("Preview content is not available to refresh.");
+                UpdateStatus("Preview content is not available to refresh.");
             }
         }
 
@@ -775,7 +762,7 @@ namespace RCLayoutPreview
                 PopupMessage.Text = errorMessage;
                 PopupOverlay.Visibility = Visibility.Visible;
             }
-            LogStatus("Popup overlay displayed with message: " + errorMessage);
+            UpdateStatus("Popup overlay displayed with message: " + errorMessage);
         }
 
         /// <summary>
