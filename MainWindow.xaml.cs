@@ -40,39 +40,21 @@ namespace RCLayoutPreview
             InitializeComponent();
             LoadStubData();
 
-            // Get screen dimensions
             var screenWidth = SystemParameters.PrimaryScreenWidth;
             var screenHeight = SystemParameters.PrimaryScreenHeight;
 
-            // Restore window placement if saved, otherwise use default
-            bool usedSaved = false;
-            if (Properties.Settings.Default.PreviewWindowLeft >= 0 &&
-                Properties.Settings.Default.PreviewWindowTop >= 0 &&
-                Properties.Settings.Default.PreviewWindowWidth > 0 &&
-                Properties.Settings.Default.PreviewWindowHeight > 0)
-            {
-                this.Left = Properties.Settings.Default.PreviewWindowLeft;
-                this.Top = Properties.Settings.Default.PreviewWindowTop;
-                this.Width = Properties.Settings.Default.PreviewWindowWidth;
-                this.Height = Properties.Settings.Default.PreviewWindowHeight;
-                usedSaved = true;
-            }
+            // Use helper for window placement
+            bool usedSaved = WindowPlacementHelper.RestoreWindowPlacement(this, "PreviewWindow");
             if (!usedSaved)
             {
-                // Default placement logic
                 this.Left = screenWidth * 0.66;
                 this.Top = 0;
                 this.Width = screenWidth * 0.33;
                 this.Height = screenHeight;
             }
 
-            // Create and show editor window FIRST, on the left
             editorWindow = new EditorWindow(this);
-            // Only set default position/size if no saved settings exist
-            if (!(Properties.Settings.Default.EditorWindowLeft >= 0 &&
-                  Properties.Settings.Default.EditorWindowTop >= 0 &&
-                  Properties.Settings.Default.EditorWindowWidth > 0 &&
-                  Properties.Settings.Default.EditorWindowHeight > 0))
+            if (!WindowPlacementHelper.RestoreWindowPlacement(editorWindow, "EditorWindow"))
             {
                 editorWindow.Left = 0;
                 editorWindow.Top = 0;
@@ -527,14 +509,7 @@ namespace RCLayoutPreview
         /// </summary>
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            // Save window placement
-            Properties.Settings.Default.PreviewWindowLeft = this.Left;
-            Properties.Settings.Default.PreviewWindowTop = this.Top;
-            Properties.Settings.Default.PreviewWindowWidth = this.Width;
-            Properties.Settings.Default.PreviewWindowHeight = this.Height;
-            Properties.Settings.Default.Save();
-
-            // Close the editor window when the preview window is closed
+            WindowPlacementHelper.SaveWindowPlacement(this, "PreviewWindow");
             editorWindow.Close();
             base.OnClosing(e);
         }
@@ -883,11 +858,7 @@ namespace RCLayoutPreview
 
         public void SaveWindowPlacementFromEditor()
         {
-            Properties.Settings.Default.PreviewWindowLeft = this.Left;
-            Properties.Settings.Default.PreviewWindowTop = this.Top;
-            Properties.Settings.Default.PreviewWindowWidth = this.Width;
-            Properties.Settings.Default.PreviewWindowHeight = this.Height;
-            Properties.Settings.Default.Save();
+            WindowPlacementHelper.SaveWindowPlacement(this, "PreviewWindow");
         }
     }
 }

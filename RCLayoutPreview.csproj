@@ -36,9 +36,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Dirkster.AvalonDock.Themes.Metro">
-      <Version>4.72.1</Version>
-    </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
       <Version>13.0.3</Version>
     </PackageReference>
@@ -98,6 +95,7 @@
     <Compile Include="Helpers\PlaceholderSwapManager.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\StubDataFieldHandler.cs" />
+    <Compile Include="Helpers\WindowPlacementHelper.cs" />
     <Compile Include="Helpers\XamlDesignSafePreParser.cs" />
     <Compile Include="Helpers\XamlFixer.cs" />
     <Compile Include="Helpers\XamlPreprocessor.cs" />

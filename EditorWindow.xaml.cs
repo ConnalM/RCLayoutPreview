@@ -50,30 +50,16 @@ namespace RCLayoutPreview
             InitializeComponent();
             this.previewWindow = previewWindow;
 
-            // Get screen dimensions
             var screenWidth = SystemParameters.PrimaryScreenWidth;
             var screenHeight = SystemParameters.PrimaryScreenHeight;
 
-            // Restore window placement if saved, otherwise use default
-            bool usedSaved = false;
-            if (Properties.Settings.Default.EditorWindowLeft >= 0 &&
-                Properties.Settings.Default.EditorWindowTop >= 0 &&
-                Properties.Settings.Default.EditorWindowWidth > 0 &&
-                Properties.Settings.Default.EditorWindowHeight > 0)
+            // Use helper for window placement
+            if (!WindowPlacementHelper.RestoreWindowPlacement(this, "EditorWindow"))
             {
-                this.Left = Properties.Settings.Default.EditorWindowLeft;
-                this.Top = Properties.Settings.Default.EditorWindowTop;
-                this.Width = Properties.Settings.Default.EditorWindowWidth;
-                this.Height = Properties.Settings.Default.EditorWindowHeight;
-                usedSaved = true;
-            }
-            if (!usedSaved)
-            {
-                // Set the opening position and size of EditorWindow (default logic)
-                this.Left = previewWindow.Left + previewWindow.Width + 20; // Position EditorWindow to the right of MainWindow
-                this.Top = previewWindow.Top; // Align EditorWindow vertically with MainWindow
-                this.Width = screenWidth * 0.34 - 20; // Remaining width for Preview Window
-                this.Height = previewWindow.Height; // Match height with MainWindow
+                this.Left = previewWindow.Left + previewWindow.Width + 20;
+                this.Top = previewWindow.Top;
+                this.Width = screenWidth * 0.34 - 20;
+                this.Height = previewWindow.Height;
             }
 
             statusLabel = FindName("StatusLabel") as TextBlock;
@@ -825,11 +811,7 @@ namespace RCLayoutPreview
 
         private void SaveWindowPlacement()
         {
-            Properties.Settings.Default.EditorWindowLeft = this.Left;
-            Properties.Settings.Default.EditorWindowTop = this.Top;
-            Properties.Settings.Default.EditorWindowWidth = this.Width;
-            Properties.Settings.Default.EditorWindowHeight = this.Height;
-            Properties.Settings.Default.Save();
+            WindowPlacementHelper.SaveWindowPlacement(this, "EditorWindow");
         }
 
         private void CloseEditor_Click(object sender, RoutedEventArgs e)
