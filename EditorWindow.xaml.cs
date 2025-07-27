@@ -742,16 +742,19 @@ namespace RCLayoutPreview
             this.Close();
         }
 
-        // Update OnClosed to only call SaveWindowPlacement
+        // Update OnClosed to ensure closing this window also closes the main window and the application
         protected override void OnClosed(EventArgs e)
         {
             SaveWindowPlacement();
+            // Do NOT call previewWindow.Close() here to avoid InvalidOperationException
             if (searchPanel != null)
             {
                 searchPanel.Uninstall();
                 searchPanel = null;
             }
             base.OnClosed(e);
+            // Ensure the application fully shuts down if this window is closed
+            Application.Current.Shutdown();
         }
 
         /// <summary>

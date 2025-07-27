@@ -183,62 +183,22 @@ namespace RCLayoutPreview
         /// <param name="xamlContent">Full XAML document as string</param>
         private void TryPreviewXaml(string xamlContent)
         {
-            if (string.IsNullOrWhiteSpace(xamlContent))
-            {
-                LogStatus("XAML content is empty or null.");
-                return;
-            }
+            if (!ValidateXamlContent(xamlContent)) return;
 
-            // 1. Clean up placeholders and curly-brace tokens
             xamlContent = CleanXamlPlaceholders(xamlContent);
-
-            // 2. Detect duplicate field names
-            var duplicateNames = DetectDuplicateNames(xamlContent);
-            if (duplicateNames.Count > 0)
-            {
-                ShowErrorPopup($"Error: Duplicate field names detected in XAML: {string.Join(", ", duplicateNames)}. Please ensure all element names are unique.");
-                LogStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
-                return;
-            }
+            if (CheckForDuplicateNames(xamlContent)) return;
 
             try
             {
-                // 3. Preprocess and fix XAML
-                string processedXaml = PreprocessAndFixXaml(xamlContent);
-                LogStatus("XAML processed for preview");
-
-                // 4. Handle placeholders
-                processedXaml = HandlePlaceholders(processedXaml);
-
-                // 5. Ensure root and namespaces
-                processedXaml = EnsureRootAndNamespaces(processedXaml);
-
-                // 6. Fix binding expressions
+                string processedXaml = PreprocessXaml(xamlContent);
+                processedXaml = ProcessPlaceholders(processedXaml);
+                processedXaml = EnsureRootElementAndNamespaces(processedXaml);
                 processedXaml = FixBindingExpressions(processedXaml);
-
-                // 7. Remove empty Name attributes
                 processedXaml = RemoveEmptyNameAttributes(processedXaml);
 
-                // 8. Parse XAML
-                object element = ParseXaml(processedXaml);
-
-                // 9. If Window, apply window properties
-                if (element is Window window)
-                {
-                    ApplyWindowProperties(window);
-                }
-                else
-                {
-                    SetupPreviewHost(element);
-                }
-
-                // 10. Diagnostics and field processing
-                if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
-                {
-                    frameworkElement.DataContext = jsonData;
-                    ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
-                }
-                AddHoverBehavior();
+                object element = ParseXamlContent(processedXaml);
+                ApplyParsedElement(element);
+                PostProcessPreview();
             }
             catch (XamlParseException ex)
             {
@@ -248,6 +208,130 @@ namespace RCLayoutPreview
             {
                 ShowErrorPopup($"Preview error: {ex.Message}");
             }
+        }
+
+        private bool ValidateXamlContent(string xamlContent)
+        {
+            if (string.IsNullOrWhiteSpace(xamlContent))
+            {
+                LogStatus("XAML content is empty or null.");
+                return false;
+            }
+            return true;
+        }
+
+        private bool CheckForDuplicateNames(string xamlContent)
+        {
+            var duplicateNames = DetectDuplicateNames(xamlContent);
+            if (duplicateNames.Count > 0)
+            {
+                HandleDuplicateNames(duplicateNames);
+                return true;
+            }
+            return false;
+        }
+
+        private string PreprocessXaml(string xamlContent)
+        {
+            PreviewHost.Content = null;
+            usedElementNames.Clear();
+            string processedXaml = XamlPreprocessor.Preprocess(xamlContent);
+            if (processedXaml.Contains("FontSize=\"\""))
+            {
+                LogStatus("Invalid FontSize detected in XAML. Replacing with default value.");
+                processedXaml = processedXaml.Replace("FontSize=\"\"", "FontSize=\"14\"");
+            }
+            processedXaml = processedXaml.Replace("{styles}", "");
+            processedXaml = processedXaml.Replace("{content}", "");
+            processedXaml = EnsureUniqueElementNames(processedXaml);
+            return processedXaml;
+        }
+
+        private string ProcessPlaceholders(string processedXaml)
+        {
+            if (PlaceholderSwapManager.ContainsValidField(processedXaml))
+            {
+                if (PlaceholderSwapManager.ContainsPlaceholder(processedXaml))
+                {
+                    string fieldMessage = PlaceholderSwapManager.GenerateFieldDetectedMessage(processedXaml);
+                    if (!string.IsNullOrEmpty(fieldMessage))
+                    {
+                        processedXaml = PlaceholderSwapManager.ReplacePlaceholderWithMessage(processedXaml, fieldMessage);
+                        if (!placeholderRemoved)
+                        {
+                            LogStatus($"Field detected: {fieldMessage}");
+                            placeholderRemoved = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                placeholderRemoved = false;
+            }
+            return processedXaml;
+        }
+
+        private string EnsureRootElementAndNamespaces(string processedXaml)
+        {
+            if (!IsValidRootElement(processedXaml))
+            {
+                processedXaml = $"<Grid xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\">{processedXaml}</Grid>";
+                LogStatus("Added Grid container to wrap content");
+            }
+            if (!processedXaml.Contains("xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\""))
+            {
+                string rootTag = Regex.Match(processedXaml, @"<(\w+)").Groups[1].Value;
+                string xmlnsDeclaration = "xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
+                processedXaml = Regex.Replace(processedXaml,
+                    $"<{rootTag}",
+                    $"<{rootTag} {xmlnsDeclaration}");
+                LogStatus("Added XAML namespaces to content");
+            }
+            return processedXaml;
+        }
+
+        private object ParseXamlContent(string processedXaml)
+        {
+            var element = XamlValidationHelper.ParseXaml(processedXaml, out string error);
+            if (element != null)
+            {
+                LogStatus("XAML parsed successfully");
+                return element;
+            }
+            else
+            {
+                LogStatus($"XAML parsing failed: {error}");
+                throw new XamlParseException($"Failed to parse XAML: {error}");
+            }
+        }
+
+        private void ApplyParsedElement(object element)
+        {
+            if (element is Window window)
+            {
+                ApplyWindowProperties(window);
+            }
+            else
+            {
+                SetupPreviewHost(element);
+            }
+        }
+
+        private void HandleDuplicateNames(List<string> duplicateNames)
+        {
+            ShowErrorPopup($"Error: Duplicate field names detected in XAML: {string.Join(", ", duplicateNames)}. Please ensure all element names are unique.");
+            LogStatus($"Duplicate field names found: {string.Join(", ", duplicateNames)}");
+        }
+
+        private void PostProcessPreview()
+        {
+            if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
+            {
+                frameworkElement.DataContext = jsonData;
+                ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
+            }
+            AddHoverBehavior();
         }
 
         // --- Helper methods for TryPreviewXaml refactor ---
@@ -492,6 +576,8 @@ namespace RCLayoutPreview
             WindowPlacementHelper.SaveWindowPlacement(this, "PreviewWindow");
             editorWindow.Close();
             base.OnClosing(e);
+            // Ensure the application fully shuts down when the main window closes
+            Application.Current.Shutdown();
         }
 
         /// <summary>
