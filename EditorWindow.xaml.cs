@@ -54,11 +54,27 @@ namespace RCLayoutPreview
             var screenWidth = SystemParameters.PrimaryScreenWidth;
             var screenHeight = SystemParameters.PrimaryScreenHeight;
 
-            // Set the opening position and size of EditorWindow
-            this.Left = previewWindow.Left + previewWindow.Width + 20; // Position EditorWindow to the right of MainWindow
-            this.Top = previewWindow.Top; // Align EditorWindow vertically with MainWindow
-            this.Width = screenWidth * 0.34 - 20; // Remaining width for Preview Window
-            this.Height = previewWindow.Height; // Match height with MainWindow
+            // Restore window placement if saved, otherwise use default
+            bool usedSaved = false;
+            if (Properties.Settings.Default.EditorWindowLeft >= 0 &&
+                Properties.Settings.Default.EditorWindowTop >= 0 &&
+                Properties.Settings.Default.EditorWindowWidth > 0 &&
+                Properties.Settings.Default.EditorWindowHeight > 0)
+            {
+                this.Left = Properties.Settings.Default.EditorWindowLeft;
+                this.Top = Properties.Settings.Default.EditorWindowTop;
+                this.Width = Properties.Settings.Default.EditorWindowWidth;
+                this.Height = Properties.Settings.Default.EditorWindowHeight;
+                usedSaved = true;
+            }
+            if (!usedSaved)
+            {
+                // Set the opening position and size of EditorWindow (default logic)
+                this.Left = previewWindow.Left + previewWindow.Width + 20; // Position EditorWindow to the right of MainWindow
+                this.Top = previewWindow.Top; // Align EditorWindow vertically with MainWindow
+                this.Width = screenWidth * 0.34 - 20; // Remaining width for Preview Window
+                this.Height = previewWindow.Height; // Match height with MainWindow
+            }
 
             statusLabel = FindName("StatusLabel") as TextBlock;
 
@@ -807,8 +823,31 @@ namespace RCLayoutPreview
             }
         }
 
+        private void SaveWindowPlacement()
+        {
+            Properties.Settings.Default.EditorWindowLeft = this.Left;
+            Properties.Settings.Default.EditorWindowTop = this.Top;
+            Properties.Settings.Default.EditorWindowWidth = this.Width;
+            Properties.Settings.Default.EditorWindowHeight = this.Height;
+            Properties.Settings.Default.Save();
+        }
+
+        private void CloseEditor_Click(object sender, RoutedEventArgs e)
+        {
+            SaveWindowPlacement();
+            if (previewWindow != null)
+            {
+                // Save preview window placement before closing
+                previewWindow.SaveWindowPlacementFromEditor();
+                previewWindow.Close();
+            }
+            this.Close();
+        }
+
+        // Update OnClosed to only call SaveWindowPlacement
         protected override void OnClosed(EventArgs e)
         {
+            SaveWindowPlacement();
             if (searchPanel != null)
             {
                 searchPanel.Uninstall();
@@ -832,6 +871,12 @@ namespace RCLayoutPreview
         {
             Editor.Clear();
             LogStatus("Editor cleared.");
+        }
+
+        private void CloseAll_Click(object sender, RoutedEventArgs e)
+        {
+            CloseEditor_Click(sender, e);
+            this.Close();
         }
     }
 }

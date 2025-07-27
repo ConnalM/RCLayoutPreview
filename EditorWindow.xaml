@@ -19,6 +19,7 @@
             <Button Content="Load Layout" Click="LoadLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Save Layout" Click="SaveLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Save As" Click="SaveAsLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
+            <Button Content="Close" Click="CloseEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Clear Editor" Click="ClearEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Name="PreviewButton" Content="Preview" Width="100" Height="30" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,8,0" Click="PreviewButton_Click"/>
             <CheckBox x:Name="AutoUpdateToggle" Content="Auto-Update" IsChecked="True" Margin="10,0,0,0" VerticalAlignment="Center" 

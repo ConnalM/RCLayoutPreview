@@ -26,5 +26,62 @@ namespace RCLayoutPreview.Properties
                 return defaultInstance;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double EditorWindowLeft {
+            get { return ((double)(this["EditorWindowLeft"])); }
+            set { this["EditorWindowLeft"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double EditorWindowTop {
+            get { return ((double)(this["EditorWindowTop"])); }
+            set { this["EditorWindowTop"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double EditorWindowWidth {
+            get { return ((double)(this["EditorWindowWidth"])); }
+            set { this["EditorWindowWidth"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double EditorWindowHeight {
+            get { return ((double)(this["EditorWindowHeight"])); }
+            set { this["EditorWindowHeight"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double PreviewWindowLeft {
+            get { return ((double)(this["PreviewWindowLeft"])); }
+            set { this["PreviewWindowLeft"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double PreviewWindowTop {
+            get { return ((double)(this["PreviewWindowTop"])); }
+            set { this["PreviewWindowTop"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double PreviewWindowWidth {
+            get { return ((double)(this["PreviewWindowWidth"])); }
+            set { this["PreviewWindowWidth"] = value; }
+        }
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public double PreviewWindowHeight {
+            get { return ((double)(this["PreviewWindowHeight"])); }
+            set { this["PreviewWindowHeight"] = value; }
+        }
     }
 }
