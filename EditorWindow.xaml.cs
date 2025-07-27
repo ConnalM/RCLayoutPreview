@@ -304,16 +304,9 @@ namespace RCLayoutPreview
                     // If we're editing, update immediately rather than waiting for the timer
                     if (autoUpdateEnabled)
                     {
-                        try
+                        if (XamlValidationHelper.IsValidXml(content, out _))
                         {
-                            // Try to validate XML before sending an update
-                            var doc = new XmlDocument();
-                            doc.LoadXml(content);
                             XamlContentChanged?.Invoke(this, content);
-                        }
-                        catch (XmlException)
-                        {
-                            // Ignore XML errors during typing - the timer will handle them
                         }
                     }
                 }
@@ -334,18 +327,14 @@ namespace RCLayoutPreview
                 string currentContent = Editor.Text;
                 if (!string.IsNullOrWhiteSpace(currentContent))
                 {
-                    try
+                    if (XamlValidationHelper.IsValidXml(currentContent, out string error))
                     {
-                        // Validate XML before sending
-                        var doc = new XmlDocument();
-                        doc.LoadXml(currentContent);
-
                         XamlContentChanged?.Invoke(this, currentContent);
                         LogStatus("Preview updated");
                     }
-                    catch (XmlException ex)
+                    else
                     {
-                        LogStatus($"Invalid XAML: {ex.Message}");
+                        LogStatus($"Invalid XAML: {error}");
                     }
                 }
             }
@@ -792,18 +781,14 @@ namespace RCLayoutPreview
                 string currentContent = Editor.Text;
                 if (!string.IsNullOrWhiteSpace(currentContent))
                 {
-                    try
+                    if (XamlValidationHelper.IsValidXml(currentContent, out string error))
                     {
-                        // Validate XML before sending
-                        var doc = new XmlDocument();
-                        doc.LoadXml(currentContent);
-
                         XamlContentChanged?.Invoke(this, currentContent);
                         LogStatus("Preview refreshed manually");
                     }
-                    catch (XmlException ex)
+                    else
                     {
-                        LogStatus($"Invalid XAML: {ex.Message}");
+                        LogStatus($"Invalid XAML: {error}");
                     }
                 }
             }

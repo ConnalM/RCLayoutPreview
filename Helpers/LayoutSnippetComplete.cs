@@ -43,7 +43,7 @@ namespace RCLayoutPreview.Helpers
             "            <!-- Grid Background -->\r\n" +
             "            <Grid Background=\"White\">\r\n" +
             "                <!-- Insert layout elements below -->\r\n" +
-            "                <!-- Example: <TextBlock Name=\"LapTime_1_1\" FontSize=\"20\" Background=\"Black\" Foreground=\"White\" /> -->\r\n" +
+            "                <!-- Example: <TextBlock Name=\"LapTime1_1\" FontSize=\"20\" Background=\"Black\" Foreground=\"White\" /> -->\r\n" +
             "                <!-- TextBlock Background -->\r\n" +
             "                <TextBlock Text=\"Race Layout Preview Loaded\"\r\n" +
             "                           FontSize=\"28\"\r\n" +

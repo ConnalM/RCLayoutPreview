@@ -357,36 +357,16 @@ namespace RCLayoutPreview
 
         private object ParseXaml(string processedXaml)
         {
-            try
+            var element = XamlValidationHelper.ParseXaml(processedXaml, out string error);
+            if (element != null)
             {
-                var element = XamlReader.Parse(processedXaml);
-                LogStatus("XAML parsed successfully with XamlReader.Parse");
+                LogStatus("XAML parsed successfully");
                 return element;
             }
-            catch (Exception parseEx)
+            else
             {
-                LogStatus($"Direct parsing failed: {parseEx.Message}. Trying alternate method...");
-                try
-                {
-                    var context = new ParserContext
-                    {
-                        BaseUri = new Uri("pack://application:,,,/")
-                    };
-                    context.XmlnsDictionary.Add("", "http://schemas.microsoft.com/winfx/2006/xaml/presentation");
-                    context.XmlnsDictionary.Add("x", "http://schemas.microsoft.com/winfx/2006/xaml");
-                    byte[] bytes = Encoding.UTF8.GetBytes(processedXaml);
-                    using (var stream = new MemoryStream(bytes))
-                    {
-                        var element = XamlReader.Load(stream, context);
-                        LogStatus("XAML parsed successfully with XamlReader.Load");
-                        return element;
-                    }
-                }
-                catch (Exception loadEx)
-                {
-                    LogStatus($"All parsing attempts failed: {loadEx.Message}");
-                    throw new XamlParseException($"Failed to parse XAML: {parseEx.Message}", parseEx);
-                }
+                LogStatus($"XAML parsing failed: {error}");
+                throw new XamlParseException($"Failed to parse XAML: {error}");
             }
         }
 
