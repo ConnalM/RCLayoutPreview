@@ -1,6 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using RCLayoutPreview.Helpers;
 
 namespace RCLayoutPreview.Helpers
 {
@@ -21,11 +22,11 @@ namespace RCLayoutPreview.Helpers
         /// <returns>True if a valid field is found, false otherwise</returns>
         public static bool ContainsValidField(string xamlContent)
         {
-            if (string.IsNullOrWhiteSpace(xamlContent))
-                return false;
-            // Detect any element with Name that is not a placeholder
-            var matches = Regex.Matches(xamlContent, "Name=\"([^\"]+)\"");
-            foreach (Match match in matches)
+            // Inline field name detection logic since FieldNameHelper and PlaceholderHelper do not provide it
+            if (string.IsNullOrWhiteSpace(xamlContent)) return false;
+            var fieldNameRegex = new System.Text.RegularExpressions.Regex("Name=\"([^\"]+)\"");
+            var matches = fieldNameRegex.Matches(xamlContent);
+            foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var name = match.Groups[1].Value;
                 if (!string.IsNullOrWhiteSpace(name) && !name.StartsWith("Placeholder"))
@@ -41,10 +42,10 @@ namespace RCLayoutPreview.Helpers
         /// <returns>The detected field name, or null if none is found</returns>
         public static string GetFirstFieldName(string xamlContent)
         {
-            if (string.IsNullOrWhiteSpace(xamlContent))
-                return null;
-            var matches = Regex.Matches(xamlContent, "Name=\"([^\"]+)\"");
-            foreach (Match match in matches)
+            if (string.IsNullOrWhiteSpace(xamlContent)) return null;
+            var fieldNameRegex = new System.Text.RegularExpressions.Regex("Name=\"([^\"]+)\"");
+            var matches = fieldNameRegex.Matches(xamlContent);
+            foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var name = match.Groups[1].Value;
                 if (!string.IsNullOrWhiteSpace(name) && !name.StartsWith("Placeholder"))

@@ -65,14 +65,17 @@ namespace RCLayoutPreview.Helpers
             else if (value != null)
             {
                 string displayText = value.ToString();
-                // Always try to get player index using XamlFixer.GetPlayerIndex
-                int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
-                Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
                 SolidColorBrush colorBrush = null;
-                if (playerIndex > 0)
+                // Only apply color if field is in RacerData group and ends with a number NOT preceded by underscore
+                if (foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
                 {
-                    colorBrush = RCLayoutPreview.Helpers.XamlFixer.GetColor(playerIndex);
-                    Debug.WriteLine($"[StubDataFieldHandler] Calling XamlFixer.GetColor({playerIndex})");
+                    int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
+                    Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
+                    if (playerIndex > 0)
+                    {
+                        colorBrush = RCLayoutPreview.Helpers.XamlFixer.GetColor(playerIndex);
+                        Debug.WriteLine($"[StubDataFieldHandler] Calling XamlFixer.GetColor({playerIndex})");
+                    }
                 }
                 if (element is TextBlock tb3)
                 {

@@ -88,8 +88,6 @@
     <Compile Include="EditorWindow.xaml.cs">
       <DependentUpon>EditorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Helpers\DebugFieldSelector.cs" />
-    <Compile Include="Helpers\FieldNameParser.cs" />
     <Compile Include="Helpers\LayoutSnippetComplete.cs" />
     <Compile Include="Helpers\PlaceholderHandler.cs" />
     <Compile Include="Helpers\PlaceholderHelper.cs" />
@@ -97,7 +95,6 @@
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\StubDataFieldHandler.cs" />
     <Compile Include="Helpers\WindowPlacementHelper.cs" />
-    <Compile Include="Helpers\XamlDesignSafePreParser.cs" />
     <Compile Include="Helpers\XamlFixer.cs" />
     <Compile Include="Helpers\XamlPreprocessor.cs" />
     <Compile Include="Helpers\XamlValidationHelper.cs" />

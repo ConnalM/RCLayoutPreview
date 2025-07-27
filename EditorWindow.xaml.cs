@@ -771,14 +771,7 @@ namespace RCLayoutPreview
             LogStatus("Editor cleared.");
         }
 
-        private void CloseAll_Click(object sender, RoutedEventArgs e)
-        {
-            CloseEditor_Click(sender, e);
-            this.Close();
-        }
-    
-
-    private string GetCurrentIndentation()
+        private string GetCurrentIndentation()
         {
             var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
             if (line == null) return string.Empty;
