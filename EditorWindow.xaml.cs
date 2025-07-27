@@ -582,39 +582,19 @@ namespace RCLayoutPreview
 
         private string FindNearestPlaceholder(string text, int caretOffset)
         {
-            // This regex finds placeholders in the format Name="Placeholder1", Name="Placeholder2", etc.
-            var placeholderRegex = new Regex(@"Name=""(Placeholder\d+)""");
+            return PlaceholderHelper.FindNearestPlaceholder(text, caretOffset);
+        }
 
-            // Look for placeholders around the cursor position
-            // First look in a reasonable range around the cursor (100 characters)
-            int startPos = Math.Max(0, caretOffset - 100);
-            int endPos = Math.Min(text.Length, caretOffset + 100);
-            string searchText = text.Substring(startPos, endPos - startPos);
-
-            // Find all placeholders in this range
-            var matches = placeholderRegex.Matches(searchText);
-            if (matches.Count == 0)
+        private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
+        {
+            string newText = PlaceholderHelper.ReplacePlaceholderWithFieldName(Editor.Text, placeholder, fieldName);
+            if (newText != Editor.Text)
             {
-                // No placeholders found in the vicinity
-                return null;
+                int idx = newText.IndexOf($"Name=\"{fieldName}\"");
+                Editor.Text = newText;
+                if (idx >= 0)
+                    Editor.CaretOffset = idx + ($"Name=\"{fieldName}\"").Length;
             }
-
-            // Find the closest placeholder to the cursor
-            int cursorRelativePos = caretOffset - startPos;
-            int closestDistance = int.MaxValue;
-            string closestPlaceholder = null;
-
-            foreach (Match match in matches)
-            {
-                int distance = Math.Abs(match.Index - cursorRelativePos);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestPlaceholder = match.Groups[1].Value;
-                }
-            }
-
-            return closestPlaceholder;
         }
 
         private string FormatFieldNameWithSuffix(string fieldName)
@@ -636,55 +616,6 @@ namespace RCLayoutPreview
             // Next available suffix
             int nextSuffix = maxSuffix + 1;
             return $"{fieldName}_{nextSuffix}";
-        }
-
-        private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
-        {
-            // Find the placeholder in the text
-            string pattern = $"Name=\"{placeholder}\"";
-            string replacement = $"Name=\"{fieldName}\"";
-
-            // Get the document text
-            string text = Editor.Text;
-
-            // Replace the first occurrence of the placeholder
-            int placeholderIndex = text.IndexOf(pattern);
-            if (placeholderIndex >= 0)
-            {
-                // Replace the placeholder
-                Editor.Document.Replace(placeholderIndex, pattern.Length, replacement);
-
-                // Move cursor to just after the replaced text
-                Editor.CaretOffset = placeholderIndex + replacement.Length;
-            }
-        }
-
-        private string GetCurrentIndentation()
-        {
-            // Get the current line
-            var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
-            if (line == null) return string.Empty;
-
-            // Extract text from the start of the line to the caret position
-            string lineText = Editor.Document.GetText(line.Offset, Math.Min(line.Length, Editor.CaretOffset - line.Offset));
-
-            // Extract only the whitespace at the beginning
-            return new string(lineText.TakeWhile(c => c == ' ' || c == '\t').ToArray());
-        }
-
-        private string ApplyIndentation(string text, string indentation)
-        {
-            // Split the text by newlines
-            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-            // Apply indentation to each line except the first one (which will inherit the caret's indentation)
-            for (int i = 1; i < lines.Length; i++)
-            {
-                lines[i] = indentation + lines[i];
-            }
-
-            // Join the lines back together
-            return string.Join(Environment.NewLine, lines);
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
@@ -844,6 +775,25 @@ namespace RCLayoutPreview
         {
             CloseEditor_Click(sender, e);
             this.Close();
+        }
+    
+
+    private string GetCurrentIndentation()
+        {
+            var line = Editor.Document.GetLineByOffset(Editor.CaretOffset);
+            if (line == null) return string.Empty;
+            string lineText = Editor.Document.GetText(line.Offset, Math.Min(line.Length, Editor.CaretOffset - line.Offset));
+            return new string(lineText.TakeWhile(c => c == ' ' || c == '\t').ToArray());
+        }
+
+        private string ApplyIndentation(string text, string indentation)
+        {
+            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            for (int i = 1; i < lines.Length; i++)
+            {
+                lines[i] = indentation + lines[i];
+            }
+            return string.Join(Environment.NewLine, lines);
         }
     }
 }

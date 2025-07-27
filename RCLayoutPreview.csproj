@@ -92,6 +92,7 @@
     <Compile Include="Helpers\FieldNameParser.cs" />
     <Compile Include="Helpers\LayoutSnippetComplete.cs" />
     <Compile Include="Helpers\PlaceholderHandler.cs" />
+    <Compile Include="Helpers\PlaceholderHelper.cs" />
     <Compile Include="Helpers\PlaceholderSwapManager.cs" />
     <Compile Include="Helpers\PreviewWidthConverter.cs" />
     <Compile Include="Helpers\StubDataFieldHandler.cs" />

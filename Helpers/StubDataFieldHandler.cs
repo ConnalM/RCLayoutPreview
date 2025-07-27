@@ -65,44 +65,28 @@ namespace RCLayoutPreview.Helpers
             else if (value != null)
             {
                 string displayText = value.ToString();
-                // Assign background color only for Nickname fields with a trailing number
-                var nicknameMatch = System.Text.RegularExpressions.Regex.Match(normalizedFieldName, @"^(NextHeatNickname|OnDeckNickname|Pos)(\d+)$");
-                if (nicknameMatch.Success)
+                // Always try to get player index using XamlFixer.GetPlayerIndex
+                int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
+                Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
+                SolidColorBrush colorBrush = null;
+                if (playerIndex > 0)
                 {
-                    int playerIndex = int.Parse(nicknameMatch.Groups[2].Value);
-                    var colorBrush = RCLayoutPreview.Helpers.XamlFixer.GetColor(playerIndex);
-                    if (element is TextBlock tb3)
-                    {
-                        tb3.Text = displayText;
-                        tb3.Background = colorBrush;
-                    }
-                    else if (element is Label lbl)
-                    {
-                        lbl.Content = displayText;
-                        lbl.Background = colorBrush;
-                    }
-                    else if (element is ContentControl contentControl)
-                    {
-                        contentControl.Content = displayText;
-                    }
+                    colorBrush = RCLayoutPreview.Helpers.XamlFixer.GetColor(playerIndex);
+                    Debug.WriteLine($"[StubDataFieldHandler] Calling XamlFixer.GetColor({playerIndex})");
                 }
-                else
+                if (element is TextBlock tb3)
                 {
-                    // No background color for other fields
-                    if (element is TextBlock tb3)
-                    {
-                        tb3.Text = displayText;
-                        tb3.Background = null;
-                    }
-                    else if (element is Label lbl)
-                    {
-                        lbl.Content = displayText;
-                        lbl.Background = null;
-                    }
-                    else if (element is ContentControl contentControl)
-                    {
-                        contentControl.Content = displayText;
-                    }
+                    tb3.Text = displayText;
+                    tb3.Background = colorBrush;
+                }
+                else if (element is Label lbl)
+                {
+                    lbl.Content = displayText;
+                    lbl.Background = colorBrush;
+                }
+                else if (element is ContentControl contentControl)
+                {
+                    contentControl.Content = displayText;
                 }
             }
         }
