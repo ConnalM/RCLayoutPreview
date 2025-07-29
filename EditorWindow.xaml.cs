@@ -526,100 +526,89 @@ namespace RCLayoutPreview
             }
         }
 
+        private void JsonSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var searchBox = sender as TextBox;
+            if (searchBox == null || jsonData == null) return;
+
+            string searchText = searchBox.Text.ToLower();
+
+            // Preserve expanded state of categories and their children
+            var expandedState = new Dictionary<string, HashSet<string>>();
+            foreach (TreeViewItem item in JsonFieldsTree.Items)
+            {
+                if (item.IsExpanded)
+                {
+                    var expandedChildren = new HashSet<string>();
+                    foreach (TreeViewItem child in item.Items)
+                    {
+                        if (child.IsExpanded)
+                        {
+                            expandedChildren.Add(child.Header.ToString());
+                        }
+                    }
+                    expandedState[item.Header.ToString()] = expandedChildren;
+                }
+            }
+
+            JsonFieldsTree.Items.Clear();
+
+            foreach (var property in jsonData.Properties())
+            {
+                var groupItem = new TreeViewItem { Header = property.Name };
+                if (property.Value is JObject groupObj)
+                {
+                    foreach (var field in groupObj.Properties())
+                    {
+                        if (string.IsNullOrWhiteSpace(searchText) || field.Name.ToLower().Contains(searchText))
+                        {
+                            var fieldItem = new TreeViewItem { Header = field.Name };
+                            groupItem.Items.Add(fieldItem);
+                        }
+                    }
+                }
+                if (groupItem.Items.Count > 0)
+                {
+                    JsonFieldsTree.Items.Add(groupItem);
+                    // Restore expanded state for categories and their children
+                    if (expandedState.TryGetValue(groupItem.Header.ToString(), out var expandedChildren))
+                    {
+                        groupItem.IsExpanded = true;
+                        foreach (TreeViewItem child in groupItem.Items)
+                        {
+                            if (expandedChildren.Contains(child.Header.ToString()))
+                            {
+                                child.IsExpanded = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         private void JsonFieldsTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             var treeView = sender as TreeView;
-            var selectedItem = treeView?.SelectedItem as TreeViewItem;
-            if (selectedItem != null)
-            {
-                // Get the field name that was clicked
-                string fieldName = selectedItem.Header.ToString();
+            var clickedItem = e.OriginalSource as DependencyObject;
+            while (clickedItem != null && !(clickedItem is TreeViewItem))
+                clickedItem = VisualTreeHelper.GetParent(clickedItem);
 
-                // Get the current position in the editor
+            if (clickedItem is TreeViewItem item)
+            {
+                // Toggle expansion for categories
+                if (item.Items.Count > 0)
+                {
+                    item.IsExpanded = !item.IsExpanded;
+                    e.Handled = true;
+                    return;
+                }
+
+                // Handle field name insertion for leaf nodes
+                string fieldName = item.Header.ToString();
                 int caretOffset = Editor.CaretOffset;
-                string actualFieldName = FormatFieldNameWithSuffix(fieldName);
-
-                // If there is a selection, check if it matches a field name pattern
-                if (Editor.SelectionLength > 0)
-                {
-                    string selectedText = Editor.SelectedText;
-                    // Regex for RC field name pattern
-                    var fieldNameRegex = new Regex(@"[A-Za-z0-9_]+_\d+");
-                    if (fieldNameRegex.IsMatch(selectedText))
-                    {
-                        // Replace the selected field name with the new field name (with suffix)
-                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
-                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
-                        UpdateStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
-                    }
-                    else
-                    {
-                        // If not a field name, just insert at selection
-                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
-                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
-                        UpdateStatus($"Inserted field name '{actualFieldName}' at selection");
-                    }
-                }
-                else
-                {
-                    // Look for a placeholder nearby
-                    string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
-                    if (!string.IsNullOrEmpty(placeholder))
-                    {
-                        // Replace the placeholder with the field name
-                        ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
-                        UpdateStatus($"Replaced {placeholder} with {actualFieldName}");
-                    }
-                    else
-                    {
-                        // No selection and no placeholder, insert at caret position
-                        Editor.Document.Insert(caretOffset, actualFieldName);
-                        Editor.CaretOffset = caretOffset + actualFieldName.Length;
-                        UpdateStatus($"Inserted field name '{actualFieldName}' at cursor");
-                    }
-                }
-
-                // Check if this field triggers the placeholder removal
-                CheckForValidFields(Editor.Text);
+                Editor.Document.Insert(caretOffset, fieldName);
+                Editor.CaretOffset = caretOffset + fieldName.Length;
             }
-        }
-
-        private string FindNearestPlaceholder(string text, int caretOffset)
-        {
-            return PlaceholderHelper.FindNearestPlaceholder(text, caretOffset);
-        }
-
-        private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
-        {
-            string newText = PlaceholderHelper.ReplacePlaceholderWithFieldName(Editor.Text, placeholder, fieldName);
-            if (newText != Editor.Text)
-            {
-                int idx = newText.IndexOf($"Name=\"{fieldName}\"");
-                Editor.Text = newText;
-                if (idx >= 0)
-                    Editor.CaretOffset = idx + ($"Name=\"{fieldName}\"").Length;
-            }
-        }
-
-        private string FormatFieldNameWithSuffix(string fieldName)
-        {
-            // Scan the entire editor text for existing field names with suffixes
-            string text = Editor.Text;
-            // Regex to match fieldNam1e_1, fieldName1_2, etc.
-            var suffixRegex = new Regex($@"{Regex.Escape(fieldName)}_(\d+)");
-            var matches = suffixRegex.Matches(text);
-            int maxSuffix = 0;
-            foreach (Match match in matches)
-            {
-                if (int.TryParse(match.Groups[1].Value, out int suffix))
-                {
-                    if (suffix > maxSuffix)
-                        maxSuffix = suffix;
-                }
-            }
-            // Next available suffix
-            int nextSuffix = maxSuffix + 1;
-            return $"{fieldName}_{nextSuffix}";
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
@@ -794,6 +783,30 @@ namespace RCLayoutPreview
                 lines[i] = indentation + lines[i];
             }
             return string.Join(Environment.NewLine, lines);
+        }
+
+        private void JsonSearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            var searchBox = sender as TextBox;
+            if (searchBox != null && searchBox.Text == "Search JSON fields...")
+            {
+                searchBox.TextChanged -= JsonSearchBox_TextChanged; // Temporarily detach event
+                searchBox.Text = string.Empty;
+                searchBox.Foreground = Brushes.Black;
+                searchBox.TextChanged += JsonSearchBox_TextChanged; // Reattach event
+            }
+        }
+
+        private void JsonSearchBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var searchBox = sender as TextBox;
+            if (searchBox != null && string.IsNullOrWhiteSpace(searchBox.Text))
+            {
+                searchBox.TextChanged -= JsonSearchBox_TextChanged; // Temporarily detach event
+                searchBox.Text = "Search JSON fields...";
+                searchBox.Foreground = Brushes.Gray;
+                searchBox.TextChanged += JsonSearchBox_TextChanged; // Reattach event
+            }
         }
     }
 }
