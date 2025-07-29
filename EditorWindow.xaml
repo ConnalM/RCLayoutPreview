@@ -11,8 +11,9 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/> <!-- Added for ErrorMessage -->
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/> <!-- Added for error message -->
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Top toolbar -->
@@ -27,14 +28,15 @@
                       Checked="AutoUpdateToggle_Changed" Unchecked="AutoUpdateToggle_Changed" Height="30"/>
             <TextBlock Text="Delay (ms): " Margin="10,0,0,0" VerticalAlignment="Center" Height="30"/>
             <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" TextChanged="DelayInput_TextChanged" Height="30"/>
-            <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center" Height="30"/>
+            
         </StackPanel>
 
         <!-- Error message area -->
-        <TextBlock x:Name="ErrorMessage" Grid.Row="2" Text="" Foreground="Red" Margin="10" Visibility="Collapsed"/>
+        <TextBlock x:Name="StatusLabel" Grid.Row="1" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center" Height="30"/>
+        <TextBlock x:Name="ErrorMessage" Grid.Row="1" Text="" Foreground="Red" Margin="10,10,10,10" Visibility="Collapsed"/>
 
         <!-- Editor area -->
-        <Grid Grid.Row="1" Margin="5">
+        <Grid Grid.Row="2" Margin="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="15*" MinWidth="100"/> <!-- JSON Fields -->
                 <ColumnDefinition Width="5"/> <!-- First GridSplitter -->

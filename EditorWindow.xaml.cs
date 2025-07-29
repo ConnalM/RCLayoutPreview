@@ -344,7 +344,7 @@ namespace RCLayoutPreview
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             UpdateStatus($"Base directory: {baseDirectory}");
-            jsonData = StubDataService.LoadStubData(baseDirectory, UpdateStatus);
+            jsonData = StubDataService.LoadStubData(baseDirectory, message => UpdateStatus(message));
             if (jsonData != null)
             {
                 currentJsonPath = Path.Combine(baseDirectory, AppConstants.StubDataFileName);
@@ -358,12 +358,27 @@ namespace RCLayoutPreview
         /// <summary>
         /// Updates the status message in the UI and logs to the console.
         /// /// <param name="message">Message to display</param>
-        private void UpdateStatus(string message)
+        private void UpdateStatus(string message, bool isError = false)
         {
             if (statusLabel != null)
             {
-                statusLabel.Text = message;
+                statusLabel.Text = isError ? string.Empty : message;
             }
+
+            var errorMessageControl = FindName("ErrorMessage") as TextBlock;
+            if (errorMessageControl != null)
+            {
+                if (isError)
+                {
+                    errorMessageControl.Text = message;
+                    errorMessageControl.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    errorMessageControl.Visibility = Visibility.Collapsed;
+                }
+            }
+
             Console.WriteLine($"Status: {message}");
         }
 
