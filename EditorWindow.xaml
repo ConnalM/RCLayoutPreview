@@ -12,6 +12,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/> <!-- Added for error message -->
         </Grid.RowDefinitions>
 
         <!-- Top toolbar -->
@@ -28,6 +29,9 @@
             <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" TextChanged="DelayInput_TextChanged" Height="30"/>
             <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center" Height="30"/>
         </StackPanel>
+
+        <!-- Error message area -->
+        <TextBlock x:Name="ErrorMessage" Grid.Row="2" Text="" Foreground="Red" Margin="10" Visibility="Collapsed"/>
 
         <!-- Editor area -->
         <Grid Grid.Row="1" Margin="5">

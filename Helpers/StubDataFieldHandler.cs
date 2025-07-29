@@ -5,6 +5,8 @@ using System.Windows.Media;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
+using System.Windows.Media.Imaging;
+using System.IO;
 
 namespace RCLayoutPreview.Helpers
 {
@@ -64,6 +66,7 @@ namespace RCLayoutPreview.Helpers
             }
             else if (value != null)
             {
+                Debug.WriteLine($"[StubDataFieldHandler] Retrieved value for '{normalizedFieldName}': {value}");
                 string displayText = value.ToString();
                 SolidColorBrush colorBrush = null;
                 // Only apply color if field is in RacerData group and ends with a number NOT preceded by underscore
@@ -90,6 +93,23 @@ namespace RCLayoutPreview.Helpers
                 else if (element is ContentControl contentControl)
                 {
                     contentControl.Content = displayText;
+                }
+            }
+            else if (value != null && element is Image imageElement)
+            {
+                string imagePath = value.ToString();
+                Debug.WriteLine($"[StubDataFieldHandler] Setting image source for '{normalizedFieldName}' to '{imagePath}'");
+                try
+                {
+                    string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                    string fullPath = Path.Combine(baseDirectory, imagePath);
+                    Debug.WriteLine($"[StubDataFieldHandler] Resolved full path for '{normalizedFieldName}': {fullPath}");
+                    imageElement.Source = new BitmapImage(new Uri(fullPath, UriKind.Absolute));
+                    Debug.WriteLine($"[StubDataFieldHandler] Image control source set to: {imageElement.Source}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[StubDataFieldHandler] Error setting image source: {ex.Message}");
                 }
             }
         }
