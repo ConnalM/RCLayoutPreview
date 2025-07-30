@@ -338,6 +338,7 @@ namespace RCLayoutPreview
             if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 frameworkElement.DataContext = jsonData;
+                // Always use the current value of DebugModeToggle.IsChecked
                 ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
             }
             AddHoverBehavior();
@@ -547,10 +548,14 @@ namespace RCLayoutPreview
         {
             var debugMode = (sender as CheckBox)?.IsChecked == true;
             UpdateStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
+            // Disable auto-update when diagnostics mode is enabled
+            if (editorWindow != null)
+            {
+                editorWindow.SetAutoUpdateEnabled(!debugMode);
+            }
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
-                // Modular field/placeholder processing
                 ProcessFieldsAndPlaceholders(frameworkElement, jsonData, debugMode);
                 PreviewHost.Content = null; // Clear the content
                 PreviewHost.Content = frameworkElement; // Reapply the content

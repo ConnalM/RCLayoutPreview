@@ -62,6 +62,7 @@ namespace RCLayoutPreview.Helpers
                     lbl.Content = displayText;
                 else if (element is ContentControl contentControl)
                     contentControl.Content = displayText;
+                return; // Prevent further processing in diagnostics mode
             }
             else if (value != null && element is Image imageElement)
             {

@@ -808,5 +808,25 @@ namespace RCLayoutPreview
                 searchBox.TextChanged += JsonSearchBox_TextChanged; // Reattach event
             }
         }
+
+        // Allows MainWindow to control auto-update from diagnostics toggle
+        public void SetAutoUpdateEnabled(bool enabled)
+        {
+            autoUpdateEnabled = enabled;
+            if (previewTimer != null)
+            {
+                if (autoUpdateEnabled)
+                {
+                    previewTimer.Start();
+                    lastEditTime = DateTime.Now;
+                    XamlContentChanged?.Invoke(this, Editor.Text);
+                }
+                else
+                {
+                    previewTimer.Stop();
+                }
+            }
+            UpdateStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
+        }
     }
 }
