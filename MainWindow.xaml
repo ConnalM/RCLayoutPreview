@@ -33,6 +33,9 @@
             </Border>
         </ScrollViewer>
 
+        <!-- Image Control to display FuelImage_Position1 dynamically from DataContext -->
+        <Image Grid.Row="1" Source="{Binding FuelImage_Position1}" Height="100" Width="100" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+
         <!-- Popup overlay -->
         <Grid x:Name="PopupOverlay" Grid.RowSpan="2" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400" Background="White" Margin="10">

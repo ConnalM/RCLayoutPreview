@@ -96,7 +96,14 @@ namespace RCLayoutPreview
             // If we have current XAML content, refresh the preview with new data
             if (PreviewHost?.Content is FrameworkElement frameworkElement)
             {
-                frameworkElement.DataContext = jsonData;
+                if (jsonData != null && jsonData["RacerData"] != null)
+                {
+                    frameworkElement.DataContext = jsonData["RacerData"];
+                }
+                else
+                {
+                    frameworkElement.DataContext = jsonData;
+                }
                 // Modular field/placeholder processing
                 ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
             }
