@@ -7,6 +7,7 @@ using System;
 using System.Diagnostics;
 using System.Windows.Media.Imaging;
 using System.IO;
+using System.Windows.Data; // <-- Add this for DependencyPropertyHelper
 
 namespace RCLayoutPreview.Helpers
 {
@@ -17,6 +18,12 @@ namespace RCLayoutPreview.Helpers
     {
         // Delegate for logging to UI
         public static Action<string> UILogStatus = null;
+
+        // Global flag to indicate if ThemeDictionary is present in the loaded XAML
+        public static bool ThemeDictionaryActive = false;
+
+        // Holds the current XAML string for debug extraction
+        public static string CurrentXamlContent { get; set; }
 
         public static bool IsStubDataField(System.Windows.FrameworkElement element)
         {
@@ -107,7 +114,7 @@ namespace RCLayoutPreview.Helpers
                 SolidColorBrush colorBrush = null;
 
                 // Only apply color if field is in RacerData group and ends with a number NOT preceded by underscore
-                if (foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
+                if (!ThemeDictionaryActive && foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
                 {
                     int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
                     Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
@@ -116,24 +123,175 @@ namespace RCLayoutPreview.Helpers
                     if (playerIndex > 0)
                     {
                         colorBrush = RCLayoutPreview.Helpers.XamlFixer.GetColor(playerIndex);
-                        Debug.WriteLine($"[StubDataFieldHandler] Calling XamlFixer.GetColor({playerIndex})");
-                        UILogStatus?.Invoke($"Color for player index {playerIndex}: {colorBrush?.Color}");
+                        Debug.WriteLine($"[StubDataFieldHandler] Applying SolidColorBrush: {colorBrush?.Color}");
+                        UILogStatus?.Invoke($"Applying SolidColorBrush: {colorBrush?.Color}");
                     }
                 }
 
+                // Set display text and color only if not using theme dictionary
                 if (element is TextBlock tb3)
                 {
                     tb3.Text = displayText;
-                    tb3.Background = colorBrush;
+                    if (!ThemeDictionaryActive && colorBrush != null) tb3.Background = colorBrush;
+                    LogTextBlockResourceDebug(tb3, "TextBlock");
+                    LogStaticResourceDebug(tb3, "TextBlock");
+                    LogXamlStaticResourceDebug(tb3.Name, "TextBlock");
                 }
                 else if (element is Label lbl)
                 {
                     lbl.Content = displayText;
-                    lbl.Background = colorBrush;
+                    if (!ThemeDictionaryActive && colorBrush != null) lbl.Background = colorBrush;
+                    LogResourceDebug(lbl, "Label");
+                    LogStaticResourceDebug(lbl, "Label");
+                    LogXamlStaticResourceDebug(lbl.Name, "Label");
                 }
                 else if (element is ContentControl contentControl)
                 {
                     contentControl.Content = displayText;
+                }
+            }
+        }
+
+        public static void SetThemeDictionaryActive(bool active)
+        {
+            ThemeDictionaryActive = active;
+        }
+
+        // Call this method when loading/parsing XAML to detect ThemeDictionary.xaml
+        public static void DetectThemeDictionary(string xamlContent)
+        {
+            if (!string.IsNullOrEmpty(xamlContent) && xamlContent.Contains("ThemeDictionary.xaml"))
+            {
+                SetThemeDictionaryActive(true);
+            }
+            else
+            {
+                SetThemeDictionaryActive(false);
+            }
+        }
+
+        // Helper to log resource lookup and value details for Background/Foreground for Control
+        private static void LogResourceDebug(Control ctrl, string type)
+        {
+            var bgSource = System.Windows.DependencyPropertyHelper.GetValueSource(ctrl, Control.BackgroundProperty);
+            var fgSource = System.Windows.DependencyPropertyHelper.GetValueSource(ctrl, Control.ForegroundProperty);
+            object bgValue = ctrl.Background, fgValue = ctrl.Foreground;
+
+            Debug.WriteLine($"[{type}] '{ctrl.Name}' Background value source: {bgSource.BaseValueSource}, value: {bgValue}");
+            UILogStatus?.Invoke($"{type} '{ctrl.Name}' Background value source: {bgSource.BaseValueSource}, value: {bgValue}");
+            Debug.WriteLine($"[{type}] '{ctrl.Name}' Foreground value source: {fgSource.BaseValueSource}, value: {fgValue}");
+            UILogStatus?.Invoke($"{type} '{ctrl.Name}' Foreground value source: {fgSource.BaseValueSource}, value: {fgValue}");
+        }
+
+        // Helper to log resource lookup and value details for Background/Foreground for TextBlock
+        private static void LogTextBlockResourceDebug(TextBlock tb, string type)
+        {
+            var bgSource = System.Windows.DependencyPropertyHelper.GetValueSource(tb, TextBlock.BackgroundProperty);
+            var fgSource = System.Windows.DependencyPropertyHelper.GetValueSource(tb, TextBlock.ForegroundProperty);
+            object bgValue = tb.Background, fgValue = tb.Foreground;
+
+            Debug.WriteLine($"[{type}] '{tb.Name}' Background value source: {bgSource.BaseValueSource}, value: {bgValue}");
+            UILogStatus?.Invoke($"{type} '{tb.Name}' Background value source: {bgSource.BaseValueSource}, value: {bgValue}");
+            Debug.WriteLine($"[{type}] '{tb.Name}' Foreground value source: {fgSource.BaseValueSource}, value: {fgValue}");
+            UILogStatus?.Invoke($"{type} '{tb.Name}' Foreground value source: {fgSource.BaseValueSource}, value: {fgValue}");
+        }
+
+        // Enhanced debug: Try to match the brush to a StaticResource in the merged dictionaries
+        private static void LogStaticResourceDebug(FrameworkElement element, string type)
+        {
+            // Only run if ThemeDictionaryActive
+            if (!ThemeDictionaryActive) return;
+            var window = Window.GetWindow(element);
+            if (window == null) return;
+            var resources = window.Resources.MergedDictionaries;
+            foreach (var dict in resources)
+            {
+                foreach (var key in dict.Keys)
+                {
+                    var resource = dict[key];
+                    if (resource is Brush brush)
+                    {
+                        if ((element is Control ctrl && ctrl.Background == brush) ||
+                            (element is TextBlock tb && tb.Background == brush))
+                        {
+                            Debug.WriteLine($"[{type}] '{element.Name}' Background uses StaticResource key: {key}");
+                            UILogStatus?.Invoke($"{type} '{element.Name}' Background uses StaticResource key: {key}");
+                            Debug.WriteLine($"[{type}] Looking up resource '{key}' in ThemeDictionary: {brush}");
+                            UILogStatus?.Invoke($"{type} Looking up resource '{key}' in ThemeDictionary: {brush}");
+                        }
+                        if ((element is Control ctrl2 && ctrl2.Foreground == brush) ||
+                            (element is TextBlock tb2 && tb2.Foreground == brush))
+                        {
+                            Debug.WriteLine($"[{type}] '{element.Name}' Foreground uses StaticResource key: {key}");
+                            UILogStatus?.Invoke($"{type} '{element.Name}' Foreground uses StaticResource key: {key}");
+                            Debug.WriteLine($"[{type}] Looking up resource '{key}' in ThemeDictionary: {brush}");
+                            UILogStatus?.Invoke($"{type} Looking up resource '{key}' in ThemeDictionary: {brush}");
+                        }
+                    }
+                }
+            }
+        }
+
+        // Log the original XAML StaticResource attribute for the element
+        private static void LogXamlStaticResourceDebug(string elementName, string type)
+        {
+            if (string.IsNullOrEmpty(CurrentXamlContent) || string.IsNullOrEmpty(elementName)) return;
+            // Find the element by Name in the XAML
+            var regex = new System.Text.RegularExpressions.Regex($"<[^>]*Name=\"{elementName}\"[^>]*>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var match = regex.Match(CurrentXamlContent);
+            if (match.Success)
+            {
+                string tag = match.Value;
+                // Look for StaticResource attributes
+                var attrRegex = new System.Text.RegularExpressions.Regex("(Background|Foreground|BorderBrush)=\\\"\\{StaticResource ([^}]+)\\}\\\"");
+                var attrMatches = attrRegex.Matches(tag);
+                foreach (System.Text.RegularExpressions.Match attrMatch in attrMatches)
+                {
+                    string prop = attrMatch.Groups[1].Value;
+                    string key = attrMatch.Groups[2].Value;
+                    Debug.WriteLine($"[{type}] '{elementName}' XAML: {prop}={{StaticResource {key}}}");
+                    UILogStatus?.Invoke($"{type} '{elementName}' XAML: {prop}={{StaticResource {key}}}");
+                    
+                    // Debug: List all available resources
+                    var window = Application.Current?.MainWindow;
+                    if (window != null)
+                    {
+                        // Log all available resources in MainWindow
+                        Debug.WriteLine($"[{type}] MainWindow has {window.Resources.Count} direct resources, {window.Resources.MergedDictionaries.Count} merged dictionaries");
+                        UILogStatus?.Invoke($"{type} MainWindow has {window.Resources.Count} direct resources, {window.Resources.MergedDictionaries.Count} merged dictionaries");
+                        
+                        foreach (var dict in window.Resources.MergedDictionaries)
+                        {
+                            Debug.WriteLine($"[{type}] Merged dictionary has {dict.Count} resources");
+                            UILogStatus?.Invoke($"{type} Merged dictionary has {dict.Count} resources");
+                            foreach (var resKey in dict.Keys)
+                            {
+                                Debug.WriteLine($"[{type}] Available resource key: {resKey}");
+                                UILogStatus?.Invoke($"{type} Available resource key: {resKey}");
+                            }
+                        }
+                        
+                        // Try lookup
+                        var value = window.TryFindResource(key);
+                        Debug.WriteLine($"[{type}] Looking up resource key '{key}' in ThemeDictionary: {value}");
+                        UILogStatus?.Invoke($"{type} Looking up resource key '{key}' in ThemeDictionary: {value}");
+                        
+                        // Also try to find in the element's visual tree if MainWindow lookup fails
+                        if (value == null)
+                        {
+                            // Try looking in the preview host's resources
+                            var previewHost = window.FindName("PreviewHost") as ContentControl;
+                            if (previewHost?.Content is FrameworkElement content)
+                            {
+                                Debug.WriteLine($"[{type}] PreviewHost content has {content.Resources.Count} direct resources, {content.Resources.MergedDictionaries.Count} merged dictionaries");
+                                UILogStatus?.Invoke($"{type} PreviewHost content has {content.Resources.Count} direct resources, {content.Resources.MergedDictionaries.Count} merged dictionaries");
+                                
+                                value = content.TryFindResource(key);
+                                Debug.WriteLine($"[{type}] Fallback lookup in preview content for '{key}': {value}");
+                                UILogStatus?.Invoke($"{type} Fallback lookup in preview content for '{key}': {value}");
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -29,17 +29,13 @@ namespace RCLayoutPreview.Helpers
 
         public static SolidColorBrush GetColor(int playerIndex)
         {
-            // Use a fixed set of distinct colors for players
-            switch ((playerIndex - 1) % 8)
+            // Use RC's standard 4-lane color scheme: Red, White, Blue, Yellow
+            switch ((playerIndex - 1) % 4)
             {
-                case 0: return new SolidColorBrush(Color.FromRgb(192, 0, 0));      // Red
-                case 1: return new SolidColorBrush(Color.FromRgb(0, 112, 192));    // Blue
-                case 2: return new SolidColorBrush(Color.FromRgb(0, 176, 80));     // Green
-                case 3: return new SolidColorBrush(Color.FromRgb(112, 48, 160));   // Purple
-                case 4: return new SolidColorBrush(Color.FromRgb(255, 192, 0));    // Gold
-                case 5: return new SolidColorBrush(Color.FromRgb(0, 176, 240));    // Light Blue
-                case 6: return new SolidColorBrush(Color.FromRgb(146, 208, 80));   // Light Green
-                case 7: return new SolidColorBrush(Color.FromRgb(255, 102, 0));    // Orange
+                case 0: return new SolidColorBrush(Color.FromRgb(255, 0, 0));      // Red
+                case 1: return new SolidColorBrush(Color.FromRgb(255, 255, 255));  // White  
+                case 2: return new SolidColorBrush(Color.FromRgb(0, 0, 255));      // Blue
+                case 3: return new SolidColorBrush(Color.FromRgb(255, 255, 0));    // Yellow
                 default: return new SolidColorBrush(Color.FromRgb(128, 128, 128)); // Gray (fallback)
             }
         }

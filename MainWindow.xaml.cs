@@ -548,11 +548,13 @@ namespace RCLayoutPreview
         {
             var debugMode = (sender as CheckBox)?.IsChecked == true;
             UpdateStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
+            
             // Disable auto-update when diagnostics mode is enabled
             if (editorWindow != null)
             {
                 editorWindow.SetAutoUpdateEnabled(!debugMode);
             }
+            
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 // Refresh the preview content with the updated diagnostics mode
