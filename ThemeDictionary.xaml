@@ -15,7 +15,7 @@
     <Brush x:Key="RSLabelColor">White</Brush>
     <Brush x:Key="RSLabelColorAlt">#00FF05</Brush>
     <Brush x:Key="RSPenaltyColor">#FF8BC63F</Brush>
-    <Brush x:Key="RSValueColor">Black</Brush>
+    <Brush x:Key="RSValueColor">Blue</Brush>
     <Brush x:Key="RSBorderBrush">#FF000000</Brush>
 
     <LinearGradientBrush x:Key="RSTopGridBackground" StartPoint="0.5,0" EndPoint="0.5,1" SpreadMethod="Pad" Opacity="1.0" ColorInterpolationMode="SRgbLinearInterpolation">

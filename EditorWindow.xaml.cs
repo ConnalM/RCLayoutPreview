@@ -41,6 +41,7 @@ namespace RCLayoutPreview
         private List<string> allCompletions;
         private FoldingManager foldingManager;
         private XmlFoldingStrategy foldingStrategy;
+        private int themeCheckCounter = 0; // Debug counter
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -322,6 +323,7 @@ namespace RCLayoutPreview
         {
             if (!autoUpdateEnabled) return;
 
+            // Check for XAML preview updates
             if ((DateTime.Now - lastEditTime).TotalMilliseconds >= previewDelayMilliseconds)
             {
                 string currentContent = Editor.Text;
@@ -338,6 +340,122 @@ namespace RCLayoutPreview
                     }
                 }
             }
+            
+            // Simple ThemeDictionary refresh check
+            if (previewWindow != null)
+            {
+                CheckForThemeDictionaryChanges();
+            }
+        }
+        
+        private void CheckForThemeDictionaryChanges()
+        {
+            themeCheckCounter++;
+            try
+            {
+                string themeFile = FindThemeDictionaryPath();
+                UpdateStatus($"[DEBUG #{themeCheckCounter}] Checking ThemeDictionary: {themeFile}");
+                
+                if (!string.IsNullOrEmpty(themeFile) && File.Exists(themeFile))
+                {
+                    var fileInfo = new FileInfo(themeFile);
+                    UpdateStatus($"[DEBUG #{themeCheckCounter}] File exists. Current: {fileInfo.LastWriteTime}, Last: {previewWindow.lastThemeDictionaryWriteTime}");
+                    UpdateStatus($"[DEBUG #{themeCheckCounter}] Ticks comparison: Current: {fileInfo.LastWriteTime.Ticks}, Last: {previewWindow.lastThemeDictionaryWriteTime.Ticks}");
+                    
+                    // Simple check - if file is newer than last check, reload
+                    if (fileInfo.LastWriteTime.Ticks != previewWindow.lastThemeDictionaryWriteTime.Ticks)
+                    {
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] CHANGE DETECTED! Triggering proper ThemeDictionary refresh...");
+                        
+                        // CRITICAL FIX: Call the proper ReloadThemeDictionary method instead of re-parsing XAML
+                        previewWindow.ReloadThemeDictionary();
+                        UpdateStatus("ThemeDictionary refreshed with FileStream method");
+                    }
+                    // Only show "unchanged" message every 10th check to avoid spam
+                    else if (themeCheckCounter % 10 == 0)
+                    {
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary unchanged");
+                    }
+                }
+                else
+                {
+                    UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary.xaml not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[DEBUG #{themeCheckCounter}] Error: {ex.Message}");
+            }
+        }
+        
+        private string FindThemeDictionaryPath()
+        {
+            // Try multiple possible locations for ThemeDictionary.xaml
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: BaseDirectory = {baseDirectory}");
+            
+            string[] possiblePaths = {
+                // 1. Same directory as executable (bin\Debug)
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ThemeDictionary.xaml"),
+                // 2. Project root (go up from bin\Debug to project root)
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "ThemeDictionary.xaml"),
+                // 3. Direct project root path
+                Path.Combine(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.FullName, "ThemeDictionary.xaml"),
+                // 4. Current working directory
+                Path.Combine(Directory.GetCurrentDirectory(), "ThemeDictionary.xaml"),
+                // 5. EXPLICIT PATH: The path from your workspace
+                @"C:\Program Files (x86)\Race Coordinator\data\xaml\VS\RCLayoutPreview\ThemeDictionary.xaml"
+            };
+            
+            UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Checking {possiblePaths.Length} possible paths:");
+            for (int i = 0; i < possiblePaths.Length; i++)
+            {
+                try
+                {
+                    string fullPath = Path.GetFullPath(possiblePaths[i]); // Resolve .. references
+                    UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Path {i + 1}: {fullPath}");
+                    if (File.Exists(fullPath))
+                    {
+                        var fileInfo = new FileInfo(fullPath);
+                        UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: FOUND at {fullPath}");
+                        UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: File size: {fileInfo.Length} bytes, LastWriteTime: {fileInfo.LastWriteTime}");
+                        
+                        // Read first few lines to verify content
+                        try
+                        {
+                            string[] lines = File.ReadAllLines(fullPath);
+                            if (lines.Length > 0)
+                            {
+                                UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: First line: {lines[0]}");
+                                
+                                // Look for RSValueColor line to verify content
+                                var rsValueLine = lines.FirstOrDefault(line => line.Contains("RSValueColor"));
+                                if (!string.IsNullOrEmpty(rsValueLine))
+                                {
+                                    UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: RSValueColor line: {rsValueLine.Trim()}");
+                                }
+                            }
+                        }
+                        catch (Exception readEx)
+                        {
+                            UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Error reading file: {readEx.Message}");
+                        }
+                        
+                        return fullPath;
+                    }
+                    else
+                    {
+                        UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: NOT FOUND at {fullPath}");
+                    }
+                }
+                catch (Exception ex) 
+                {
+                    UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Error checking path {i + 1}: {ex.Message}");
+                }
+            }
+            
+            UpdateStatus("[DEBUG] EditorWindow FindThemeDictionary: No ThemeDictionary.xaml found in any location");
+            return null;
         }
 
         private void LoadStubData()
@@ -496,7 +614,10 @@ namespace RCLayoutPreview
                     previewTimer.Stop();
                 }
             }
-            UpdateStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
+            
+            UpdateStatus(autoUpdateEnabled ? 
+                "Auto-update enabled" : 
+                "Auto-update disabled");
         }
 
         private void DelayInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -700,20 +821,18 @@ namespace RCLayoutPreview
 
         private void PreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!autoUpdateEnabled)
+            // Manual refresh of preview
+            string currentContent = Editor.Text;
+            if (!string.IsNullOrWhiteSpace(currentContent))
             {
-                string currentContent = Editor.Text;
-                if (!string.IsNullOrWhiteSpace(currentContent))
+                if (XamlValidationHelper.IsValidXml(currentContent, out string error))
                 {
-                    if (XamlValidationHelper.IsValidXml(currentContent, out string error))
-                    {
-                        XamlContentChanged?.Invoke(this, currentContent);
-                        UpdateStatus("Preview refreshed manually");
-                    }
-                    else
-                    {
-                        UpdateStatus($"Invalid XAML: {error}");
-                    }
+                    XamlContentChanged?.Invoke(this, currentContent);
+                    UpdateStatus("Preview refreshed manually");
+                }
+                else
+                {
+                    UpdateStatus($"Invalid XAML: {error}");
                 }
             }
         }
@@ -826,7 +945,10 @@ namespace RCLayoutPreview
                     previewTimer.Stop();
                 }
             }
-            UpdateStatus(autoUpdateEnabled ? "Auto-update enabled" : "Auto-update disabled");
+            
+            UpdateStatus(enabled ? 
+                "Auto-update enabled" : 
+                "Auto-update disabled");
         }
     }
 }

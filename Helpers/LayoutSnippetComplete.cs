@@ -231,6 +231,32 @@ namespace RCLayoutPreview.Helpers
                         "<!-- Theme Dictionary: Merged resource dictionary for theming -->\n" +
                         ThemeDictionarySnippet
                 },
+                // ThemeDictionary Label: Shows proper DynamicResource usage
+                new LayoutSnippet
+                {
+                    Name = "ThemeDictionary Label",
+                    Description = "Label using DynamicResource for automatic theme updates (better than StaticResource).",
+                    Category = "Themed Elements",
+                    XamlTemplate =
+                        "<!-- ThemeDictionary Label: Uses DynamicResource for automatic theme updates -->\n" +
+                        "<Label Content=\"Themed Label\" FontSize=\"20\"\n" +
+                        "       Foreground=\"{DynamicResource RSValueColor}\"\n" +
+                        "       Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "       ToolTip=\"Uses DynamicResource - will update automatically when theme changes\" />"
+                },
+                // ThemeDictionary TextBlock: Shows proper DynamicResource usage  
+                new LayoutSnippet
+                {
+                    Name = "ThemeDictionary TextBlock",
+                    Description = "TextBlock using DynamicResource for automatic theme updates (better than StaticResource).",
+                    Category = "Themed Elements",
+                    XamlTemplate =
+                        "<!-- ThemeDictionary TextBlock: Uses DynamicResource for automatic theme updates -->\n" +
+                        "<TextBlock Text=\"Themed Text\" FontSize=\"20\"\n" +
+                        "           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
+                        "           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "           ToolTip=\"Uses DynamicResource - will update automatically when theme changes\" />"
+                },
                 // General Menu: Menu with placeholders for easy adaptation
                 new LayoutSnippet
                 {
@@ -657,7 +683,116 @@ namespace RCLayoutPreview.Helpers
                     Category = "Layout Containers",
                     XamlTemplate = "<Viewbox Stretch=\"Uniform\">\n{content}\n</Viewbox>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
-                }
+                },
+
+                // Simple Theme Test: Shows DynamicResource in action for testing
+                new LayoutSnippet
+                {
+                    Name = "Simple Theme Test",
+                    Description = "Simple test Label that uses DynamicResource for easy ThemeDictionary testing.",
+                    Category = "Testing",
+                    XamlTemplate =
+                        "<!-- Simple Theme Test: Easy way to test ThemeDictionary changes -->\n" +
+                        "<StackPanel Margin=\"20\">\n" +
+                        "    <TextBlock Text=\"Theme Dictionary Test\" FontSize=\"16\" Margin=\"5\" />\n" +
+                        "    <Label Content=\"RSValueColor Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
+                        "           Foreground=\"{DynamicResource RSValueColor}\"\n" +
+                        "           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "           Padding=\"10\" Margin=\"5\"\n" +
+                        "           ToolTip=\"This should change color when you edit RSValueColor in ThemeDictionary.xaml\" />\n" +
+                        "    <Label Content=\"RSLabelColor Test\" FontSize=\"20\"\n" +
+                        "           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
+                        "           Background=\"{DynamicResource RSTableLabelBackground}\"\n" +
+                        "           Padding=\"10\" Margin=\"5\"\n" +
+                        "           ToolTip=\"This uses RSLabelColor and should be white\" />\n" +
+                        "    <TextBlock Text=\"Change RSValueColor in ThemeDictionary.xaml from Blue to Red to test!\"\n" +
+                        "               FontSize=\"14\" Foreground=\"Gray\" Margin=\"5\" />\n" +
+                        "</StackPanel>"
+                },
+
+                // Complete Theme Test: Full Window with ThemeDictionary for testing
+                new LayoutSnippet
+                {
+                    Name = "Complete Theme Test",
+                    Description = "Complete test window with ThemeDictionary resources loaded - ready to test theme changes.",
+                    Category = "Testing",
+                    XamlTemplate =
+                        "<!-- Complete Theme Test: Full Window with ThemeDictionary resources -->\n" +
+                        "<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n" +
+                        "        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n" +
+                        "        Title=\"Theme Dictionary Test\"\n" +
+                        "        Height=\"400\" Width=\"600\"\n" +
+                        "        Background=\"Black\">\n\n" +
+                        "    <Window.Resources>\n" +
+                        "        <ResourceDictionary>\n" +
+                        "            <ResourceDictionary.MergedDictionaries>\n" +
+                        "                <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
+                        "            </ResourceDictionary.MergedDictionaries>\n" +
+                        "        </ResourceDictionary>\n" +
+                        "    </Window.Resources>\n\n" +
+                        "    <Grid Margin=\"20\">\n" +
+                        "        <StackPanel>\n" +
+                        "            <TextBlock Text=\"?? ThemeDictionary Auto-Refresh Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
+                        "                       Foreground=\"White\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n\n" +
+                        "            <TextBlock Text=\"The labels below should change color automatically when you edit ThemeDictionary.xaml\"\n" +
+                        "                       FontSize=\"14\" Foreground=\"LightGray\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n\n" +
+                        "            <!-- RSValueColor Test -->\n" +
+                        "            <Border BorderBrush=\"White\" BorderThickness=\"1\" Margin=\"10\" Padding=\"10\">\n" +
+                        "                <StackPanel>\n" +
+                        "                    <TextBlock Text=\"RSValueColor Test:\" FontSize=\"16\" Foreground=\"White\" Margin=\"0,0,0,5\" />\n" +
+                        "                    <Label Content=\"This should be BLUE initially\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
+                        "                           Foreground=\"{DynamicResource RSValueColor}\"\n" +
+                        "                           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "                           Padding=\"15\" HorizontalAlignment=\"Center\"\n" +
+                        "                           ToolTip=\"Edit ThemeDictionary.xaml: change RSValueColor from Blue to Red\" />\n" +
+                        "                </StackPanel>\n" +
+                        "            </Border>\n\n" +
+                        "            <!-- RSLabelColor Test -->\n" +
+                        "            <Border BorderBrush=\"White\" BorderThickness=\"1\" Margin=\"10\" Padding=\"10\">\n" +
+                        "                <StackPanel>\n" +
+                        "                    <TextBlock Text=\"RSLabelColor Test:\" FontSize=\"16\" Foreground=\"White\" Margin=\"0,0,0,5\" />\n" +
+                        "                    <Label Content=\"This should be WHITE\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
+                        "                           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
+                        "                           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "                           Padding=\"15\" HorizontalAlignment=\"Center\"\n" +
+                        "                           ToolTip=\"This uses RSLabelColor (should be white)\" />\n" +
+                        "                </StackPanel>\n" +
+                        "            </Border>\n\n" +
+                        "            <TextBlock Text=\"?? Instructions: Edit ThemeDictionary.xaml and change RSValueColor from 'Blue' to 'Red'\"\n" +
+                        "                       FontSize=\"14\" Foreground=\"Yellow\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n" +
+                        "            <TextBlock Text=\"The first label should automatically change from blue to red!\"\n" +
+                        "                       FontSize=\"14\" Foreground=\"LightGray\" Margin=\"5\" HorizontalAlignment=\"Center\" />\n" +
+                        "        </StackPanel>\n" +
+                        "    </Grid>\n" +
+                        "</Window>"
+                },
+                // Minimal Theme Test: Simplest possible test for ThemeDictionary
+                new LayoutSnippet
+                {
+                    Name = "Minimal Theme Test",
+                    Description = "Minimal test for ThemeDictionary - just one label to verify resource loading.",
+                    Category = "Testing",
+                    XamlTemplate =
+                        "<!-- Minimal Theme Test: Simplest test for ThemeDictionary -->\n" +
+                        "<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n" +
+                        "        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n" +
+                        "        Title=\"Minimal Test\" Height=\"200\" Width=\"400\" Background=\"Gray\">\n\n" +
+                        "    <Window.Resources>\n" +
+                        "        <ResourceDictionary>\n" +
+                        "            <ResourceDictionary.MergedDictionaries>\n" +
+                        "                <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
+                        "            </ResourceDictionary.MergedDictionaries>\n" +
+                        "        </ResourceDictionary>\n" +
+                        "    </Window.Resources>\n\n" +
+                        "    <StackPanel Margin=\"20\" VerticalAlignment=\"Center\">\n" +
+                        "        <Label Content=\"TEST\" FontSize=\"48\" FontWeight=\"Bold\" HorizontalAlignment=\"Center\"\n" +
+                        "               Foreground=\"{DynamicResource RSValueColor}\"\n" +
+                        "               ToolTip=\"This should be BLUE from ThemeDictionary\" />\n" +
+                        "        <TextBlock Text=\"If this label appears BLUE, ThemeDictionary is working!\"\n" +
+                        "                   HorizontalAlignment=\"Center\" Foreground=\"White\" Margin=\"10\" />\n" +
+                        "    </StackPanel>\n" +
+                        "</Window>"
+                },
             };
         }
 

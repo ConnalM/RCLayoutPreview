@@ -70,7 +70,7 @@ namespace RCLayoutPreview
 
             this.Loaded += MainWindow_Loaded;
         }
-
+        
         /// <summary>
         /// Called when the main window is loaded. Used for initial status logging.
         /// </summary>
@@ -467,7 +467,82 @@ namespace RCLayoutPreview
         private void ApplyWindowProperties(Window window)
         {
             UpdateStatus("XAML contains a Window element. Extracting content.");
+            
+            // CRITICAL FIX: Skip WPF's cached ResourceDictionary loading completely!
+            // Instead of transferring window.Resources (which are cached), immediately load fresh from FileStream
+            bool hasThemeDictionary = false;
+            if (window.Resources != null && window.Resources.MergedDictionaries.Count > 0)
+            {
+                // Check if any merged dictionary looks like ThemeDictionary
+                foreach (var dictionary in window.Resources.MergedDictionaries)
+                {
+                    if (dictionary.Source != null && dictionary.Source.ToString().Contains("ThemeDictionary"))
+                    {
+                        hasThemeDictionary = true;
+                        UpdateStatus("[DEBUG] XAML contains ThemeDictionary reference - bypassing cached ResourceDictionary!");
+                        break;
+                    }
+                }
+                
+                if (!hasThemeDictionary)
+                {
+                    // No ThemeDictionary detected, use normal resource transfer
+                    UpdateStatus($"[DEBUG] Transferring {window.Resources.MergedDictionaries.Count} merged dictionaries from Window to Application resources");
+                    
+                    Application.Current.Resources.MergedDictionaries.Clear();
+                    
+                    foreach (var dictionary in window.Resources.MergedDictionaries)
+                    {
+                        Application.Current.Resources.MergedDictionaries.Add(dictionary);
+                        UpdateStatus($"[DEBUG] Added merged dictionary with {dictionary.Count} resources");
+                        
+                        foreach (var key in dictionary.Keys)
+                        {
+                            var resource = dictionary[key];
+                            if (key.ToString().Contains("RSValue") || key.ToString().Contains("RSLabel") || key.ToString().Contains("RSTable"))
+                            {
+                                UpdateStatus($"[DEBUG] Key Resource: {key} = {resource}");
+                            }
+                        }
+                    }
+                    
+                    // Also add direct resources from the Window if any
+                    if (window.Resources.Count > 0)
+                    {
+                        foreach (var key in window.Resources.Keys)
+                        {
+                            Application.Current.Resources[key] = window.Resources[key];
+                            UpdateStatus($"[DEBUG] Added direct resource: {key}");
+                        }
+                    }
+                }
+            }
+            
+            // ALWAYS load fresh ThemeDictionary from FileStream if detected or if file exists
+            if (hasThemeDictionary)
+            {
+                UpdateStatus("[DEBUG] Loading fresh ThemeDictionary from FileStream to bypass WPF caching...");
+                LoadFreshThemeDictionaryFromFileStream();
+                
+                // Enable theme dictionary mode
+                StubDataFieldHandler.SetThemeDictionaryActive(true);
+                UpdateStatus("ThemeDictionary mode activated from fresh FileStream load");
+                
+                // Test resource lookup with fresh resources
+                var testResource = Application.Current.TryFindResource("RSValueColor");
+                UpdateStatus($"[DEBUG] Fresh lookup RSValueColor: {testResource}");
+            }
+            
             PreviewHost.Content = null;
+            
+            // Copy the fresh resources to PreviewHost as well
+            PreviewHost.Resources.MergedDictionaries.Clear();
+            foreach (var dictionary in Application.Current.Resources.MergedDictionaries)
+            {
+                PreviewHost.Resources.MergedDictionaries.Add(dictionary);
+            }
+            UpdateStatus("[DEBUG] Applied fresh resources to PreviewHost for better DynamicResource resolution");
+            
             PreviewHost.Content = window.Content;
             PreviewHost.IsHitTestVisible = true;
             PreviewHost.IsEnabled = true;
@@ -501,6 +576,61 @@ namespace RCLayoutPreview
             }
         }
 
+        /// <summary>
+        /// Loads fresh ThemeDictionary from FileStream, bypassing WPF's caching completely
+        /// </summary>
+        private void LoadFreshThemeDictionaryFromFileStream()
+        {
+            try
+            {
+                string themeFilePath = FindThemeDictionaryPath();
+                if (!string.IsNullOrEmpty(themeFilePath) && File.Exists(themeFilePath))
+                {
+                    UpdateStatus($"[DEBUG] LoadFreshThemeDictionaryFromFileStream: Loading from {themeFilePath}");
+                    
+                    // Clear existing theme dictionaries first
+                    Application.Current.Resources.MergedDictionaries.Clear();
+                    
+                    // Force garbage collection to ensure old resources are released
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    
+                    // CRITICAL: Load ResourceDictionary directly from file stream to bypass WPF caching
+                    var themeDictionary = new ResourceDictionary();
+                    using (var fileStream = new FileStream(themeFilePath, FileMode.Open, FileAccess.Read))
+                    {
+                        // Use XamlReader to load directly from file stream - this bypasses WPF's URI-based caching
+                        themeDictionary = (ResourceDictionary)System.Windows.Markup.XamlReader.Load(fileStream);
+                    }
+                    
+                    UpdateStatus($"[DEBUG] LoadFreshThemeDictionaryFromFileStream: Loaded fresh dictionary with {themeDictionary.Count} resources");
+                    
+                    // Debug: Show actual values from the freshly loaded dictionary
+                    foreach (var key in themeDictionary.Keys)
+                    {
+                        var resource = themeDictionary[key];
+                        if (key.ToString().Contains("RSValue") || key.ToString().Contains("RSLabel"))
+                        {
+                            UpdateStatus($"[DEBUG] LoadFreshThemeDictionaryFromFileStream: Fresh Resource: {key} = {resource}");
+                        }
+                    }
+                    
+                    // Add to application resources
+                    Application.Current.Resources.MergedDictionaries.Add(themeDictionary);
+                    
+                    UpdateStatus("[DEBUG] LoadFreshThemeDictionaryFromFileStream: Fresh ThemeDictionary applied successfully");
+                }
+                else
+                {
+                    UpdateStatus("[DEBUG] LoadFreshThemeDictionaryFromFileStream: ThemeDictionary file not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[DEBUG] LoadFreshThemeDictionaryFromFileStream: Error: {ex.Message}");
+            }
+        }
+        
         private void SetupPreviewHost(object element)
         {
             PreviewHost.Content = element;
@@ -863,6 +993,9 @@ namespace RCLayoutPreview
             return Regex.Replace(fieldName, "_\\d+$", "");
         }
 
+        // Simple ThemeDictionary auto-refresh
+        public DateTime lastThemeDictionaryWriteTime = DateTime.MinValue;
+
         /// <summary>
         /// Synchronizes the widths of all TextBlocks in the same container that match the echo/real field pattern.
         /// </summary>
@@ -926,6 +1059,207 @@ namespace RCLayoutPreview
         public void SaveWindowPlacementFromEditor()
         {
             WindowPlacementHelper.SaveWindowPlacement(this, "PreviewWindow");
+        }
+
+        /// <summary>
+        /// Loads ThemeDictionary.xaml if it exists
+        /// </summary>
+        private void LoadThemeDictionaryIfExists()
+        {
+            try
+            {
+                string themeFilePath = FindThemeDictionaryPath();
+                UpdateStatus($"[DEBUG] LoadThemeDictionary: {themeFilePath}");
+
+                if (!string.IsNullOrEmpty(themeFilePath) && File.Exists(themeFilePath))
+                {
+                    // Update the timestamp for tracking changes
+                    var fileInfo = new FileInfo(themeFilePath);
+                    UpdateStatus($"[DEBUG] File exists. Setting timestamp: {fileInfo.LastWriteTime}");
+                    lastThemeDictionaryWriteTime = fileInfo.LastWriteTime;
+                    
+                    // CRITICAL FIX: Load ResourceDictionary directly from file stream instead of using cached Source
+                    var themeDictionary = new ResourceDictionary();
+                    using (var fileStream = new FileStream(themeFilePath, FileMode.Open, FileAccess.Read))
+                    {
+                        // Use XamlReader to load directly from file stream - this bypasses WPF's caching
+                        themeDictionary = (ResourceDictionary)System.Windows.Markup.XamlReader.Load(fileStream);
+                    }
+                    
+                    UpdateStatus($"[DEBUG] Loaded fresh dictionary with {themeDictionary.Count} resources from file stream");
+                    
+                    // Clear existing theme dictionaries and add the new one
+                    Application.Current.Resources.MergedDictionaries.Clear();
+                    Application.Current.Resources.MergedDictionaries.Add(themeDictionary);
+                    
+                    UpdateStatus($"[DEBUG] ThemeDictionary applied to Application.Resources");
+                    UpdateStatus("ThemeDictionary.xaml loaded");
+                }
+                else
+                {
+                    UpdateStatus("[DEBUG] ThemeDictionary.xaml not found in any location");
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[DEBUG] Error loading ThemeDictionary.xaml: {ex.Message}");
+            }
+        }
+        
+        private string FindThemeDictionaryPath()
+        {
+            // Try multiple possible locations for ThemeDictionary.xaml
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            UpdateStatus($"[DEBUG] FindThemeDictionary: BaseDirectory = {baseDirectory}");
+            
+            string[] possiblePaths = {
+                // 1. Same directory as executable (bin\Debug)
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ThemeDictionary.xaml"),
+                // 2. Project root (go up from bin\Debug to project root)
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "ThemeDictionary.xaml"),
+                // 3. Direct project root path
+                Path.Combine(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.FullName, "ThemeDictionary.xaml"),
+                // 4. Current working directory
+                Path.Combine(Directory.GetCurrentDirectory(), "ThemeDictionary.xaml"),
+                // 5. EXPLICIT PATH: The path from your workspace
+                @"C:\Program Files (x86)\Race Coordinator\data\xaml\VS\RCLayoutPreview\ThemeDictionary.xaml"
+            };
+            
+            UpdateStatus($"[DEBUG] FindThemeDictionary: Checking {possiblePaths.Length} possible paths:");
+            for (int i = 0; i < possiblePaths.Length; i++)
+            {
+                try
+                {
+                    string fullPath = Path.GetFullPath(possiblePaths[i]); // Resolve .. references
+                    UpdateStatus($"[DEBUG] FindThemeDictionary: Path {i + 1}: {fullPath}");
+                    if (File.Exists(fullPath))
+                    {
+                        var fileInfo = new FileInfo(fullPath);
+                        UpdateStatus($"[DEBUG] FindThemeDictionary: FOUND at {fullPath}");
+                        UpdateStatus($"[DEBUG] FindThemeDictionary: File size: {fileInfo.Length} bytes, LastWriteTime: {fileInfo.LastWriteTime}");
+                        
+                        // Read first few lines to verify content
+                        try
+                        {
+                            string[] lines = File.ReadAllLines(fullPath);
+                            if (lines.Length > 0)
+                            {
+                                UpdateStatus($"[DEBUG] FindThemeDictionary: First line: {lines[0]}");
+                                
+                                // Look for RSValueColor line to verify content
+                                var rsValueLine = lines.FirstOrDefault(line => line.Contains("RSValueColor"));
+                                if (!string.IsNullOrEmpty(rsValueLine))
+                                {
+                                    UpdateStatus($"[DEBUG] FindThemeDictionary: RSValueColor line: {rsValueLine.Trim()}");
+                                }
+                            }
+                        }
+                        catch (Exception readEx)
+                        {
+                            UpdateStatus($"[DEBUG] FindThemeDictionary: Error reading file: {readEx.Message}");
+                        }
+                        
+                        return fullPath;
+                    }
+                    else
+                    {
+                        UpdateStatus($"[DEBUG] FindThemeDictionary: NOT FOUND at {fullPath}");
+                    }
+                }
+                catch (Exception ex) 
+                {
+                    UpdateStatus($"[DEBUG] FindThemeDictionary: Error checking path {i + 1}: {ex.Message}");
+                }
+            }
+            
+            UpdateStatus("[DEBUG] FindThemeDictionary: No ThemeDictionary.xaml found in any location");
+            return null;
+        }
+
+        /// <summary>
+        /// Actually reload the ThemeDictionary.xaml file
+        /// </summary>
+        public void ReloadThemeDictionary()
+        {
+            try
+            {
+                string themeFilePath = FindThemeDictionaryPath();
+                if (!string.IsNullOrEmpty(themeFilePath) && File.Exists(themeFilePath))
+                {
+                    // Update the timestamp for tracking changes
+                    var fileInfo = new FileInfo(themeFilePath);
+                    UpdateStatus($"[DEBUG] Reloading theme. New timestamp: {fileInfo.LastWriteTime}");
+                    lastThemeDictionaryWriteTime = fileInfo.LastWriteTime;
+                    
+                    // Clear existing theme dictionaries first
+                    Application.Current.Resources.MergedDictionaries.Clear();
+                    PreviewHost.Resources.MergedDictionaries.Clear();
+                    
+                    // Force garbage collection to ensure old resources are released
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    
+                    // CRITICAL FIX: Load ResourceDictionary directly from file stream instead of using cached Source
+                    var themeDictionary = new ResourceDictionary();
+                    using (var fileStream = new FileStream(themeFilePath, FileMode.Open, FileAccess.Read))
+                    {
+                        // Use XamlReader to load directly from file stream - this bypasses WPF's caching
+                        themeDictionary = (ResourceDictionary)System.Windows.Markup.XamlReader.Load(fileStream);
+                    }
+                    
+                    UpdateStatus($"[DEBUG] Loaded fresh dictionary with {themeDictionary.Count} resources from file stream");
+                    
+                    // Debug: Show actual values from the freshly loaded dictionary
+                    foreach (var key in themeDictionary.Keys)
+                    {
+                        var resource = themeDictionary[key];
+                        if (key.ToString().Contains("RSValue") || key.ToString().Contains("RSLabel"))
+                        {
+                            UpdateStatus($"[DEBUG] Fresh Resource: {key} = {resource}");
+                        }
+                    }
+                    
+                    // Add to application resources
+                    Application.Current.Resources.MergedDictionaries.Add(themeDictionary);
+                    PreviewHost.Resources.MergedDictionaries.Add(themeDictionary);
+                    
+                    // Enable theme dictionary mode
+                    StubDataFieldHandler.SetThemeDictionaryActive(true);
+                    
+                    // Test lookup with fresh resources
+                    var testResource = Application.Current.TryFindResource("RSValueColor");
+                    UpdateStatus($"[DEBUG] Fresh lookup RSValueColor: {testResource}");
+                    
+                    // FORCE A COMPLETE RE-PARSE: Clear preview completely, then re-parse XAML
+                    if (editorWindow?.Editor?.Text != null)
+                    {
+                        string currentXaml = editorWindow.Editor.Text;
+                        if (!string.IsNullOrWhiteSpace(currentXaml))
+                        {
+                            UpdateStatus("[DEBUG] Forcing complete XAML re-parse with fresh resources...");
+                            
+                            // Clear the preview host completely
+                            PreviewHost.Content = null;
+                            
+                            // Force UI to update
+                            Application.Current.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                            
+                            // Re-parse the XAML completely with new resources
+                            TryPreviewXaml(currentXaml);
+                            
+                            UpdateStatus("ThemeDictionary reloaded with fresh resources and XAML re-parsed");
+                        }
+                    }
+                }
+                else
+                {
+                    UpdateStatus("[DEBUG] ThemeDictionary file not found for reload");
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[DEBUG] Error reloading ThemeDictionary: {ex.Message}");
+            }
         }
     }
 }
