@@ -17,6 +17,8 @@
             <CheckBox x:Name="DebugModeToggle" Content="Diagnostics Mode" Margin="10,0,0,0" VerticalAlignment="Center" 
                       Checked="DebugModeToggle_Changed" Unchecked="DebugModeToggle_Changed" Foreground="White"/>
             <CheckBox x:Name="ApplyWindowSizeToggle" Content="Apply XAML Window Size" Margin="10,0,0,0" VerticalAlignment="Center" IsChecked="False" Foreground="White"/>
+            <Button x:Name="ManualReloadButton" Content="🔄 Force Reload Theme" Margin="10,0,0,0" VerticalAlignment="Center" 
+                    Click="ManualReloadButton_Click" Background="#FF4CAF50" Foreground="White" Padding="8,4"/>
             <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="Gray" Margin="10,4,0,4" VerticalAlignment="Center"/>
         </StackPanel>
 

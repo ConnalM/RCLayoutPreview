@@ -1,0 +1,21 @@
+<Window x:Class="TestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Test ThemeDictionary" Height="200" Width="400">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ThemeDictionary.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    
+    <Grid Background="{StaticResource RSWindowBackground}">
+        <StackPanel Margin="20">
+            <Label Content="Test Header" Foreground="{StaticResource RSHeaderColor}" FontSize="16" FontWeight="Bold"/>
+            <Label Content="Test Label" Foreground="{StaticResource RSLabelColor}" FontSize="14"/>
+            <Label Content="Test Value - Should Change Color" Foreground="{StaticResource RSValueColor}" FontSize="12" Background="{StaticResource RSTableCellBackground}"/>
+            <Label Content="Test Border" BorderBrush="{StaticResource RSBorderBrush}" BorderThickness="1" Margin="5"/>
+        </StackPanel>
+    </Grid>
+</Window>

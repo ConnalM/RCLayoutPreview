@@ -341,7 +341,7 @@ namespace RCLayoutPreview
                 }
             }
 
-            // Simple ThemeDictionary refresh check
+            // ThemeDictionary refresh check - check every timer tick (500ms), independent of preview delay
             if (previewWindow != null)
             {
                 CheckForThemeDictionaryChanges();
@@ -354,37 +354,77 @@ namespace RCLayoutPreview
             try
             {
                 string themeFile = FindThemeDictionaryPath();
-                UpdateStatus($"[DEBUG #{themeCheckCounter}] Checking ThemeDictionary: {themeFile}");
-
+                
                 if (!string.IsNullOrEmpty(themeFile) && File.Exists(themeFile))
                 {
                     var fileInfo = new FileInfo(themeFile);
-                    UpdateStatus($"[DEBUG #{themeCheckCounter}] File exists. Current: {fileInfo.LastWriteTime}, Last: {previewWindow.lastThemeDictionaryWriteTime}");
-                    UpdateStatus($"[DEBUG #{themeCheckCounter}] Ticks comparison: Current: {fileInfo.LastWriteTime.Ticks}, Last: {previewWindow.lastThemeDictionaryWriteTime.Ticks}");
-
-                    // Simple check - if file is newer than last check, reload
-                    if (fileInfo.LastWriteTime.Ticks != previewWindow.lastThemeDictionaryWriteTime.Ticks)
+                    
+                    // Initialize lastThemeDictionaryWriteTime on first check if it's not set
+                    if (previewWindow.lastThemeDictionaryWriteTime == DateTime.MinValue)
                     {
-                        UpdateStatus($"[DEBUG #{themeCheckCounter}] CHANGE DETECTED! Triggering proper ThemeDictionary refresh...");
-
-                        // CRITICAL FIX: Call the proper ReloadThemeDictionary method instead of re-parsing XAML
-                        previewWindow.ReloadThemeDictionary();
-                        UpdateStatus("ThemeDictionary refreshed with FileStream method");
+                        previewWindow.lastThemeDictionaryWriteTime = fileInfo.LastWriteTime;
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] Initialized ThemeDictionary timestamp: {fileInfo.LastWriteTime}");
+                        return;
                     }
-                    // Only show "unchanged" message every 10th check to avoid spam
-                    else if (themeCheckCounter % 10 == 0)
+
+                    // Check if file has been modified (different timestamp) - FIXED: Use DateTime.Compare for proper comparison
+                    if (DateTime.Compare(fileInfo.LastWriteTime, previewWindow.lastThemeDictionaryWriteTime) != 0)
                     {
-                        UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary unchanged");
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] ? THEME CHANGE DETECTED! File modified at: {fileInfo.LastWriteTime}");
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] Previous timestamp was: {previewWindow.lastThemeDictionaryWriteTime}");
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] Timestamp difference: {(fileInfo.LastWriteTime - previewWindow.lastThemeDictionaryWriteTime).TotalMilliseconds}ms");
+                        
+                        // ENHANCED DEBUG: Check if previewWindow is accessible
+                        if (previewWindow == null)
+                        {
+                            UpdateStatus($"[DEBUG #{themeCheckCounter}] ERROR: previewWindow is null!");
+                            return;
+                        }
+                        
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] PreviewWindow is valid, calling ReloadThemeDictionary...");
+                        UpdateStatus($"[? AUTO-TRIGGER] About to call ReloadThemeDictionary from file watcher...");
+
+                        // Update timestamp FIRST to prevent duplicate reloads
+                        previewWindow.lastThemeDictionaryWriteTime = fileInfo.LastWriteTime;
+
+                        // Reload ThemeDictionary with fresh resources
+                        try
+                        {
+                            previewWindow.ReloadThemeDictionary();
+                            UpdateStatus($"[? AUTO-TRIGGER] ReloadThemeDictionary method call completed successfully");
+                        }
+                        catch (Exception reloadEx)
+                        {
+                            UpdateStatus($"[? AUTO-TRIGGER] ERROR calling ReloadThemeDictionary: {reloadEx.Message}");
+                            UpdateStatus($"[? AUTO-TRIGGER] ReloadThemeDictionary stack trace: {reloadEx.StackTrace}");
+                        }
+                        
+                        UpdateStatus($"[? AUTO-TRIGGER] ThemeDictionary auto-reload process completed");
+                    }
+                    else if (themeCheckCounter % 20 == 0)
+                    {
+                        // Show "unchanged" message less frequently to avoid spam
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary unchanged (checked every 500ms)");
+                    }
+
+                    // Log debug info every 10th check to reduce spam
+                    if (themeCheckCounter % 10 == 0)
+                    {
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] Checking ThemeDictionary: {themeFile}");
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] File LastWriteTime: {fileInfo.LastWriteTime}, Stored: {previewWindow.lastThemeDictionaryWriteTime}");
                     }
                 }
                 else
                 {
-                    UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary.xaml not found");
+                    if (themeCheckCounter % 20 == 0)
+                    {
+                        UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary.xaml not found at any location");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                UpdateStatus($"[DEBUG #{themeCheckCounter}] Error: {ex.Message}");
+                UpdateStatus($"[DEBUG #{themeCheckCounter}] Error checking ThemeDictionary: {ex.Message}");
             }
         }
 
@@ -498,6 +538,60 @@ namespace RCLayoutPreview
             }
 
             Console.WriteLine($"Status: {message}");
+            
+            // Add to persistent log
+            AddToPersistentLog(message);
+        }
+        
+        // Persistent log for debugging
+        private List<string> persistentLog = new List<string>();
+        private void AddToPersistentLog(string message)
+        {
+            string timestampedMessage = $"{DateTime.Now:HH:mm:ss.fff} - {message}";
+            persistentLog.Add(timestampedMessage);
+            
+            // Keep only the last 100 messages to prevent memory issues
+            if (persistentLog.Count > 100)
+            {
+                persistentLog.RemoveAt(0);
+            }
+        }
+
+        private void ShowPersistentLog_Click(object sender, RoutedEventArgs e)
+        {
+            var logWindow = new Window
+            {
+                Title = "Theme Dictionary Debug Log",
+                Width = 800,
+                Height = 600,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this
+            };
+
+            var scrollViewer = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+
+            var textBox = new TextBox
+            {
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new FontFamily("Consolas"),
+                Text = string.Join("\n", persistentLog)
+            };
+
+            scrollViewer.Content = textBox;
+            logWindow.Content = scrollViewer;
+
+            // Scroll to bottom
+            logWindow.Loaded += (s, args) => 
+            {
+                scrollViewer.ScrollToEnd();
+            };
+
+            logWindow.Show();
         }
 
         private void LoadLayout_Click(object sender, RoutedEventArgs e)

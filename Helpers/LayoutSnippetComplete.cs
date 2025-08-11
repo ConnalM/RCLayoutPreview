@@ -161,11 +161,16 @@ namespace RCLayoutPreview.Helpers
             "    <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
             "    <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n\n" +
             "    <!-- Lane 1 data row -->\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\"\n" +
+            "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\"\n" +
+            "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\"\n" +
+            "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\"\n" +
+            "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+            "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\"\n" +
+            "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
             "  </Grid>\n" +
             "</DockPanel>";
 
@@ -231,31 +236,32 @@ namespace RCLayoutPreview.Helpers
                         "<!-- Theme Dictionary: Merged resource dictionary for theming -->\n" +
                         ThemeDictionarySnippet
                 },
-                // ThemeDictionary Label: Shows proper DynamicResource usage
+                // ThemeDictionary Label: Shows proper StaticResource usage
                 new LayoutSnippet
                 {
                     Name = "ThemeDictionary Label",
-                    Description = "Label using DynamicResource for automatic theme updates (better than StaticResource).",
+                    Description = "Label using StaticResource for ThemeDictionary resources (works with auto-reload via XAML re-parsing).",
                     Category = "Themed Elements",
                     XamlTemplate =
-                        "<!-- ThemeDictionary Label: Uses DynamicResource for automatic theme updates -->\n" +
-                        "<Label Content=\"Themed Label\" FontSize=\"20\"\n" +
-                        "       Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "       Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "       ToolTip=\"Uses DynamicResource - will update automatically when theme changes\" />"
+                        "<!-- ThemeDictionary Label: Uses StaticResource for ThemeDictionary resources -->\n" +
+                        "<Label Name=\"ThemedLabel_1\" Content=\"Themed Label\" FontSize=\"20\"\n" +
+                        "       Foreground=\"{StaticResource RSValueColor}\"\n" +
+                        "       Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "       BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\"\n" +
+                        "       ToolTip=\"Uses StaticResource - will update when XAML is re-parsed with fresh resources\" />"
                 },
-                // ThemeDictionary TextBlock: Shows proper DynamicResource usage  
+                // ThemeDictionary TextBlock: Shows proper StaticResource usage  
                 new LayoutSnippet
                 {
                     Name = "ThemeDictionary TextBlock",
-                    Description = "TextBlock using DynamicResource for automatic theme updates (better than StaticResource).",
+                    Description = "TextBlock using StaticResource for ThemeDictionary resources (works with auto-reload via XAML re-parsing).",
                     Category = "Themed Elements",
                     XamlTemplate =
-                        "<!-- ThemeDictionary TextBlock: Uses DynamicResource for automatic theme updates -->\n" +
-                        "<TextBlock Text=\"Themed Text\" FontSize=\"20\"\n" +
-                        "           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
-                        "           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "           ToolTip=\"Uses DynamicResource - will update automatically when theme changes\" />"
+                        "<!-- ThemeDictionary TextBlock: Uses StaticResource for ThemeDictionary resources -->\n" +
+                        "<TextBlock Name=\"ThemedTextBlock_1\" Text=\"Themed Text\" FontSize=\"20\"\n" +
+                        "           Foreground=\"{StaticResource RSLabelColor}\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "           ToolTip=\"Uses StaticResource - will update when XAML is re-parsed with fresh resources\" />"
                 },
                 // General Menu: Menu with placeholders for easy adaptation
                 new LayoutSnippet
@@ -527,11 +533,16 @@ namespace RCLayoutPreview.Helpers
                         "    <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
                         "    <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n\n" +
                         "    <!-- Lane 1 data row -->\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
+                        "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\" BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\" />\n" +
                         "  </Grid>\n" +
                         "</DockPanel>"
                 },
@@ -588,13 +599,13 @@ namespace RCLayoutPreview.Helpers
                         "                            <Label Name=\"RaceName_1\" FontSize=\"28\" FontWeight=\"Bold\"\n" +
                         "                                   Foreground=\"GreenYellow\" HorizontalAlignment=\"Center\" />\n" +
                         "                            <Label Name=\"RaceTime_1\" FontSize=\"40\" FontWeight=\"Bold\"\n" +
-                        "                                   Foreground=\"DarkGreen\" HorizontalAlignment=\"Center\" />\n" +
-                        "                            <DockPanel HorizontalAlignment=\"Center\">\n" +
-                        "                                <TextBlock Text=\"Heat \" />\n" +
-                        "                                <TextBlock Name=\"HeatNumber_1\" FontWeight=\"Bold\" />\n" +
-                        "                                <TextBlock Text=\" of \" />\n" +
-                        "                                <TextBlock Name=\"NumHeats_1\" FontWeight=\"Bold\" />\n" +
-                        "                            </DockPanel>\n" +
+                        "                                   Foreground=\"DarkGreen\" HorizontalAlignment=\"Center\" />\r\n" +
+                        "                            <DockPanel HorizontalAlignment=\"Center\">\r\n" +
+                        "                                <TextBlock Text=\"Heat \" />\r\n" +
+                        "                                <TextBlock Name=\"HeatNumber_1\" FontWeight=\"Bold\" />\r\n" +
+                        "                                <TextBlock Text=\" of \" />\r\n" +
+                        "                                <TextBlock Name=\"NumHeats_1\" FontWeight=\"Bold\" />\r\n" +
+                        "                            </DockPanel>\r\n" +
                         "                        </StackPanel>\n\n" +
                         "                        <!-- ?? Race Flag Block -->\n" +
                         "                        <!-- Use snippet: \"Race State Image\" -->\n" +
@@ -685,24 +696,26 @@ namespace RCLayoutPreview.Helpers
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
 
-                // Simple Theme Test: Shows DynamicResource in action for testing
+                // Simple Theme Test: Shows StaticResource in action for testing
                 new LayoutSnippet
                 {
                     Name = "Simple Theme Test",
-                    Description = "Simple test Label that uses DynamicResource for easy ThemeDictionary testing.",
+                    Description = "Simple test Label that uses StaticResource for easy ThemeDictionary testing.",
                     Category = "Testing",
                     XamlTemplate =
                         "<!-- Simple Theme Test: Easy way to test ThemeDictionary changes -->\n" +
                         "<StackPanel Margin=\"20\">\n" +
                         "    <TextBlock Text=\"Theme Dictionary Test\" FontSize=\"16\" Margin=\"5\" />\n" +
-                        "    <Label Content=\"RSValueColor Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
-                        "           Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "    <Label Name=\"RSValueColorTest_1\" Content=\"RSValueColor Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
+                        "           Foreground=\"{StaticResource RSValueColor}\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "           BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\"\n" +
                         "           Padding=\"10\" Margin=\"5\"\n" +
                         "           ToolTip=\"This should change color when you edit RSValueColor in ThemeDictionary.xaml\" />\n" +
-                        "    <Label Content=\"RSLabelColor Test\" FontSize=\"20\"\n" +
-                        "           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
-                        "           Background=\"{DynamicResource RSTableLabelBackground}\"\n" +
+                        "    <Label Name=\"RSLabelColorTest_1\" Content=\"RSLabelColor Test\" FontSize=\"20\"\n" +
+                        "           Foreground=\"{StaticResource RSLabelColor}\"\n" +
+                        "           Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "           BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\"\n" +
                         "           Padding=\"10\" Margin=\"5\"\n" +
                         "           ToolTip=\"This uses RSLabelColor and should be white\" />\n" +
                         "    <TextBlock Text=\"Change RSValueColor in ThemeDictionary.xaml from Blue to Red to test!\"\n" +
@@ -734,33 +747,35 @@ namespace RCLayoutPreview.Helpers
                         "        <StackPanel>\n" +
                         "            <TextBlock Text=\"?? ThemeDictionary Auto-Refresh Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
                         "                       Foreground=\"White\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n\n" +
-                        "            <TextBlock Text=\"The labels below should change color automatically when you edit ThemeDictionary.xaml\"\n" +
+                        "            <TextBlock Text=\"The labels below use StaticResource and will update via automatic XAML re-parsing\"\n" +
                         "                       FontSize=\"14\" Foreground=\"LightGray\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n\n" +
                         "            <!-- RSValueColor Test -->\n" +
                         "            <Border BorderBrush=\"White\" BorderThickness=\"1\" Margin=\"10\" Padding=\"10\">\n" +
                         "                <StackPanel>\n" +
                         "                    <TextBlock Text=\"RSValueColor Test:\" FontSize=\"16\" Foreground=\"White\" Margin=\"0,0,0,5\" />\n" +
-                        "                    <Label Content=\"This should be BLUE initially\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
-                        "                           Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "                           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "                    <Label Name=\"RSValueColorTestLabel_1\" Content=\"This should change color\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
+                        "                           Foreground=\"{StaticResource RSValueColor}\"\n" +
+                        "                           Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "                           BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\"\n" +
                         "                           Padding=\"15\" HorizontalAlignment=\"Center\"\n" +
-                        "                           ToolTip=\"Edit ThemeDictionary.xaml: change RSValueColor from Blue to Red\" />\n" +
+                        "                           ToolTip=\"Edit ThemeDictionary.xaml: change RSValueColor to see changes\" />\n" +
                         "                </StackPanel>\n" +
                         "            </Border>\n\n" +
                         "            <!-- RSLabelColor Test -->\n" +
                         "            <Border BorderBrush=\"White\" BorderThickness=\"1\" Margin=\"10\" Padding=\"10\">\n" +
                         "                <StackPanel>\n" +
                         "                    <TextBlock Text=\"RSLabelColor Test:\" FontSize=\"16\" Foreground=\"White\" Margin=\"0,0,0,5\" />\n" +
-                        "                    <Label Content=\"This should be WHITE\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
-                        "                           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
-                        "                           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
+                        "                    <Label Name=\"RSLabelColorTestLabel_1\" Content=\"This should be WHITE\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
+                        "                           Foreground=\"{StaticResource RSLabelColor}\"\n" +
+                        "                           Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "                           BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\"\n" +
                         "                           Padding=\"15\" HorizontalAlignment=\"Center\"\n" +
                         "                           ToolTip=\"This uses RSLabelColor (should be white)\" />\n" +
                         "                </StackPanel>\n" +
                         "            </Border>\n\n" +
-                        "            <TextBlock Text=\"?? Instructions: Edit ThemeDictionary.xaml and change RSValueColor from 'Blue' to 'Red'\"\n" +
+                        "            <TextBlock Text=\"?? Instructions: Edit ThemeDictionary.xaml and change RSValueColor from 'Purple' to another color\"\n" +
                         "                       FontSize=\"14\" Foreground=\"Yellow\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n" +
-                        "            <TextBlock Text=\"The first label should automatically change from blue to red!\"\n" +
+                        "            <TextBlock Text=\"The system will auto-detect the change and re-parse the XAML with fresh resources!\"\n" +
                         "                       FontSize=\"14\" Foreground=\"LightGray\" Margin=\"5\" HorizontalAlignment=\"Center\" />\n" +
                         "        </StackPanel>\n" +
                         "    </Grid>\n" +
@@ -785,11 +800,49 @@ namespace RCLayoutPreview.Helpers
                         "        </ResourceDictionary>\n" +
                         "    </Window.Resources>\n\n" +
                         "    <StackPanel Margin=\"20\" VerticalAlignment=\"Center\">\n" +
-                        "        <Label Content=\"TEST\" FontSize=\"48\" FontWeight=\"Bold\" HorizontalAlignment=\"Center\"\n" +
-                        "               Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "               ToolTip=\"This should be BLUE from ThemeDictionary\" />\n" +
-                        "        <TextBlock Text=\"If this label appears BLUE, ThemeDictionary is working!\"\n" +
+                        "        <Label Name=\"MinimalTestLabel_1\" Content=\"TEST\" FontSize=\"48\" FontWeight=\"Bold\" HorizontalAlignment=\"Center\"\n" +
+                        "               Foreground=\"{StaticResource RSValueColor}\"\n" +
+                        "               Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "               BorderBrush=\"{StaticResource RSBorderBrush}\" BorderThickness=\"1\"\n" +
+                        "               ToolTip=\"This should display RSValueColor from ThemeDictionary\" />\n" +
+                        "        <TextBlock Text=\"If this label shows the correct color, ThemeDictionary is working!\"\n" +
                         "                   HorizontalAlignment=\"Center\" Foreground=\"White\" Margin=\"10\" />\n" +
+                        "    </StackPanel>\n" +
+                        "</Window>"
+                },
+                // DEFINITIVE Theme Test: Guaranteed to work with explicit Name attribute
+                new LayoutSnippet
+                {
+                    Name = "DEFINITIVE Theme Test",
+                    Description = "GUARANTEED visual test for ThemeDictionary - with explicit Name for processing.",
+                    Category = "Testing",
+                    XamlTemplate =
+                        "<!-- DEFINITIVE Theme Test: GUARANTEED visual test -->\n" +
+                        "<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n" +
+                        "        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n" +
+                        "        Title=\"DEFINITIVE Test\" Height=\"300\" Width=\"500\" Background=\"Black\">\n\n" +
+                        "    <Window.Resources>\n" +
+                        "        <ResourceDictionary>\n" +
+                        "            <ResourceDictionary.MergedDictionaries>\n" +
+                        "                <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
+                        "            </ResourceDictionary.MergedDictionaries>\n" +
+                        "        </ResourceDictionary>\n" +
+                        "    </Window.Resources>\n\n" +
+                        "    <StackPanel Margin=\"30\" VerticalAlignment=\"Center\">\n" +
+                        "        <!-- This Label HAS a Name and uses StaticResource - will be processed -->\n" +
+                        "        <Label Name=\"ThemeTestLabel_1\" Content=\"THEME TEST\" FontSize=\"56\" FontWeight=\"Bold\" \n" +
+                        "               HorizontalAlignment=\"Center\" Padding=\"20\"\n" +
+                        "               Foreground=\"{StaticResource RSValueColor}\"\n" +
+                        "               Background=\"{StaticResource RSTableCellBackground}\"\n" +
+                        "               ToolTip=\"This WILL change color - it has a Name and uses StaticResource\" />\n" +
+                        "        \n" +
+                        "        <!-- Status text to show current expectation -->\n" +
+                        "        <TextBlock Text=\"This label should be PURPLE (current RSValueColor setting)\"\n" +
+                        "                   HorizontalAlignment=\"Center\" Foreground=\"White\" Margin=\"15\" FontSize=\"14\" />\n" +
+                        "                   \n" +
+                        "        <!-- Instructions -->\n" +
+                        "        <TextBlock Text=\"Change RSValueColor in ThemeDictionary.xaml to test auto-reload!\"\n" +
+                        "                   HorizontalAlignment=\"Center\" Foreground=\"Yellow\" Margin=\"10\" FontSize=\"12\" />\n" +
                         "    </StackPanel>\n" +
                         "</Window>"
                 },

@@ -45,6 +45,8 @@
             <Button Content="Close" Click="CloseEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Clear Editor" Click="ClearEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Name="PreviewButton" Content="Preview" Width="100" Height="30" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,8,0" Click="PreviewButton_Click"/>
+            <Button Content="Debug Log" Click="ShowPersistentLog_Click" Margin="0,0,8,0" Width="100" Height="30" Background="#FFFFA500" Foreground="White"
+                    ToolTip="View complete debug log for Force Reload diagnostics"/>
             <CheckBox x:Name="AutoUpdateToggle" Content="Auto-Update" IsChecked="True" Margin="10,0,0,0" VerticalAlignment="Center" 
                       Checked="AutoUpdateToggle_Changed" Unchecked="AutoUpdateToggle_Changed" Height="30"/>
             <TextBlock Text="Delay (ms): " Margin="10,0,0,0" VerticalAlignment="Center" Height="30"/>
