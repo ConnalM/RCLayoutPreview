@@ -19,6 +19,26 @@
         <!-- Top toolbar -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Button Content="Load Layout" Click="LoadLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
+            
+            <!-- Recent Files Button with Dropdown -->
+            <Button x:Name="RecentFilesButton" Width="100" Height="30" Margin="0,0,8,0" Click="RecentFiles_Click"
+                    ToolTip="Open recently used XAML files">
+                <Button.Content>
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M3,3 L13,3 L13,5 L3,5 Z M3,7 L13,7 L13,9 L3,9 Z M3,11 L13,11 L13,13 L3,13 Z M1,1 L1,15 L15,15 L15,1 Z M2,2 L14,2 L14,14 L2,14 Z" 
+                              Fill="Black" Width="12" Height="12" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Recent" VerticalAlignment="Center" FontSize="11"/>
+                        <Path Data="M0,0 L3,3 L6,0" Stroke="Black" StrokeThickness="1" 
+                              Margin="3,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button.Content>
+                <Button.ContextMenu>
+                    <ContextMenu Placement="Bottom">
+                        <!-- Recent files will be populated dynamically -->
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+            
             <Button Content="Save Layout" Click="SaveLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Save As" Click="SaveAsLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>
             <Button Content="Close" Click="CloseEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>

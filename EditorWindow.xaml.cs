@@ -510,22 +510,144 @@ namespace RCLayoutPreview
 
             if (dlg.ShowDialog() == true)
             {
-                try
-                {
-                    string xamlContent = File.ReadAllText(dlg.FileName);
-                    Editor.Text = xamlContent;
-                    currentXamlPath = dlg.FileName;
-                    UpdateWindowTitleWithFileName();
-                    UpdateStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");
-                    XamlContentChanged?.Invoke(this, xamlContent);
+                LoadLayoutFile(dlg.FileName);
+            }
+        }
 
-                    // Check for valid fields in the loaded file
-                    CheckForValidFields(xamlContent);
-                }
-                catch (Exception ex)
+        /// <summary>
+        /// Loads a XAML layout file and adds it to recent files
+        /// /// </summary>
+        /// <param name="filePath">Path to the XAML file</param>
+        private void LoadLayoutFile(string filePath)
+        {
+            try
+            {
+                string xamlContent = File.ReadAllText(filePath);
+                Editor.Text = xamlContent;
+                currentXamlPath = filePath;
+                UpdateWindowTitleWithFileName();
+                UpdateStatus($"Loaded layout: {Path.GetFileName(filePath)}");
+                XamlContentChanged?.Invoke(this, xamlContent);
+
+                // Add to recent files
+                RecentFilesHelper.AddRecentFile(filePath);
+
+                // Check for valid fields in the loaded file
+                CheckForValidFields(xamlContent);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error loading layout: {ex.Message}");
+                // Remove from recent files if it failed to load
+                RecentFilesHelper.RemoveRecentFile(filePath);
+            }
+        }
+
+        /// <summary>
+        /// Handles Recent Files button click - shows the context menu
+        /// /// </summary>
+        private void RecentFiles_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.ContextMenu != null)
+            {
+                PopulateRecentFilesMenu();
+                button.ContextMenu.IsOpen = true;
+            }
+        }
+
+        /// <summary>
+        /// Populates the recent files context menu with current recent files
+        /// /// </summary>
+        private void PopulateRecentFilesMenu()
+        {
+            var recentFilesButton = FindName("RecentFilesButton") as Button;
+            var contextMenu = recentFilesButton?.ContextMenu;
+            
+            if (contextMenu == null)
+                return;
+                
+            contextMenu.Items.Clear();
+
+            var recentFiles = RecentFilesHelper.GetRecentFilesInfo().ToList();
+
+            if (recentFiles.Count == 0)
+            {
+                var noFilesItem = new MenuItem
                 {
-                    UpdateStatus($"Error loading layout: {ex.Message}");
+                    Header = "(No recent files)",
+                    IsEnabled = false
+                };
+                contextMenu.Items.Add(noFilesItem);
+                return;
+            }
+
+            // Add recent files
+            for (int i = 0; i < recentFiles.Count; i++)
+            {
+                var fileInfo = recentFiles[i];
+                var menuItem = new MenuItem
+                {
+                    Header = $"{i + 1}. {fileInfo.DisplayName}",
+                    ToolTip = fileInfo.ToolTip,
+                    Tag = fileInfo.FullPath
+                };
+
+                menuItem.Click += RecentFileMenuItem_Click;
+                contextMenu.Items.Add(menuItem);
+            }
+
+            // Add separator and clear option
+            if (recentFiles.Count > 0)
+            {
+                contextMenu.Items.Add(new Separator());
+                
+                var clearItem = new MenuItem
+                {
+                    Header = "Clear Recent Files",
+                    FontStyle = FontStyles.Italic
+                };
+                clearItem.Click += ClearRecentFiles_Click;
+                contextMenu.Items.Add(clearItem);
+            }
+        }
+
+        /// <summary>
+        /// Handles clicking on a recent file menu item
+        /// /// </summary>
+        private void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
+            {
+                if (File.Exists(filePath))
+                {
+                    LoadLayoutFile(filePath);
                 }
+                else
+                {
+                    UpdateStatus($"File not found: {Path.GetFileName(filePath)}");
+                    // Remove the missing file from recent files
+                    RecentFilesHelper.RemoveRecentFile(filePath);
+                    MessageBox.Show($"The file '{Path.GetFileName(filePath)}' could not be found and has been removed from the recent files list.",
+                                  "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles clearing all recent files
+        /// /// </summary>
+        private void ClearRecentFiles_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show("Are you sure you want to clear all recent files?", 
+                                       "Clear Recent Files", 
+                                       MessageBoxButton.YesNo, 
+                                       MessageBoxImage.Question);
+            
+            if (result == MessageBoxResult.Yes)
+            {
+                RecentFilesHelper.ClearRecentFiles();
+                UpdateStatus("Recent files cleared");
             }
         }
 
@@ -538,6 +660,9 @@ namespace RCLayoutPreview
                     File.WriteAllText(currentXamlPath, Editor.Text);
                     UpdateStatus($"Saved layout to: {Path.GetFileName(currentXamlPath)}");
                     UpdateWindowTitleWithFileName();
+                    
+                    // Add to recent files when saved
+                    RecentFilesHelper.AddRecentFile(currentXamlPath);
                 }
                 else
                 {
@@ -553,6 +678,9 @@ namespace RCLayoutPreview
                         currentXamlPath = dlg.FileName;
                         UpdateStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
                         UpdateWindowTitleWithFileName();
+                        
+                        // Add to recent files when saved
+                        RecentFilesHelper.AddRecentFile(currentXamlPath);
                     }
                 }
             }
@@ -578,6 +706,9 @@ namespace RCLayoutPreview
                     currentXamlPath = dlg.FileName;
                     UpdateStatus($"Saved layout as: {Path.GetFileName(dlg.FileName)}");
                     UpdateWindowTitleWithFileName();
+                    
+                    // Add to recent files when saved
+                    RecentFilesHelper.AddRecentFile(currentXamlPath);
                 }
             }
             else
@@ -872,7 +1003,7 @@ namespace RCLayoutPreview
         /// <summary>
         /// Removes trailing _N (where N is an integer) from a field name, e.g. Name1_1 -> Name1.
         /// Used to get the base field name for stubdata lookup.
-        /// </summary>
+        /// /// </summary>
         /// <param name="fieldName">Field name with possible numeric suffix</param>
         /// <returns>Field name without trailing _N</returns>
         private string RemoveFieldSuffix(string fieldName)

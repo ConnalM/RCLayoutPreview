@@ -113,8 +113,9 @@ namespace RCLayoutPreview.Helpers
                 string displayText = value.ToString();
                 SolidColorBrush colorBrush = null;
 
-                // Only apply color if field is in RacerData group and ends with a number NOT preceded by underscore
-                if (!ThemeDictionaryActive && foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
+                // Apply player-specific background color if field is in RacerData group and ends with a number NOT preceded by underscore
+                // This works independently of ThemeDictionary (which handles foreground colors and global themes)
+                if (foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
                 {
                     int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
                     Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
@@ -128,11 +129,11 @@ namespace RCLayoutPreview.Helpers
                     }
                 }
 
-                // Set display text and color only if not using theme dictionary
+                // Set display text and always apply background color if available (independent of ThemeDictionary)
                 if (element is TextBlock tb3)
                 {
                     tb3.Text = displayText;
-                    if (!ThemeDictionaryActive && colorBrush != null) tb3.Background = colorBrush;
+                    if (colorBrush != null) tb3.Background = colorBrush;
                     LogTextBlockResourceDebug(tb3, "TextBlock");
                     LogStaticResourceDebug(tb3, "TextBlock");
                     LogXamlStaticResourceDebug(tb3.Name, "TextBlock");
@@ -140,7 +141,7 @@ namespace RCLayoutPreview.Helpers
                 else if (element is Label lbl)
                 {
                     lbl.Content = displayText;
-                    if (!ThemeDictionaryActive && colorBrush != null) lbl.Background = colorBrush;
+                    if (colorBrush != null) lbl.Background = colorBrush;
                     LogResourceDebug(lbl, "Label");
                     LogStaticResourceDebug(lbl, "Label");
                     LogXamlStaticResourceDebug(lbl.Name, "Label");

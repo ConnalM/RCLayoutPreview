@@ -588,6 +588,11 @@ namespace RCLayoutPreview
                 {
                     UpdateStatus($"[DEBUG] LoadFreshThemeDictionaryFromFileStream: Loading from {themeFilePath}");
                     
+                    // CRITICAL FIX: Update the timestamp FIRST for proper change detection
+                    var fileInfo = new FileInfo(themeFilePath);
+                    lastThemeDictionaryWriteTime = fileInfo.LastWriteTime;
+                    UpdateStatus($"[DEBUG] LoadFreshThemeDictionaryFromFileStream: Set timestamp to {lastThemeDictionaryWriteTime}");
+                    
                     // Clear existing theme dictionaries first
                     Application.Current.Resources.MergedDictionaries.Clear();
                     
@@ -595,7 +600,7 @@ namespace RCLayoutPreview
                     GC.Collect();
                     GC.WaitForPendingFinalizers();
                     
-                    // CRITICAL: Load ResourceDictionary directly from file stream to bypass WPF caching
+                    // CRITICAL: Load ResourceDictionary directly from file stream to bypass WPF's URI-based caching
                     var themeDictionary = new ResourceDictionary();
                     using (var fileStream = new FileStream(themeFilePath, FileMode.Open, FileAccess.Read))
                     {
@@ -1230,26 +1235,23 @@ namespace RCLayoutPreview
                     var testResource = Application.Current.TryFindResource("RSValueColor");
                     UpdateStatus($"[DEBUG] Fresh lookup RSValueColor: {testResource}");
                     
-                    // FORCE A COMPLETE RE-PARSE: Clear preview completely, then re-parse XAML
-                    if (editorWindow?.Editor?.Text != null)
+                    // ✨ CRITICAL FIX: Force StaticResource bindings to invalidate ✨
+                    UpdateStatus("[DEBUG] Forcing StaticResource bindings to invalidate...");
+                    InvalidateStaticResourceBindings(PreviewHost.Content as FrameworkElement);
+                    
+                    // Force UI refresh
+                    if (PreviewHost.Content is FrameworkElement rootElement)
                     {
-                        string currentXaml = editorWindow.Editor.Text;
-                        if (!string.IsNullOrWhiteSpace(currentXaml))
-                        {
-                            UpdateStatus("[DEBUG] Forcing complete XAML re-parse with fresh resources...");
-                            
-                            // Clear the preview host completely
-                            PreviewHost.Content = null;
-                            
-                            // Force UI to update
-                            Application.Current.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
-                            
-                            // Re-parse the XAML completely with new resources
-                            TryPreviewXaml(currentXaml);
-                            
-                            UpdateStatus("ThemeDictionary reloaded with fresh resources and XAML re-parsed");
-                        }
+                        rootElement.InvalidateVisual();
+                        rootElement.UpdateLayout();
+                        
+                        // Force re-application of styles and templates
+                        rootElement.InvalidateProperty(FrameworkElement.StyleProperty);
+                        
+                        UpdateStatus("[DEBUG] StaticResource invalidation complete - UI should update now!");
                     }
+                    
+                    UpdateStatus("ThemeDictionary reloaded with fresh resources and StaticResource bindings invalidated");
                 }
                 else
                 {
@@ -1259,6 +1261,92 @@ namespace RCLayoutPreview
             catch (Exception ex)
             {
                 UpdateStatus($"[DEBUG] Error reloading ThemeDictionary: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Recursively invalidates StaticResource bindings on all elements to force refresh with new theme
+        /// </summary>
+        private void InvalidateStaticResourceBindings(FrameworkElement element)
+        {
+            if (element == null) return;
+            
+            try
+            {
+                UpdateStatus($"[DEBUG] Invalidating element: {element.GetType().Name} {element.Name}");
+                
+                // NUCLEAR OPTION: Force WPF to completely re-parse the element tree
+                if (element is Control control)
+                {
+                    // Store current resource values that are StaticResource bound
+                    var originalBackground = control.Background;
+                    var originalForeground = control.Foreground;
+                    var originalBorderBrush = control.BorderBrush;
+                    
+                    UpdateStatus($"[DEBUG] Control '{control.Name}' - Original Background: {originalBackground}");
+                    UpdateStatus($"[DEBUG] Control '{control.Name}' - Original Foreground: {originalForeground}");
+                    
+                    // CRITICAL FIX: Clear the local values completely, then force re-evaluation
+                    control.ClearValue(Control.BackgroundProperty);
+                    control.ClearValue(Control.ForegroundProperty);
+                    control.ClearValue(Control.BorderBrushProperty);
+                    control.ClearValue(FrameworkElement.StyleProperty);
+                    control.ClearValue(Control.TemplateProperty);
+                    
+                    // Force immediate measure/arrange to trigger resource lookup
+                    control.InvalidateVisual();
+                    control.InvalidateMeasure();
+                    control.InvalidateArrange();
+                    control.UpdateLayout();
+                    
+                    // Force the Dispatcher to process all pending operations
+                    Application.Current.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    
+                    UpdateStatus($"[DEBUG] Control '{control.Name}' - After Clear Background: {control.Background}");
+                    UpdateStatus($"[DEBUG] Control '{control.Name}' - After Clear Foreground: {control.Foreground}");
+                }
+                else if (element is TextBlock textBlock)
+                {
+                    var originalBackground = textBlock.Background;
+                    var originalForeground = textBlock.Foreground;
+                    
+                    UpdateStatus($"[DEBUG] TextBlock '{textBlock.Name}' - Original Background: {originalBackground}");
+                    UpdateStatus($"[DEBUG] TextBlock '{textBlock.Name}' - Original Foreground: {originalForeground}");
+                    
+                    textBlock.ClearValue(TextBlock.BackgroundProperty);
+                    textBlock.ClearValue(TextBlock.ForegroundProperty);
+                    textBlock.ClearValue(FrameworkElement.StyleProperty);
+                    
+                    textBlock.InvalidateVisual();
+                    textBlock.InvalidateMeasure();
+                    textBlock.InvalidateArrange();
+                    textBlock.UpdateLayout();
+                    
+                    Application.Current.Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    
+                    UpdateStatus($"[DEBUG] TextBlock '{textBlock.Name}' - After Clear Background: {textBlock.Background}");
+                    UpdateStatus($"[DEBUG] TextBlock '{textBlock.Name}' - After Clear Foreground: {textBlock.Foreground}");
+                }
+                else
+                {
+                    // For other element types, use general approach
+                    element.ClearValue(FrameworkElement.StyleProperty);
+                    element.InvalidateVisual();
+                    element.InvalidateMeasure();
+                    element.InvalidateArrange();
+                    element.UpdateLayout();
+                }
+                
+                // Recursively process all children
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
+                {
+                    var child = VisualTreeHelper.GetChild(element, i) as FrameworkElement;
+                    InvalidateStaticResourceBindings(child);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[DEBUG] Error invalidating element {element?.Name}: {ex.Message}");
             }
         }
     }
