@@ -1,0 +1,165 @@
+[1mdiff --git a/EditorWindow.xaml b/EditorWindow.xaml[m
+[1mindex 82bcb3e..a9be38e 100644[m
+[1m--- a/EditorWindow.xaml[m
+[1m+++ b/EditorWindow.xaml[m
+[36m@@ -19,26 +19,6 @@[m
+         <!-- Top toolbar -->[m
+         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top">[m
+             <Button Content="Load Layout" Click="LoadLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>[m
+[31m-            [m
+[31m-            <!-- Recent Files Button with Dropdown -->[m
+[31m-            <Button x:Name="RecentFilesButton" Width="100" Height="30" Margin="0,0,8,0" Click="RecentFiles_Click"[m
+[31m-                    ToolTip="Open recently used XAML files">[m
+[31m-                <Button.Content>[m
+[31m-                    <StackPanel Orientation="Horizontal">[m
+[31m-                        <Path Data="M3,3 L13,3 L13,5 L3,5 Z M3,7 L13,7 L13,9 L3,9 Z M3,11 L13,11 L13,13 L3,13 Z M1,1 L1,15 L15,15 L15,1 Z M2,2 L14,2 L14,14 L2,14 Z" [m
+[31m-                              Fill="Black" Width="12" Height="12" Margin="0,0,3,0" VerticalAlignment="Center"/>[m
+[31m-                        <TextBlock Text="Recent" VerticalAlignment="Center" FontSize="11"/>[m
+[31m-                        <Path Data="M0,0 L3,3 L6,0" Stroke="Black" StrokeThickness="1" [m
+[31m-                              Margin="3,0,0,0" VerticalAlignment="Center"/>[m
+[31m-                    </StackPanel>[m
+[31m-                </Button.Content>[m
+[31m-                <Button.ContextMenu>[m
+[31m-                    <ContextMenu Placement="Bottom">[m
+[31m-                        <!-- Recent files will be populated dynamically -->[m
+[31m-                    </ContextMenu>[m
+[31m-                </Button.ContextMenu>[m
+[31m-            </Button>[m
+[31m-            [m
+             <Button Content="Save Layout" Click="SaveLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>[m
+             <Button Content="Save As" Click="SaveAsLayout_Click" Margin="0,0,8,0" Width="100" Height="30"/>[m
+             <Button Content="Close" Click="CloseEditor_Click" Margin="0,0,8,0" Width="100" Height="30"/>[m
+[1mdiff --git a/EditorWindow.xaml.cs b/EditorWindow.xaml.cs[m
+[1mindex 2d486bf..1feed71 100644[m
+[1m--- a/EditorWindow.xaml.cs[m
+[1m+++ b/EditorWindow.xaml.cs[m
+[36m@@ -510,147 +510,25 @@[m [mnamespace RCLayoutPreview[m
+ [m
+             if (dlg.ShowDialog() == true)[m
+             {[m
+[31m-                LoadLayoutFile(dlg.FileName);[m
+[31m-            }[m
+[31m-        }[m
+[31m-[m
+[31m-        /// <summary>[m
+[31m-        /// Loads a XAML layout file and adds it to recent files[m
+[31m-        /// /// </summary>[m
+[31m-        /// <param name="filePath">Path to the XAML file</param>[m
+[31m-        private void LoadLayoutFile(string filePath)[m
+[31m-        {[m
+[31m-            try[m
+[31m-            {[m
+[31m-                string xamlContent = File.ReadAllText(filePath);[m
+[31m-                Editor.Text = xamlContent;[m
+[31m-                currentXamlPath = filePath;[m
+[31m-                UpdateWindowTitleWithFileName();[m
+[31m-                UpdateStatus($"Loaded layout: {Path.GetFileName(filePath)}");[m
+[31m-                XamlContentChanged?.Invoke(this, xamlContent);[m
+[31m-[m
+[31m-                // Add to recent files[m
+[31m-                RecentFilesHelper.AddRecentFile(filePath);[m
+[31m-[m
+[31m-                // Check for valid fields in the loaded file[m
+[31m-                CheckForValidFields(xamlContent);[m
+[31m-            }[m
+[31m-            catch (Exception ex)[m
+[31m-            {[m
+[31m-                UpdateStatus($"Error loading layout: {ex.Message}");[m
+[31m-                // Remove from recent files if it failed to load[m
+[31m-                RecentFilesHelper.RemoveRecentFile(filePath);[m
+[31m-            }[m
+[31m-        }[m
+[31m-[m
+[31m-        /// <summary>[m
+[31m-        /// Handles Recent Files button click - shows the context menu[m
+[31m-        /// /// </summary>[m
+[31m-        private void RecentFiles_Click(object sender, RoutedEventArgs e)[m
+[31m-        {[m
+[31m-            var button = sender as Button;[m
+[31m-            if (button?.ContextMenu != null)[m
+[31m-            {[m
+[31m-                PopulateRecentFilesMenu();[m
+[31m-                button.ContextMenu.IsOpen = true;[m
+[31m-            }[m
+[31m-        }[m
+[31m-[m
+[31m-        /// <summary>[m
+[31m-        /// Populates the recent files context menu with current recent files[m
+[31m-        /// /// </summary>[m
+[31m-        private void PopulateRecentFilesMenu()[m
+[31m-        {[m
+[31m-            var recentFilesButton = FindName("RecentFilesButton") as Button;[m
+[31m-            var contextMenu = recentFilesButton?.ContextMenu;[m
+[31m-            [m
+[31m-            if (contextMenu == null)[m
+[31m-                return;[m
+[31m-                [m
+[31m-            contextMenu.Items.Clear();[m
+[31m-[m
+[31m-            var recentFiles = RecentFilesHelper.GetRecentFilesInfo().ToList();[m
+[31m-[m
+[31m-            if (recentFiles.Count == 0)[m
+[31m-            {[m
+[31m-                var noFilesItem = new MenuItem[m
+[31m-                {[m
+[31m-                    Header = "(No recent files)",[m
+[31m-                    IsEnabled = false[m
+[31m-                };[m
+[31m-                contextMenu.Items.Add(noFilesItem);[m
+[31m-                return;[m
+[31m-            }[m
+[31m-[m
+[31m-            // Add recent files[m
+[31m-            for (int i = 0; i < recentFiles.Count; i++)[m
+[31m-            {[m
+[31m-                var fileInfo = recentFiles[i];[m
+[31m-                var menuItem = new MenuItem[m
+[31m-                {[m
+[31m-                    Header = $"{i + 1}. {fileInfo.DisplayName}",[m
+[31m-                    ToolTip = fileInfo.ToolTip,[m
+[31m-                    Tag = fileInfo.FullPath[m
+[31m-                };[m
+[31m-[m
+[31m-                menuItem.Click += RecentFileMenuItem_Click;[m
+[31m-                contextMenu.Items.Add(menuItem);[m
+[31m-            }[m
+[31m-[m
+[31m-            // Add separator and clear option[m
+[31m-            if (recentFiles.Count > 0)[m
+[31m-            {[m
+[31m-                contextMenu.Items.Add(new Separator());[m
+[31m-                [m
+[31m-                var clearItem = new MenuItem[m
+[32m+[m[32m                try[m
+                 {[m
+[31m-                    Header = "Clear Recent Files",[m
+[31m-                    FontStyle = FontStyles.Italic[m
+[31m-                };[m
+[31m-                clearItem.Click += ClearRecentFiles_Click;[m
+[31m-                contextMenu.Items.Add(clearItem);[m
+[31m-            }[m
+[31m-        }[m
+[32m+[m[32m                    string xamlContent = File.ReadAllText(dlg.FileName);[m
+[32m+[m[32m                    Editor.Text = xamlContent;[m
+[32m+[m[32m                    currentXamlPath = dlg.FileName;[m
+[32m+[m[32m                    UpdateWindowTitleWithFileName();[m
+[32m+[m[32m                    UpdateStatus($"Loaded layout: {Path.GetFileName(dlg.FileName)}");[m
+[32m+[m[32m                    XamlContentChanged?.Invoke(this, xamlContent);[m
+ [m
+[31m-        /// <summary>[m
+[31m-        /// Handles clicking on a recent file menu item[m
+[31m-        /// /// </summary>[m
+[31m-        private void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)[m
+[31m-        {[m
+[31m-            if (sender is MenuItem menuItem && menuItem.Tag is string filePath)[m
+[31m-            {[m
+[31m-                if (File.Exists(filePath))[m
+[31m-                {[m
+[31m-                    LoadLayoutFile(filePath);[m
+[32m+[m[32m                    // Check for valid fields in the loaded file[m
+[32m+[m[32m                    CheckForValidFields(xamlContent);[m
+                 }[m
+[31m-                else[m
+[32m+[m[32m                catch (Exception ex)[m
+                 {[m
+[31m-                    UpdateStatus($"File not found: {Path.G

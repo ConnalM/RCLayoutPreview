@@ -113,8 +113,9 @@ namespace RCLayoutPreview.Helpers
                 string displayText = value.ToString();
                 SolidColorBrush colorBrush = null;
 
-                // Only apply color if field is in RacerData group and ends with a number NOT preceded by underscore
-                if (!ThemeDictionaryActive && foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
+                // Apply player-specific background color if field is in RacerData group and ends with a number NOT preceded by underscore
+                // This works independently of ThemeDictionary (which handles foreground colors and global themes)
+                if (foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
                 {
                     int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
                     Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
@@ -128,11 +129,11 @@ namespace RCLayoutPreview.Helpers
                     }
                 }
 
-                // Set display text and color only if not using theme dictionary
+                // Set display text and always apply background color if available (independent of ThemeDictionary)
                 if (element is TextBlock tb3)
                 {
                     tb3.Text = displayText;
-                    if (!ThemeDictionaryActive && colorBrush != null) tb3.Background = colorBrush;
+                    if (colorBrush != null) tb3.Background = colorBrush;
                     LogTextBlockResourceDebug(tb3, "TextBlock");
                     LogStaticResourceDebug(tb3, "TextBlock");
                     LogXamlStaticResourceDebug(tb3.Name, "TextBlock");
@@ -140,7 +141,7 @@ namespace RCLayoutPreview.Helpers
                 else if (element is Label lbl)
                 {
                     lbl.Content = displayText;
-                    if (!ThemeDictionaryActive && colorBrush != null) lbl.Background = colorBrush;
+                    if (colorBrush != null) lbl.Background = colorBrush;
                     LogResourceDebug(lbl, "Label");
                     LogStaticResourceDebug(lbl, "Label");
                     LogXamlStaticResourceDebug(lbl.Name, "Label");
@@ -251,7 +252,7 @@ namespace RCLayoutPreview.Helpers
                     string key = attrMatch.Groups[2].Value;
                     Debug.WriteLine($"[{type}] '{elementName}' XAML: {prop}={{StaticResource {key}}}");
                     UILogStatus?.Invoke($"{type} '{elementName}' XAML: {prop}={{StaticResource {key}}}");
-                    
+
                     // Debug: List all available resources
                     var window = Application.Current?.MainWindow;
                     if (window != null)
@@ -259,7 +260,7 @@ namespace RCLayoutPreview.Helpers
                         // Log all available resources in MainWindow
                         Debug.WriteLine($"[{type}] MainWindow has {window.Resources.Count} direct resources, {window.Resources.MergedDictionaries.Count} merged dictionaries");
                         UILogStatus?.Invoke($"{type} MainWindow has {window.Resources.Count} direct resources, {window.Resources.MergedDictionaries.Count} merged dictionaries");
-                        
+
                         foreach (var dict in window.Resources.MergedDictionaries)
                         {
                             Debug.WriteLine($"[{type}] Merged dictionary has {dict.Count} resources");
@@ -270,12 +271,12 @@ namespace RCLayoutPreview.Helpers
                                 UILogStatus?.Invoke($"{type} Available resource key: {resKey}");
                             }
                         }
-                        
+
                         // Try lookup
                         var value = window.TryFindResource(key);
                         Debug.WriteLine($"[{type}] Looking up resource key '{key}' in ThemeDictionary: {value}");
                         UILogStatus?.Invoke($"{type} Looking up resource key '{key}' in ThemeDictionary: {value}");
-                        
+
                         // Also try to find in the element's visual tree if MainWindow lookup fails
                         if (value == null)
                         {
@@ -285,7 +286,7 @@ namespace RCLayoutPreview.Helpers
                             {
                                 Debug.WriteLine($"[{type}] PreviewHost content has {content.Resources.Count} direct resources, {content.Resources.MergedDictionaries.Count} merged dictionaries");
                                 UILogStatus?.Invoke($"{type} PreviewHost content has {content.Resources.Count} direct resources, {content.Resources.MergedDictionaries.Count} merged dictionaries");
-                                
+
                                 value = content.TryFindResource(key);
                                 Debug.WriteLine($"[{type}] Fallback lookup in preview content for '{key}': {value}");
                                 UILogStatus?.Invoke($"{type} Fallback lookup in preview content for '{key}': {value}");
