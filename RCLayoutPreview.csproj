@@ -99,6 +99,9 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="SearchReplaceTest.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Resource Include="ThemeDictionary.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

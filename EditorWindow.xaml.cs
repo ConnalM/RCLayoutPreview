@@ -82,6 +82,14 @@ namespace RCLayoutPreview
             Editor.InputBindings.Add(new KeyBinding(
                 ApplicationCommands.Find,
                 new KeyGesture(Key.F, ModifierKeys.Control)));
+                
+            // Add Replace shortcut (Ctrl+H)
+            Editor.InputBindings.Add(new KeyBinding(
+                ApplicationCommands.Replace,
+                new KeyGesture(Key.H, ModifierKeys.Control)));
+            
+            // Handle Replace command
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.Replace, Replace_Executed));
 
             // Set up timer for automatic preview
             previewTimer = new DispatcherTimer
@@ -1080,6 +1088,448 @@ namespace RCLayoutPreview
             UpdateStatus(enabled ?
                 "Auto-update enabled" :
                 "Auto-update disabled");
+        }
+
+        /// <summary>
+        /// Simple and honest theme refresh that explains WPF StaticResource limitations
+        /// </summary>
+        private void RefreshTheme_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                UpdateStatus("[THEME-REFRESH] Checking theme and resource types...");
+                
+                // Find the ThemeDictionary path
+                string themeDictionaryPath = FindThemeDictionaryPath();
+                if (string.IsNullOrEmpty(themeDictionaryPath) || !File.Exists(themeDictionaryPath))
+                {
+                    MessageBox.Show("ThemeDictionary.xaml file not found!\n\nPlease ensure the file exists in your project directory.", 
+                        "Theme File Missing", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                
+                // Read and show current theme value
+                string themeContent = File.ReadAllText(themeDictionaryPath);
+                var valueColorMatch = System.Text.RegularExpressions.Regex.Match(themeContent, 
+                    @"<Brush\s+x:Key=""RSValueColor"">([^<]+)</Brush>");
+                string currentColor = valueColorMatch.Success ? valueColorMatch.Groups[1].Value.Trim() : "Unknown";
+                
+                // Check current XAML in editor
+                string currentXamlContent = Editor?.Text;
+                if (string.IsNullOrWhiteSpace(currentXamlContent))
+                {
+                    // Just reload theme dictionary if no XAML
+                    previewWindow?.ReloadThemeDictionary();
+                    MessageBox.Show($"ThemeDictionary reloaded.\nCurrent RSValueColor: {currentColor}", 
+                        "Theme Reloaded", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                
+                // Count resource types
+                int staticCount = 0, dynamicCount = 0;
+                if (currentXamlContent.Contains("StaticResource"))
+                    staticCount = System.Text.RegularExpressions.Regex.Matches(currentXamlContent, @"\{StaticResource\s+[^}]+\}").Count;
+                if (currentXamlContent.Contains("DynamicResource"))
+                    dynamicCount = System.Text.RegularExpressions.Regex.Matches(currentXamlContent, @"\{DynamicResource\s+[^}]+\}").Count;
+                
+                bool hasThemeReference = currentXamlContent.Contains("ThemeDictionary.xaml");
+                
+                // Reload the theme dictionary
+                previewWindow?.ReloadThemeDictionary();
+                
+                // Provide clear explanation based on what we found
+                string message;
+                string title;
+                MessageBoxImage icon;
+                
+                if (!hasThemeReference)
+                {
+                    message = $"? No ThemeDictionary Reference Found\n\n" +
+                             $"Your XAML doesn't reference ThemeDictionary.xaml.\n\n" +
+                             $"To use themes, add this to your Window:\n" +
+                             $"<Window.Resources>\n" +
+                             $"  <ResourceDictionary>\n" +
+                             $"    <ResourceDictionary.MergedDictionaries>\n" +
+                             $"      <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
+                             $"    </ResourceDictionary.MergedDictionaries>\n" +
+                             $"  </ResourceDictionary>\n" +
+                             $"</Window.Resources>";
+                    title = "No Theme Reference";
+                    icon = MessageBoxImage.Warning;
+                }
+                else if (staticCount > 0 && dynamicCount == 0)
+                {
+                    message = $"?? StaticResource Detected\n\n" +
+                             $"Found: {staticCount} StaticResource references\n" +
+                             $"Current RSValueColor: {currentColor}\n\n" +
+                             $"?? WPF Limitation: StaticResource values are cached and cannot be refreshed without recreating the entire UI.\n\n" +
+                             $"Solutions:\n" +
+                             $"1. Use DynamicResource instead of StaticResource for live updates\n" +
+                             $"2. Use the 'Save & Restart' button for StaticResource\n" +
+                             $"3. Restart the application manually\n\n" +
+                             $"ThemeDictionary has been reloaded, but StaticResource elements won't reflect changes until restart.";
+                    title = "StaticResource Limitations";
+                    icon = MessageBoxImage.Information;
+                }
+                else if (dynamicCount > 0)
+                {
+                    message = $"? DynamicResource Detected\n\n" +
+                             $"Found: {dynamicCount} DynamicResource references\n" +
+                             $"Current RSValueColor: {currentColor}\n\n" +
+                             $"DynamicResource elements should update automatically when you change ThemeDictionary.xaml!\n\n" +
+                             $"If colors don't change:\n" +
+                             $"1. Save ThemeDictionary.xaml after making changes\n" +
+                             $"2. The preview should auto-refresh within a few seconds\n" +
+                             $"3. Try clicking Preview button to force refresh";
+                    title = "DynamicResource - Should Work!";
+                    icon = MessageBoxImage.Information;
+                }
+                else
+                {
+                    message = $"?? Theme Analysis\n\n" +
+                             $"ThemeDictionary: Found\n" +
+                             $"Current RSValueColor: {currentColor}\n" +
+                             $"StaticResource: {staticCount} found\n" +
+                             $"DynamicResource: {dynamicCount} found\n\n" +
+                             $"No resource references found in your XAML.\n" +
+                             $"Add Foreground=\"{{StaticResource RSValueColor}}\" or\n" +
+                             $"Foreground=\"{{DynamicResource RSValueColor}}\" to test themes.";
+                    title = "Theme Analysis";
+                    icon = MessageBoxImage.Information;
+                }
+                
+                MessageBox.Show(message, title, MessageBoxButton.OK, icon);
+                UpdateStatus($"[THEME-REFRESH] Analysis complete - {staticCount} StaticResource, {dynamicCount} DynamicResource");
+                
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[THEME-REFRESH] Error: {ex.Message}", true);
+                MessageBox.Show($"Theme refresh error: {ex.Message}", 
+                    "Theme Refresh Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Replace_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ShowSearchReplaceDialog();
+        }
+
+        /// <summary>
+        /// Shows a comprehensive search and replace dialog for the XAML editor
+        /// </summary>
+        private void ShowSearchReplaceDialog()
+        {
+            var dialog = new Window
+            {
+                Title = "Find and Replace",
+                Width = 450,
+                Height = 250,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var grid = new Grid { Margin = new Thickness(10) };
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+
+            // Find section
+            var findLabel = new Label { Content = "Find:", VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(findLabel, 0); Grid.SetColumn(findLabel, 0);
+            grid.Children.Add(findLabel);
+
+            var findTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(findTextBox, 0); Grid.SetColumn(findTextBox, 1);
+            grid.Children.Add(findTextBox);
+
+            var findButton = new Button { Content = "Find Next", Margin = new Thickness(5), Height = 25 };
+            Grid.SetRow(findButton, 0); Grid.SetColumn(findButton, 2);
+            grid.Children.Add(findButton);
+
+            // Replace section
+            var replaceLabel = new Label { Content = "Replace:", VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(replaceLabel, 1); Grid.SetColumn(replaceLabel, 0);
+            grid.Children.Add(replaceLabel);
+
+            var replaceTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(replaceTextBox, 1); Grid.SetColumn(replaceTextBox, 1);
+            grid.Children.Add(replaceTextBox);
+
+            var replaceButton = new Button { Content = "Replace", Margin = new Thickness(5), Height = 25 };
+            Grid.SetRow(replaceButton, 1); Grid.SetColumn(replaceButton, 2);
+            grid.Children.Add(replaceButton);
+
+            // Options section
+            var optionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5) };
+            Grid.SetRow(optionsPanel, 2); Grid.SetColumn(optionsPanel, 1);
+            
+            var matchCaseCheckBox = new CheckBox { Content = "Match case", Margin = new Thickness(0, 0, 15, 0), VerticalAlignment = VerticalAlignment.Center };
+            var wholeWordCheckBox = new CheckBox { Content = "Whole word", VerticalAlignment = VerticalAlignment.Center };
+            
+            optionsPanel.Children.Add(matchCaseCheckBox);
+            optionsPanel.Children.Add(wholeWordCheckBox);
+            grid.Children.Add(optionsPanel);
+
+            // Button section
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(5, 15, 5, 5) };
+            Grid.SetRow(buttonPanel, 3); Grid.SetColumn(buttonPanel, 1); Grid.SetColumnSpan(buttonPanel, 2);
+
+            var replaceAllButton = new Button { Content = "Replace All", Width = 80, Margin = new Thickness(5, 0, 5, 0) };
+            var closeButton = new Button { Content = "Close", Width = 80, Margin = new Thickness(5, 0, 0, 0) };
+
+            buttonPanel.Children.Add(replaceAllButton);
+            buttonPanel.Children.Add(closeButton);
+            grid.Children.Add(buttonPanel);
+
+            // Status section
+            var statusLabel = new Label { Content = "Ready", Foreground = Brushes.Gray, Margin = new Thickness(5, 0, 5, 0) };
+            Grid.SetRow(statusLabel, 4); Grid.SetColumn(statusLabel, 1);
+            grid.Children.Add(statusLabel);
+
+            dialog.Content = grid;
+
+            // Pre-fill with selected text if any
+            if (!string.IsNullOrEmpty(Editor.SelectedText))
+            {
+                findTextBox.Text = Editor.SelectedText;
+                replaceTextBox.Focus();
+            }
+            else
+            {
+                findTextBox.Focus();
+            }
+
+            // Search state
+            int lastFindIndex = -1;
+
+            // Event handlers
+            findButton.Click += (s, e) =>
+            {
+                if (FindNext(findTextBox.Text, matchCaseCheckBox.IsChecked == true, wholeWordCheckBox.IsChecked == true, ref lastFindIndex))
+                {
+                    statusLabel.Content = $"Found at position {lastFindIndex}";
+                    statusLabel.Foreground = Brushes.Green;
+                }
+                else
+                {
+                    statusLabel.Content = $"'{findTextBox.Text}' not found";
+                    statusLabel.Foreground = Brushes.Red;
+                }
+            };
+
+            replaceButton.Click += (s, e) =>
+            {
+                if (ReplaceNext(findTextBox.Text, replaceTextBox.Text, matchCaseCheckBox.IsChecked == true, wholeWordCheckBox.IsChecked == true, ref lastFindIndex))
+                {
+                    statusLabel.Content = $"Replaced at position {lastFindIndex}";
+                    statusLabel.Foreground = Brushes.Blue;
+                }
+                else
+                {
+                    statusLabel.Content = "Nothing to replace";
+                    statusLabel.Foreground = Brushes.Orange;
+                }
+            };
+
+            replaceAllButton.Click += (s, e) =>
+            {
+                int count = ReplaceAll(findTextBox.Text, replaceTextBox.Text, matchCaseCheckBox.IsChecked == true, wholeWordCheckBox.IsChecked == true);
+                statusLabel.Content = $"Replaced {count} occurrence(s)";
+                statusLabel.Foreground = count > 0 ? Brushes.Blue : Brushes.Orange;
+                UpdateStatus($"Replaced {count} occurrences");
+            };
+
+            closeButton.Click += (s, e) => dialog.Close();
+
+            // Keyboard shortcuts
+            findTextBox.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    findButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    dialog.Close();
+                    e.Handled = true;
+                }
+            };
+
+            replaceTextBox.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    replaceButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    dialog.Close();
+                    e.Handled = true;
+                }
+            };
+
+            dialog.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape)
+                {
+                    dialog.Close();
+                    e.Handled = true;
+                }
+            };
+
+            dialog.ShowDialog();
+        }
+
+        /// <summary>
+        /// Find next occurrence of text in the editor
+        /// </summary>
+        private bool FindNext(string searchText, bool matchCase, bool wholeWord, ref int lastFindIndex)
+        {
+            if (string.IsNullOrEmpty(searchText)) return false;
+
+            string text = Editor.Text;
+            StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+            int startIndex = (lastFindIndex >= 0) ? lastFindIndex + 1 : Editor.CaretOffset;
+            int foundIndex = -1;
+
+            if (wholeWord)
+            {
+                foundIndex = FindWholeWord(text, searchText, startIndex, comparison);
+                if (foundIndex == -1 && startIndex > 0)
+                {
+                    foundIndex = FindWholeWord(text, searchText, 0, comparison);
+                }
+            }
+            else
+            {
+                foundIndex = text.IndexOf(searchText, startIndex, comparison);
+                if (foundIndex == -1 && startIndex > 0)
+                {
+                    foundIndex = text.IndexOf(searchText, 0, comparison);
+                }
+            }
+
+            if (foundIndex >= 0)
+            {
+                Editor.Select(foundIndex, searchText.Length);
+                Editor.ScrollToLine(Editor.Document.GetLineByOffset(foundIndex).LineNumber);
+                lastFindIndex = foundIndex;
+                return true;
+            }
+
+            lastFindIndex = -1;
+            return false;
+        }
+
+        /// <summary>
+        /// Find whole word occurrences
+        /// </summary>
+        private int FindWholeWord(string text, string searchText, int startIndex, StringComparison comparison)
+        {
+            int index = startIndex;
+            while ((index = text.IndexOf(searchText, index, comparison)) >= 0)
+            {
+                bool isWholeWord = (index == 0 || !char.IsLetterOrDigit(text[index - 1])) &&
+                                   (index + searchText.Length >= text.Length || !char.IsLetterOrDigit(text[index + searchText.Length]));
+                
+                if (isWholeWord) return index;
+                index++;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Replace next occurrence
+        /// </summary>
+        private bool ReplaceNext(string searchText, string replaceText, bool matchCase, bool wholeWord, ref int lastFindIndex)
+        {
+            if (string.IsNullOrEmpty(searchText)) return false;
+
+            // If current selection matches search text, replace it
+            if (!string.IsNullOrEmpty(Editor.SelectedText))
+            {
+                bool matches;
+                if (wholeWord)
+                {
+                    matches = matchCase 
+                        ? Editor.SelectedText == searchText 
+                        : Editor.SelectedText.Equals(searchText, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    matches = matchCase 
+                        ? Editor.SelectedText == searchText 
+                        : Editor.SelectedText.Equals(searchText, StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (matches)
+                {
+                    int selectionStart = Editor.SelectionStart;
+                    Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, replaceText ?? "");
+                    lastFindIndex = selectionStart + (replaceText?.Length ?? 0) - 1;
+                    
+                    // Find next occurrence
+                    FindNext(searchText, matchCase, wholeWord, ref lastFindIndex);
+                    return true;
+                }
+            }
+
+            // Find and select next occurrence
+            return FindNext(searchText, matchCase, wholeWord, ref lastFindIndex);
+        }
+
+        /// <summary>
+        /// Replace all occurrences
+        /// </summary>
+        private int ReplaceAll(string searchText, string replaceText, bool matchCase, bool wholeWord)
+        {
+            if (string.IsNullOrEmpty(searchText)) return 0;
+
+            string text = Editor.Text;
+            StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            
+            int count = 0;
+            int index = 0;
+            
+            Editor.BeginChange();
+            try
+            {
+                while (index < text.Length)
+                {
+                    int foundIndex;
+                    if (wholeWord)
+                    {
+                        foundIndex = FindWholeWord(text, searchText, index, comparison);
+                    }
+                    else
+                    {
+                        foundIndex = text.IndexOf(searchText, index, comparison);
+                    }
+
+                    if (foundIndex == -1) break;
+
+                    Editor.Document.Replace(foundIndex, searchText.Length, replaceText ?? "");
+                    text = Editor.Text; // Refresh text after replacement
+                    index = foundIndex + (replaceText?.Length ?? 0);
+                    count++;
+                }
+            }
+            finally
+            {
+                Editor.EndChange();
+            }
+
+            return count;
         }
     }
 }

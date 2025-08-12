@@ -188,10 +188,27 @@ namespace RCLayoutPreview.Controls
             // Split the text by newlines
             string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             
-            // Apply indentation to each line except the first one (which will inherit the caret's indentation)
-            for (int i = 1; i < lines.Length; i++)
+            // Apply indentation to ALL lines except if the first line is empty
+            for (int i = 0; i < lines.Length; i++)
             {
-                lines[i] = indentation + lines[i];
+                // Skip empty lines or lines that are just whitespace
+                if (string.IsNullOrWhiteSpace(lines[i]))
+                    continue;
+                    
+                // For the first line, only add indentation if it doesn't already start with indentation
+                if (i == 0)
+                {
+                    // Don't double-indent if the line already starts with whitespace
+                    if (!lines[i].StartsWith(" ") && !lines[i].StartsWith("\t"))
+                    {
+                        lines[i] = indentation + lines[i];
+                    }
+                }
+                else
+                {
+                    // For subsequent lines, always apply the base indentation
+                    lines[i] = indentation + lines[i];
+                }
             }
             
             // Join the lines back together

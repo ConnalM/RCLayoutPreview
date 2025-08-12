@@ -652,7 +652,7 @@ namespace RCLayoutPreview.Helpers
                     Description = "Wraps selected content in a Border with gray border and margin.",
                     Category = "Formatting",
                     XamlTemplate =
-                        "<Border BorderBrush=\"Green\" BorderThickness=\"10\" Margin=\"5\">\n{content}\n</Border>",
+                        "<Border BorderBrush=\"Green\" BorderThickness=\"10\" Margin=\"5\">\n    {content}\n</Border>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
                 // New snippet for Grid
@@ -661,7 +661,7 @@ namespace RCLayoutPreview.Helpers
                     Name = "Grid",
                     Description = "Wraps content in a Grid layout.",
                     Category = "Layout Containers",
-                    XamlTemplate = "<Grid>\n{content}\n</Grid>",
+                    XamlTemplate = "<Grid>\n    {content}\n</Grid>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
 
@@ -671,7 +671,7 @@ namespace RCLayoutPreview.Helpers
                     Name = "DockPanel",
                     Description = "Wraps content in a DockPanel layout.",
                     Category = "Layout Containers",
-                    XamlTemplate = "<DockPanel LastChildFill=\"True\">\n{content}\n</DockPanel>",
+                    XamlTemplate = "<DockPanel LastChildFill=\"True\">\n    {content}\n</DockPanel>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
 
@@ -681,117 +681,38 @@ namespace RCLayoutPreview.Helpers
                     Name = "Viewbox",
                     Description = "Wraps content in a Viewbox for scaling.",
                     Category = "Layout Containers",
-                    XamlTemplate = "<Viewbox Stretch=\"Uniform\">\n{content}\n</Viewbox>",
+                    XamlTemplate = "<Viewbox Stretch=\"Uniform\">\n    {content}\n</Viewbox>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
 
-                // Simple Theme Test: Shows DynamicResource in action for testing
+                // New snippet for StackPanel
                 new LayoutSnippet
                 {
-                    Name = "Simple Theme Test",
-                    Description = "Simple test Label that uses DynamicResource for easy ThemeDictionary testing.",
-                    Category = "Testing",
-                    XamlTemplate =
-                        "<!-- Simple Theme Test: Easy way to test ThemeDictionary changes -->\n" +
-                        "<StackPanel Margin=\"20\">\n" +
-                        "    <TextBlock Text=\"Theme Dictionary Test\" FontSize=\"16\" Margin=\"5\" />\n" +
-                        "    <Label Content=\"RSValueColor Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
-                        "           Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "           Padding=\"10\" Margin=\"5\"\n" +
-                        "           ToolTip=\"This should change color when you edit RSValueColor in ThemeDictionary.xaml\" />\n" +
-                        "    <Label Content=\"RSLabelColor Test\" FontSize=\"20\"\n" +
-                        "           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
-                        "           Background=\"{DynamicResource RSTableLabelBackground}\"\n" +
-                        "           Padding=\"10\" Margin=\"5\"\n" +
-                        "           ToolTip=\"This uses RSLabelColor and should be white\" />\n" +
-                        "    <TextBlock Text=\"Change RSValueColor in ThemeDictionary.xaml from Blue to Red to test!\"\n" +
-                        "               FontSize=\"14\" Foreground=\"Gray\" Margin=\"5\" />\n" +
-                        "</StackPanel>"
+                    Name = "StackPanel",
+                    Description = "Wraps content in a StackPanel layout.",
+                    Category = "Layout Containers",
+                    XamlTemplate = "<StackPanel Orientation=\"Vertical\">\n    {content}\n</StackPanel>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
 
-                // Complete Theme Test: Full Window with ThemeDictionary for testing
+                // New snippet for Canvas
                 new LayoutSnippet
                 {
-                    Name = "Complete Theme Test",
-                    Description = "Complete test window with ThemeDictionary resources loaded - ready to test theme changes.",
-                    Category = "Testing",
-                    XamlTemplate =
-                        "<!-- Complete Theme Test: Full Window with ThemeDictionary resources -->\n" +
-                        "<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n" +
-                        "        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n" +
-                        "        Title=\"Theme Dictionary Test\"\n" +
-                        "        Height=\"400\" Width=\"600\"\n" +
-                        "        Background=\"Black\">\n\n" +
-                        "    <Window.Resources>\n" +
-                        "        <ResourceDictionary>\n" +
-                        "            <ResourceDictionary.MergedDictionaries>\n" +
-                        "                <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
-                        "            </ResourceDictionary.MergedDictionaries>\n" +
-                        "        </ResourceDictionary>\n" +
-                        "    </Window.Resources>\n\n" +
-                        "    <Grid Margin=\"20\">\n" +
-                        "        <StackPanel>\n" +
-                        "            <TextBlock Text=\"?? ThemeDictionary Auto-Refresh Test\" FontSize=\"24\" FontWeight=\"Bold\"\n" +
-                        "                       Foreground=\"White\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n\n" +
-                        "            <TextBlock Text=\"The labels below should change color automatically when you edit ThemeDictionary.xaml\"\n" +
-                        "                       FontSize=\"14\" Foreground=\"LightGray\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n\n" +
-                        "            <!-- RSValueColor Test -->\n" +
-                        "            <Border BorderBrush=\"White\" BorderThickness=\"1\" Margin=\"10\" Padding=\"10\">\n" +
-                        "                <StackPanel>\n" +
-                        "                    <TextBlock Text=\"RSValueColor Test:\" FontSize=\"16\" Foreground=\"White\" Margin=\"0,0,0,5\" />\n" +
-                        "                    <Label Content=\"This should be BLUE initially\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
-                        "                           Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "                           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "                           Padding=\"15\" HorizontalAlignment=\"Center\"\n" +
-                        "                           ToolTip=\"Edit ThemeDictionary.xaml: change RSValueColor from Blue to Red\" />\n" +
-                        "                </StackPanel>\n" +
-                        "            </Border>\n\n" +
-                        "            <!-- RSLabelColor Test -->\n" +
-                        "            <Border BorderBrush=\"White\" BorderThickness=\"1\" Margin=\"10\" Padding=\"10\">\n" +
-                        "                <StackPanel>\n" +
-                        "                    <TextBlock Text=\"RSLabelColor Test:\" FontSize=\"16\" Foreground=\"White\" Margin=\"0,0,0,5\" />\n" +
-                        "                    <Label Content=\"This should be WHITE\" FontSize=\"20\" FontWeight=\"Bold\"\n" +
-                        "                           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
-                        "                           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "                           Padding=\"15\" HorizontalAlignment=\"Center\"\n" +
-                        "                           ToolTip=\"This uses RSLabelColor (should be white)\" />\n" +
-                        "                </StackPanel>\n" +
-                        "            </Border>\n\n" +
-                        "            <TextBlock Text=\"?? Instructions: Edit ThemeDictionary.xaml and change RSValueColor from 'Blue' to 'Red'\"\n" +
-                        "                       FontSize=\"14\" Foreground=\"Yellow\" Margin=\"10\" HorizontalAlignment=\"Center\" />\n" +
-                        "            <TextBlock Text=\"The first label should automatically change from blue to red!\"\n" +
-                        "                       FontSize=\"14\" Foreground=\"LightGray\" Margin=\"5\" HorizontalAlignment=\"Center\" />\n" +
-                        "        </StackPanel>\n" +
-                        "    </Grid>\n" +
-                        "</Window>"
+                    Name = "Canvas",
+                    Description = "Wraps content in a Canvas layout for absolute positioning.",
+                    Category = "Layout Containers",
+                    XamlTemplate = "<Canvas>\n    {content}\n</Canvas>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
-                // Minimal Theme Test: Simplest possible test for ThemeDictionary
+
+                // New snippet for UniformGrid
                 new LayoutSnippet
                 {
-                    Name = "Minimal Theme Test",
-                    Description = "Minimal test for ThemeDictionary - just one label to verify resource loading.",
-                    Category = "Testing",
-                    XamlTemplate =
-                        "<!-- Minimal Theme Test: Simplest test for ThemeDictionary -->\n" +
-                        "<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n" +
-                        "        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n" +
-                        "        Title=\"Minimal Test\" Height=\"200\" Width=\"400\" Background=\"Gray\">\n\n" +
-                        "    <Window.Resources>\n" +
-                        "        <ResourceDictionary>\n" +
-                        "            <ResourceDictionary.MergedDictionaries>\n" +
-                        "                <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
-                        "            </ResourceDictionary.MergedDictionaries>\n" +
-                        "        </ResourceDictionary>\n" +
-                        "    </Window.Resources>\n\n" +
-                        "    <StackPanel Margin=\"20\" VerticalAlignment=\"Center\">\n" +
-                        "        <Label Content=\"TEST\" FontSize=\"48\" FontWeight=\"Bold\" HorizontalAlignment=\"Center\"\n" +
-                        "               Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "               ToolTip=\"This should be BLUE from ThemeDictionary\" />\n" +
-                        "        <TextBlock Text=\"If this label appears BLUE, ThemeDictionary is working!\"\n" +
-                        "                   HorizontalAlignment=\"Center\" Foreground=\"White\" Margin=\"10\" />\n" +
-                        "    </StackPanel>\n" +
-                        "</Window>"
+                    Name = "UniformGrid",
+                    Description = "Wraps content in a UniformGrid with evenly sized cells.",
+                    Category = "Layout Containers",
+                    XamlTemplate = "<UniformGrid Rows=\"2\" Columns=\"2\">\n    {content}\n</UniformGrid>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
             };
         }
