@@ -20,6 +20,30 @@ using System.Windows.Controls.Primitives;
 
 namespace RCLayoutPreview
 {
+    /// <summary>
+    /// Simple RelayCommand implementation for keyboard shortcuts
+    /// </summary>
+    public class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+        private readonly Func<bool> _canExecute;
+
+        public RelayCommand(Action execute, Func<bool> canExecute = null)
+        {
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
+
+        public bool CanExecute(object parameter) => _canExecute?.Invoke() ?? true;
+        public void Execute(object parameter) => _execute();
+    }
+
     public partial class EditorWindow : Window
     {
         private string currentJsonPath;
@@ -78,18 +102,8 @@ namespace RCLayoutPreview
             // Add search panel
             searchPanel = SearchPanel.Install(Editor);
 
-            // Add keyboard shortcuts
-            Editor.InputBindings.Add(new KeyBinding(
-                ApplicationCommands.Find,
-                new KeyGesture(Key.F, ModifierKeys.Control)));
-                
-            // Add Replace shortcut (Ctrl+H)
-            Editor.InputBindings.Add(new KeyBinding(
-                ApplicationCommands.Replace,
-                new KeyGesture(Key.H, ModifierKeys.Control)));
-            
-            // Handle Replace command
-            CommandBindings.Add(new CommandBinding(ApplicationCommands.Replace, Replace_Executed));
+            // Add keyboard shortcuts for menu items
+            AddKeyboardShortcuts();
 
             // Set up timer for automatic preview
             previewTimer = new DispatcherTimer
@@ -107,6 +121,55 @@ namespace RCLayoutPreview
             SetupPredictiveText();
 
             LoadStubData();
+            
+            // Initialize Recent Files menu
+            PopulateRecentFilesMenu();
+        }
+
+        /// <summary>
+        /// Adds keyboard shortcuts for menu items
+        /// /// </summary>
+        private void AddKeyboardShortcuts()
+        {
+            // Existing shortcuts
+            Editor.InputBindings.Add(new KeyBinding(
+                ApplicationCommands.Find,
+                new KeyGesture(Key.F, ModifierKeys.Control)));
+                
+            Editor.InputBindings.Add(new KeyBinding(
+                ApplicationCommands.Replace,
+                new KeyGesture(Key.H, ModifierKeys.Control)));
+            
+            // New shortcuts for File menu
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => LoadLayout_Click(null, null)),
+                new KeyGesture(Key.O, ModifierKeys.Control)));
+            
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => SaveLayout_Click(null, null)),
+                new KeyGesture(Key.S, ModifierKeys.Control)));
+                
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => SaveAsLayout_Click(null, null)),
+                new KeyGesture(Key.S, ModifierKeys.Control | ModifierKeys.Shift)));
+
+            // New shortcuts for Edit menu
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => ClearEditor_Click(null, null)),
+                new KeyGesture(Key.Delete, ModifierKeys.Control | ModifierKeys.Shift)));
+
+            // New shortcuts for View menu
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => PreviewButton_Click(null, null)),
+                new KeyGesture(Key.F5)));
+
+            // New shortcuts for Tools menu
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => RefreshTheme_Click(null, null)),
+                new KeyGesture(Key.T, ModifierKeys.Control)));
+            
+            // Handle Replace command
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.Replace, Replace_Executed));
         }
 
         private void SetupPredictiveText()
@@ -537,8 +600,9 @@ namespace RCLayoutPreview
                 UpdateStatus($"Loaded layout: {Path.GetFileName(filePath)}");
                 XamlContentChanged?.Invoke(this, xamlContent);
 
-                // Add to recent files
+                // Add to recent files and update menu
                 RecentFilesHelper.AddRecentFile(filePath);
+                PopulateRecentFilesMenu();
 
                 // Check for valid fields in the loaded file
                 CheckForValidFields(xamlContent);
@@ -548,34 +612,19 @@ namespace RCLayoutPreview
                 UpdateStatus($"Error loading layout: {ex.Message}");
                 // Remove from recent files if it failed to load
                 RecentFilesHelper.RemoveRecentFile(filePath);
-            }
-        }
-
-        /// <summary>
-        /// Handles Recent Files button click - shows the context menu
-        /// /// </summary>
-        private void RecentFiles_Click(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            if (button?.ContextMenu != null)
-            {
                 PopulateRecentFilesMenu();
-                button.ContextMenu.IsOpen = true;
             }
         }
 
         /// <summary>
-        /// Populates the recent files context menu with current recent files
+        /// Populates the recent files menu with current recent files
         /// /// </summary>
         private void PopulateRecentFilesMenu()
         {
-            var recentFilesButton = FindName("RecentFilesButton") as Button;
-            var contextMenu = recentFilesButton?.ContextMenu;
+            var recentFilesMenuItem = FindName("RecentFiles_1") as MenuItem;
+            if (recentFilesMenuItem == null) return;
 
-            if (contextMenu == null)
-                return;
-
-            contextMenu.Items.Clear();
+            recentFilesMenuItem.Items.Clear();
 
             var recentFiles = RecentFilesHelper.GetRecentFilesInfo().ToList();
 
@@ -586,7 +635,7 @@ namespace RCLayoutPreview
                     Header = "(No recent files)",
                     IsEnabled = false
                 };
-                contextMenu.Items.Add(noFilesItem);
+                recentFilesMenuItem.Items.Add(noFilesItem);
                 return;
             }
 
@@ -602,13 +651,13 @@ namespace RCLayoutPreview
                 };
 
                 menuItem.Click += RecentFileMenuItem_Click;
-                contextMenu.Items.Add(menuItem);
+                recentFilesMenuItem.Items.Add(menuItem);
             }
 
             // Add separator and clear option
             if (recentFiles.Count > 0)
             {
-                contextMenu.Items.Add(new Separator());
+                recentFilesMenuItem.Items.Add(new Separator());
 
                 var clearItem = new MenuItem
                 {
@@ -616,7 +665,7 @@ namespace RCLayoutPreview
                     FontStyle = FontStyles.Italic
                 };
                 clearItem.Click += ClearRecentFiles_Click;
-                contextMenu.Items.Add(clearItem);
+                recentFilesMenuItem.Items.Add(clearItem);
             }
         }
 
@@ -634,8 +683,9 @@ namespace RCLayoutPreview
                 else
                 {
                     UpdateStatus($"File not found: {Path.GetFileName(filePath)}");
-                    // Remove the missing file from recent files
+                    // Remove the missing file from recent files and update menu
                     RecentFilesHelper.RemoveRecentFile(filePath);
+                    PopulateRecentFilesMenu();
                     MessageBox.Show($"The file '{Path.GetFileName(filePath)}' could not be found and has been removed from the recent files list.",
                                   "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
@@ -655,6 +705,7 @@ namespace RCLayoutPreview
             if (result == MessageBoxResult.Yes)
             {
                 RecentFilesHelper.ClearRecentFiles();
+                PopulateRecentFilesMenu();
                 UpdateStatus("Recent files cleared");
             }
         }
@@ -669,8 +720,9 @@ namespace RCLayoutPreview
                     UpdateStatus($"Saved layout to: {Path.GetFileName(currentXamlPath)}");
                     UpdateWindowTitleWithFileName();
 
-                    // Add to recent files when saved
+                    // Add to recent files when saved and update menu
                     RecentFilesHelper.AddRecentFile(currentXamlPath);
+                    PopulateRecentFilesMenu();
                 }
                 else
                 {
@@ -687,8 +739,9 @@ namespace RCLayoutPreview
                         UpdateStatus($"Saved layout to: {Path.GetFileName(dlg.FileName)}");
                         UpdateWindowTitleWithFileName();
 
-                        // Add to recent files when saved
+                        // Add to recent files when saved and update menu
                         RecentFilesHelper.AddRecentFile(currentXamlPath);
+                        PopulateRecentFilesMenu();
                     }
                 }
             }
@@ -715,8 +768,9 @@ namespace RCLayoutPreview
                     UpdateStatus($"Saved layout as: {Path.GetFileName(dlg.FileName)}");
                     UpdateWindowTitleWithFileName();
 
-                    // Add to recent files when saved
+                    // Add to recent files when saved and update menu
                     RecentFilesHelper.AddRecentFile(currentXamlPath);
+                    PopulateRecentFilesMenu();
                 }
             }
             else
@@ -1092,7 +1146,7 @@ namespace RCLayoutPreview
 
         /// <summary>
         /// Simple and honest theme refresh that explains WPF StaticResource limitations
-        /// </summary>
+        /// /// </summary>
         private void RefreshTheme_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1216,8 +1270,216 @@ namespace RCLayoutPreview
         }
 
         /// <summary>
-        /// Shows a comprehensive search and replace dialog for the XAML editor
+        /// Shows the find dialog (called from toolbar button)
         /// </summary>
+        private void ShowFindDialog(object sender, RoutedEventArgs e)
+        {
+            ShowSearchReplaceDialog();
+        }
+
+        /// <summary>
+        /// Handles recent files toolbar button click
+        /// </summary>
+        private void RecentFilesToolbar_Click(object sender, RoutedEventArgs e)
+        {
+            // Create a context menu for recent files
+            var contextMenu = new ContextMenu();
+            var recentFiles = RecentFilesHelper.GetRecentFilesInfo().ToList();
+
+            if (recentFiles.Count == 0)
+            {
+                var noFilesItem = new MenuItem
+                {
+                    Header = "(No recent files)",
+                    IsEnabled = false
+                };
+                contextMenu.Items.Add(noFilesItem);
+            }
+            else
+            {
+                // Add recent files
+                for (int i = 0; i < recentFiles.Count; i++)
+                {
+                    var fileInfo = recentFiles[i];
+                    var menuItem = new MenuItem
+                    {
+                        Header = $"{i + 1}. {fileInfo.DisplayName}",
+                        ToolTip = fileInfo.ToolTip,
+                        Tag = fileInfo.FullPath
+                    };
+
+                    menuItem.Click += RecentFileMenuItem_Click;
+                    contextMenu.Items.Add(menuItem);
+                }
+
+                // Add separator and clear option
+                contextMenu.Items.Add(new Separator());
+
+                var clearItem = new MenuItem
+                {
+                    Header = "Clear Recent Files",
+                    FontStyle = FontStyles.Italic
+                };
+                clearItem.Click += ClearRecentFiles_Click;
+                contextMenu.Items.Add(clearItem);
+            }
+
+            // Show context menu at toolbar button
+            var button = sender as Button;
+            if (button != null)
+            {
+                contextMenu.PlacementTarget = button;
+                contextMenu.Placement = PlacementMode.Bottom;
+                contextMenu.IsOpen = true;
+            }
+        }
+
+        /// <summary>
+        /// Find next occurrence of text in the editor
+        /// /// </summary>
+        private bool FindNext(string searchText, bool matchCase, bool wholeWord, ref int lastFindIndex)
+        {
+            if (string.IsNullOrEmpty(searchText)) return false;
+
+            string text = Editor.Text;
+            StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
+            int startIndex = (lastFindIndex >= 0) ? lastFindIndex + 1 : Editor.CaretOffset;
+            int foundIndex = -1;
+
+            if (wholeWord)
+            {
+                foundIndex = FindWholeWord(text, searchText, startIndex, comparison);
+                if (foundIndex == -1 && startIndex > 0)
+                {
+                    foundIndex = FindWholeWord(text, searchText, 0, comparison);
+                }
+            }
+            else
+            {
+                foundIndex = text.IndexOf(searchText, startIndex, comparison);
+                if (foundIndex == -1 && startIndex > 0)
+                {
+                    foundIndex = text.IndexOf(searchText, 0, comparison);
+                }
+            }
+
+            if (foundIndex >= 0)
+            {
+                Editor.Select(foundIndex, searchText.Length);
+                Editor.ScrollToLine(Editor.Document.GetLineByOffset(foundIndex).LineNumber);
+                lastFindIndex = foundIndex;
+                return true;
+            }
+
+            lastFindIndex = -1;
+            return false;
+        }
+
+        /// <summary>
+        /// Find whole word occurrences
+        /// /// </summary>
+        private int FindWholeWord(string text, string searchText, int startIndex, StringComparison comparison)
+        {
+            int index = startIndex;
+            while ((index = text.IndexOf(searchText, index, comparison)) >= 0)
+            {
+                bool isWholeWord = (index == 0 || !char.IsLetterOrDigit(text[index - 1])) &&
+                                   (index + searchText.Length >= text.Length || !char.IsLetterOrDigit(text[index + searchText.Length]));
+                
+                if (isWholeWord) return index;
+                index++;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Replace next occurrence
+        /// /// </summary>
+        private bool ReplaceNext(string searchText, string replaceText, bool matchCase, bool wholeWord, ref int lastFindIndex)
+        {
+            if (string.IsNullOrEmpty(searchText)) return false;
+
+            // If current selection matches search text, replace it
+            if (!string.IsNullOrEmpty(Editor.SelectedText))
+            {
+                bool matches;
+                if (wholeWord)
+                {
+                    matches = matchCase 
+                        ? Editor.SelectedText == searchText 
+                        : Editor.SelectedText.Equals(searchText, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    matches = matchCase 
+                        ? Editor.SelectedText == searchText 
+                        : Editor.SelectedText.Equals(searchText, StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (matches)
+                {
+                    int selectionStart = Editor.SelectionStart;
+                    Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, replaceText ?? "");
+                    lastFindIndex = selectionStart + (replaceText?.Length ?? 0) - 1;
+                    
+                    // Find next occurrence
+                    FindNext(searchText, matchCase, wholeWord, ref lastFindIndex);
+                    return true;
+                }
+            }
+
+            // Find and select next occurrence
+            return FindNext(searchText, matchCase, wholeWord, ref lastFindIndex);
+        }
+
+        /// <summary>
+        /// Replace all occurrences
+        /// /// </summary>
+        private int ReplaceAll(string searchText, string replaceText, bool matchCase, bool wholeWord)
+        {
+            if (string.IsNullOrEmpty(searchText)) return 0;
+
+            string text = Editor.Text;
+            StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            
+            int count = 0;
+            int index = 0;
+            
+            Editor.BeginChange();
+            try
+            {
+                while (index < text.Length)
+                {
+                    int foundIndex;
+                    if (wholeWord)
+                    {
+                        foundIndex = FindWholeWord(text, searchText, index, comparison);
+                    }
+                    else
+                    {
+                        foundIndex = text.IndexOf(searchText, index, comparison);
+                    }
+
+                    if (foundIndex == -1) break;
+
+                    Editor.Document.Replace(foundIndex, searchText.Length, replaceText ?? "");
+                    text = Editor.Text; // Refresh text after replacement
+                    index = foundIndex + (replaceText?.Length ?? 0);
+                    count++;
+                }
+            }
+            finally
+            {
+                Editor.EndChange();
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Shows a comprehensive search and replace dialog for the XAML editor
+        /// /// </summary>
         private void ShowSearchReplaceDialog()
         {
             var dialog = new Window
@@ -1259,7 +1521,7 @@ namespace RCLayoutPreview
             grid.Children.Add(replaceLabel);
 
             var replaceTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetRow(replaceTextBox, 1); Grid.SetColumn(replaceTextBox, 1);
+            Grid.SetRow(replaceTextBox, 1); Grid.SetColumn(replaceLabel, 1);
             grid.Children.Add(replaceTextBox);
 
             var replaceButton = new Button { Content = "Replace", Margin = new Thickness(5), Height = 25 };
@@ -1387,149 +1649,6 @@ namespace RCLayoutPreview
             };
 
             dialog.ShowDialog();
-        }
-
-        /// <summary>
-        /// Find next occurrence of text in the editor
-        /// </summary>
-        private bool FindNext(string searchText, bool matchCase, bool wholeWord, ref int lastFindIndex)
-        {
-            if (string.IsNullOrEmpty(searchText)) return false;
-
-            string text = Editor.Text;
-            StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-
-            int startIndex = (lastFindIndex >= 0) ? lastFindIndex + 1 : Editor.CaretOffset;
-            int foundIndex = -1;
-
-            if (wholeWord)
-            {
-                foundIndex = FindWholeWord(text, searchText, startIndex, comparison);
-                if (foundIndex == -1 && startIndex > 0)
-                {
-                    foundIndex = FindWholeWord(text, searchText, 0, comparison);
-                }
-            }
-            else
-            {
-                foundIndex = text.IndexOf(searchText, startIndex, comparison);
-                if (foundIndex == -1 && startIndex > 0)
-                {
-                    foundIndex = text.IndexOf(searchText, 0, comparison);
-                }
-            }
-
-            if (foundIndex >= 0)
-            {
-                Editor.Select(foundIndex, searchText.Length);
-                Editor.ScrollToLine(Editor.Document.GetLineByOffset(foundIndex).LineNumber);
-                lastFindIndex = foundIndex;
-                return true;
-            }
-
-            lastFindIndex = -1;
-            return false;
-        }
-
-        /// <summary>
-        /// Find whole word occurrences
-        /// </summary>
-        private int FindWholeWord(string text, string searchText, int startIndex, StringComparison comparison)
-        {
-            int index = startIndex;
-            while ((index = text.IndexOf(searchText, index, comparison)) >= 0)
-            {
-                bool isWholeWord = (index == 0 || !char.IsLetterOrDigit(text[index - 1])) &&
-                                   (index + searchText.Length >= text.Length || !char.IsLetterOrDigit(text[index + searchText.Length]));
-                
-                if (isWholeWord) return index;
-                index++;
-            }
-            return -1;
-        }
-
-        /// <summary>
-        /// Replace next occurrence
-        /// </summary>
-        private bool ReplaceNext(string searchText, string replaceText, bool matchCase, bool wholeWord, ref int lastFindIndex)
-        {
-            if (string.IsNullOrEmpty(searchText)) return false;
-
-            // If current selection matches search text, replace it
-            if (!string.IsNullOrEmpty(Editor.SelectedText))
-            {
-                bool matches;
-                if (wholeWord)
-                {
-                    matches = matchCase 
-                        ? Editor.SelectedText == searchText 
-                        : Editor.SelectedText.Equals(searchText, StringComparison.OrdinalIgnoreCase);
-                }
-                else
-                {
-                    matches = matchCase 
-                        ? Editor.SelectedText == searchText 
-                        : Editor.SelectedText.Equals(searchText, StringComparison.OrdinalIgnoreCase);
-                }
-
-                if (matches)
-                {
-                    int selectionStart = Editor.SelectionStart;
-                    Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, replaceText ?? "");
-                    lastFindIndex = selectionStart + (replaceText?.Length ?? 0) - 1;
-                    
-                    // Find next occurrence
-                    FindNext(searchText, matchCase, wholeWord, ref lastFindIndex);
-                    return true;
-                }
-            }
-
-            // Find and select next occurrence
-            return FindNext(searchText, matchCase, wholeWord, ref lastFindIndex);
-        }
-
-        /// <summary>
-        /// Replace all occurrences
-        /// </summary>
-        private int ReplaceAll(string searchText, string replaceText, bool matchCase, bool wholeWord)
-        {
-            if (string.IsNullOrEmpty(searchText)) return 0;
-
-            string text = Editor.Text;
-            StringComparison comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            
-            int count = 0;
-            int index = 0;
-            
-            Editor.BeginChange();
-            try
-            {
-                while (index < text.Length)
-                {
-                    int foundIndex;
-                    if (wholeWord)
-                    {
-                        foundIndex = FindWholeWord(text, searchText, index, comparison);
-                    }
-                    else
-                    {
-                        foundIndex = text.IndexOf(searchText, index, comparison);
-                    }
-
-                    if (foundIndex == -1) break;
-
-                    Editor.Document.Replace(foundIndex, searchText.Length, replaceText ?? "");
-                    text = Editor.Text; // Refresh text after replacement
-                    index = foundIndex + (replaceText?.Length ?? 0);
-                    count++;
-                }
-            }
-            finally
-            {
-                Editor.EndChange();
-            }
-
-            return count;
         }
     }
 }
