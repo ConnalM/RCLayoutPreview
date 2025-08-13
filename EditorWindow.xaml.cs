@@ -65,7 +65,6 @@ namespace RCLayoutPreview
         private List<string> allCompletions;
         private FoldingManager foldingManager;
         private XmlFoldingStrategy foldingStrategy;
-        private int themeCheckCounter = 0; // Debug counter
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -163,11 +162,6 @@ namespace RCLayoutPreview
                 new RelayCommand(() => PreviewButton_Click(null, null)),
                 new KeyGesture(Key.F5)));
 
-            // New shortcuts for Tools menu
-            InputBindings.Add(new KeyBinding(
-                new RelayCommand(() => RefreshTheme_Click(null, null)),
-                new KeyGesture(Key.T, ModifierKeys.Control)));
-            
             // Handle Replace command
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Replace, Replace_Executed));
         }
@@ -411,122 +405,6 @@ namespace RCLayoutPreview
                     }
                 }
             }
-
-            // Simple ThemeDictionary refresh check
-            if (previewWindow != null)
-            {
-                CheckForThemeDictionaryChanges();
-            }
-        }
-
-        private void CheckForThemeDictionaryChanges()
-        {
-            themeCheckCounter++;
-            try
-            {
-                string themeFile = FindThemeDictionaryPath();
-                UpdateStatus($"[DEBUG #{themeCheckCounter}] Checking ThemeDictionary: {themeFile}");
-
-                if (!string.IsNullOrEmpty(themeFile) && File.Exists(themeFile))
-                {
-                    var fileInfo = new FileInfo(themeFile);
-                    UpdateStatus($"[DEBUG #{themeCheckCounter}] File exists. Current: {fileInfo.LastWriteTime}, Last: {previewWindow.lastThemeDictionaryWriteTime}");
-                    UpdateStatus($"[DEBUG #{themeCheckCounter}] Ticks comparison: Current: {fileInfo.LastWriteTime.Ticks}, Last: {previewWindow.lastThemeDictionaryWriteTime.Ticks}");
-
-                    // Simple check - if file is newer than last check, reload
-                    if (fileInfo.LastWriteTime.Ticks != previewWindow.lastThemeDictionaryWriteTime.Ticks)
-                    {
-                        UpdateStatus($"[DEBUG #{themeCheckCounter}] CHANGE DETECTED! Triggering proper ThemeDictionary refresh...");
-
-                        // CRITICAL FIX: Call the proper ReloadThemeDictionary method instead of re-parsing XAML
-                        previewWindow.ReloadThemeDictionary();
-                        UpdateStatus("ThemeDictionary refreshed with FileStream method");
-                    }
-                    // Only show "unchanged" message every 10th check to avoid spam
-                    else if (themeCheckCounter % 10 == 0)
-                    {
-                        UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary unchanged");
-                    }
-                }
-                else
-                {
-                    UpdateStatus($"[DEBUG #{themeCheckCounter}] ThemeDictionary.xaml not found");
-                }
-            }
-            catch (Exception ex)
-            {
-                UpdateStatus($"[DEBUG #{themeCheckCounter}] Error: {ex.Message}");
-            }
-        }
-
-        private string FindThemeDictionaryPath()
-        {
-            // Try multiple possible locations for ThemeDictionary.xaml
-            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: BaseDirectory = {baseDirectory}");
-
-            string[] possiblePaths = {
-                // 1. Same directory as executable (bin\Debug)
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ThemeDictionary.xaml"),
-                // 2. Project root (go up from bin\Debug to project root)
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "ThemeDictionary.xaml"),
-                // 3. Direct project root path
-                Path.Combine(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).Parent.Parent.FullName, "ThemeDictionary.xaml"),
-                // 4. Current working directory
-                Path.Combine(Directory.GetCurrentDirectory(), "ThemeDictionary.xaml"),
-                // 5. EXPLICIT PATH: The path from your workspace
-                @"C:\Program Files (x86)\Race Coordinator\data\xaml\VS\RCLayoutPreview\ThemeDictionary.xaml"
-            };
-
-            UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Checking {possiblePaths.Length} possible paths:");
-            for (int i = 0; i < possiblePaths.Length; i++)
-            {
-                try
-                {
-                    string fullPath = Path.GetFullPath(possiblePaths[i]); // Resolve .. references
-                    UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Path {i + 1}: {fullPath}");
-                    if (File.Exists(fullPath))
-                    {
-                        var fileInfo = new FileInfo(fullPath);
-                        UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: FOUND at {fullPath}");
-                        UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: File size: {fileInfo.Length} bytes, LastWriteTime: {fileInfo.LastWriteTime}");
-
-                        // Read first few lines to verify content
-                        try
-                        {
-                            string[] lines = File.ReadAllLines(fullPath);
-                            if (lines.Length > 0)
-                            {
-                                UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: First line: {lines[0]}");
-
-                                // Look for RSValueColor line to verify content
-                                var rsValueLine = lines.FirstOrDefault(line => line.Contains("RSValueColor"));
-                                if (!string.IsNullOrEmpty(rsValueLine))
-                                {
-                                    UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: RSValueColor line: {rsValueLine.Trim()}");
-                                }
-                            }
-                        }
-                        catch (Exception readEx)
-                        {
-                            UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Error reading file: {readEx.Message}");
-                        }
-
-                        return fullPath;
-                    }
-                    else
-                    {
-                        UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: NOT FOUND at {fullPath}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UpdateStatus($"[DEBUG] EditorWindow FindThemeDictionary: Error checking path {i + 1}: {ex.Message}");
-                }
-            }
-
-            UpdateStatus("[DEBUG] EditorWindow FindThemeDictionary: No ThemeDictionary.xaml found in any location");
-            return null;
         }
 
         private void LoadStubData()
@@ -1144,126 +1022,6 @@ namespace RCLayoutPreview
                 "Auto-update disabled");
         }
 
-        /// <summary>
-        /// Simple and honest theme refresh that explains WPF StaticResource limitations
-        /// /// </summary>
-        private void RefreshTheme_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                UpdateStatus("[THEME-REFRESH] Checking theme and resource types...");
-                
-                // Find the ThemeDictionary path
-                string themeDictionaryPath = FindThemeDictionaryPath();
-                if (string.IsNullOrEmpty(themeDictionaryPath) || !File.Exists(themeDictionaryPath))
-                {
-                    MessageBox.Show("ThemeDictionary.xaml file not found!\n\nPlease ensure the file exists in your project directory.", 
-                        "Theme File Missing", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-                
-                // Read and show current theme value
-                string themeContent = File.ReadAllText(themeDictionaryPath);
-                var valueColorMatch = System.Text.RegularExpressions.Regex.Match(themeContent, 
-                    @"<Brush\s+x:Key=""RSValueColor"">([^<]+)</Brush>");
-                string currentColor = valueColorMatch.Success ? valueColorMatch.Groups[1].Value.Trim() : "Unknown";
-                
-                // Check current XAML in editor
-                string currentXamlContent = Editor?.Text;
-                if (string.IsNullOrWhiteSpace(currentXamlContent))
-                {
-                    // Just reload theme dictionary if no XAML
-                    previewWindow?.ReloadThemeDictionary();
-                    MessageBox.Show($"ThemeDictionary reloaded.\nCurrent RSValueColor: {currentColor}", 
-                        "Theme Reloaded", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-                
-                // Count resource types
-                int staticCount = 0, dynamicCount = 0;
-                if (currentXamlContent.Contains("StaticResource"))
-                    staticCount = System.Text.RegularExpressions.Regex.Matches(currentXamlContent, @"\{StaticResource\s+[^}]+\}").Count;
-                if (currentXamlContent.Contains("DynamicResource"))
-                    dynamicCount = System.Text.RegularExpressions.Regex.Matches(currentXamlContent, @"\{DynamicResource\s+[^}]+\}").Count;
-                
-                bool hasThemeReference = currentXamlContent.Contains("ThemeDictionary.xaml");
-                
-                // Reload the theme dictionary
-                previewWindow?.ReloadThemeDictionary();
-                
-                // Provide clear explanation based on what we found
-                string message;
-                string title;
-                MessageBoxImage icon;
-                
-                if (!hasThemeReference)
-                {
-                    message = $"? No ThemeDictionary Reference Found\n\n" +
-                             $"Your XAML doesn't reference ThemeDictionary.xaml.\n\n" +
-                             $"To use themes, add this to your Window:\n" +
-                             $"<Window.Resources>\n" +
-                             $"  <ResourceDictionary>\n" +
-                             $"    <ResourceDictionary.MergedDictionaries>\n" +
-                             $"      <ResourceDictionary Source=\"ThemeDictionary.xaml\" />\n" +
-                             $"    </ResourceDictionary.MergedDictionaries>\n" +
-                             $"  </ResourceDictionary>\n" +
-                             $"</Window.Resources>";
-                    title = "No Theme Reference";
-                    icon = MessageBoxImage.Warning;
-                }
-                else if (staticCount > 0 && dynamicCount == 0)
-                {
-                    message = $"?? StaticResource Detected\n\n" +
-                             $"Found: {staticCount} StaticResource references\n" +
-                             $"Current RSValueColor: {currentColor}\n\n" +
-                             $"?? WPF Limitation: StaticResource values are cached and cannot be refreshed without recreating the entire UI.\n\n" +
-                             $"Solutions:\n" +
-                             $"1. Use DynamicResource instead of StaticResource for live updates\n" +
-                             $"2. Use the 'Save & Restart' button for StaticResource\n" +
-                             $"3. Restart the application manually\n\n" +
-                             $"ThemeDictionary has been reloaded, but StaticResource elements won't reflect changes until restart.";
-                    title = "StaticResource Limitations";
-                    icon = MessageBoxImage.Information;
-                }
-                else if (dynamicCount > 0)
-                {
-                    message = $"? DynamicResource Detected\n\n" +
-                             $"Found: {dynamicCount} DynamicResource references\n" +
-                             $"Current RSValueColor: {currentColor}\n\n" +
-                             $"DynamicResource elements should update automatically when you change ThemeDictionary.xaml!\n\n" +
-                             $"If colors don't change:\n" +
-                             $"1. Save ThemeDictionary.xaml after making changes\n" +
-                             $"2. The preview should auto-refresh within a few seconds\n" +
-                             $"3. Try clicking Preview button to force refresh";
-                    title = "DynamicResource - Should Work!";
-                    icon = MessageBoxImage.Information;
-                }
-                else
-                {
-                    message = $"?? Theme Analysis\n\n" +
-                             $"ThemeDictionary: Found\n" +
-                             $"Current RSValueColor: {currentColor}\n" +
-                             $"StaticResource: {staticCount} found\n" +
-                             $"DynamicResource: {dynamicCount} found\n\n" +
-                             $"No resource references found in your XAML.\n" +
-                             $"Add Foreground=\"{{StaticResource RSValueColor}}\" or\n" +
-                             $"Foreground=\"{{DynamicResource RSValueColor}}\" to test themes.";
-                    title = "Theme Analysis";
-                    icon = MessageBoxImage.Information;
-                }
-                
-                MessageBox.Show(message, title, MessageBoxButton.OK, icon);
-                UpdateStatus($"[THEME-REFRESH] Analysis complete - {staticCount} StaticResource, {dynamicCount} DynamicResource");
-                
-            }
-            catch (Exception ex)
-            {
-                UpdateStatus($"[THEME-REFRESH] Error: {ex.Message}", true);
-                MessageBox.Show($"Theme refresh error: {ex.Message}", 
-                    "Theme Refresh Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
         private void Replace_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             ShowSearchReplaceDialog();
@@ -1271,7 +1029,7 @@ namespace RCLayoutPreview
 
         /// <summary>
         /// Shows the find dialog (called from toolbar button)
-        /// </summary>
+        /// /// </summary>
         private void ShowFindDialog(object sender, RoutedEventArgs e)
         {
             ShowSearchReplaceDialog();
@@ -1279,7 +1037,7 @@ namespace RCLayoutPreview
 
         /// <summary>
         /// Handles recent files toolbar button click
-        /// </summary>
+        /// /// </summary>
         private void RecentFilesToolbar_Click(object sender, RoutedEventArgs e)
         {
             // Create a context menu for recent files
