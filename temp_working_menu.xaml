@@ -1,0 +1,9 @@
+<!-- Simple working menu without placeholders -->
+<Menu Height="22" Name="menu1" VerticalAlignment="Top">
+    <MenuItem Header="File">
+        <MenuItem Name="Save_1" Header="Save" ToolTip="Save the file" />
+        <MenuItem Name="SaveAs_1" Header="Save As..." ToolTip="Save the file with new name" />
+        <Separator/>
+        <MenuItem Name="Export_1" Header="Export" ToolTip="Export the file" />
+    </MenuItem>
+</Menu>

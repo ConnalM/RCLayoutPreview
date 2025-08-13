@@ -140,35 +140,7 @@ namespace RCLayoutPreview.Helpers
             "<Image Grid.Column=\"2\" Name=\"Placeholder1\" Stretch=\"Uniform\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\"\r\n" +
             "       Height=\"200\" Width=\"275\" ToolTip=\"Race state flag (e.g. red, green)\" />";
 
-        private static readonly string LowerDockPanelTemplate =
-            "<DockPanel Margin=\"0,222,0,0\" Name=\"dockPanel2\" Background=\"Transparent\">\n" +
-            "  <Grid>\n" +
-            "    <Grid.RowDefinitions>\n" +
-            "      <RowDefinition Height=\"50\" />\n" +
-            "      <RowDefinition Height=\"100\" />\n" +
-            "    </Grid.RowDefinitions>\n" +
-            "    <Grid.ColumnDefinitions>\n" +
-            "      <ColumnDefinition Width=\"200\" />\n" +
-            "      <ColumnDefinition Width=\"100\" />\n" +
-            "      <ColumnDefinition Width=\"150\" />\n" +
-            "      <ColumnDefinition Width=\"150\" />\n" +
-            "      <ColumnDefinition Width=\"150\" />\n" +
-            "    </Grid.ColumnDefinitions>\n\n" +
-            "    <!-- Header labels -->\n" +
-            "    <Label Grid.Row=\"0\" Grid.Column=\"0\" Content=\"Name\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-            "    <Label Grid.Row=\"0\" Grid.Column=\"1\" Content=\"Lap\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-            "    <Label Grid.Row=\"0\" Grid.Column=\"2\" Content=\"Lap Time\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-            "    <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-            "    <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n\n" +
-            "    <!-- Lane 1 data row -->\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-            "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-            "  </Grid>\n" +
-            "</DockPanel>";
-
+       
 
         // Using clear placeholder instead of actual field names
         private static readonly string LapTimeTemplate =
@@ -191,16 +163,7 @@ namespace RCLayoutPreview.Helpers
             "</Window.Resources>";
 
         // Generalized Menu snippet with placeholders for easy adaptation
-        private static readonly string GeneralMenuSnippet =
-            "<Menu Height=\"22\" Name=\"{menuName}\" VerticalAlignment=\"Top\">\n" +
-            "    <MenuItem Header=\"{fileHeader}\">\n" +
-            "        <MenuItem Name=\"{saveName}\" Header=\"{saveHeader}\" DataContext=\"'key':'{saveKey}','modifier':'{saveModifier}'\" ToolTip=\"{saveTooltip}\" />\n" +
-            "        <MenuItem Name=\"{saveAsName}\" Header=\"{saveAsHeader}\" DataContext=\"'key':'{saveAsKey}','modifier':'{saveAsModifier}'\" ToolTip=\"{saveAsTooltip}\" />\n" +
-            "        <Separator/>\n" +
-            "        <MenuItem Name=\"{exportName}\" Header=\"{exportHeader}\" DataContext=\"'key':'{exportKey}','modifier':'{exportModifier}'\" ToolTip=\"{exportTooltip}\" />\n" +
-            "    </MenuItem>\n" +
-            "    <Separator Width=\"5\" />\n" +
-            "</Menu>";
+        
 
         // List of available snippets
         public static List<LayoutSnippet> GetDefaultSnippets()
@@ -231,61 +194,108 @@ namespace RCLayoutPreview.Helpers
                         "<!-- Theme Dictionary: Merged resource dictionary for theming -->\n" +
                         ThemeDictionarySnippet
                 },
-                // ThemeDictionary Label: Shows proper DynamicResource usage
+                
+                // Menu Container: Wraps content in a Menu layout
                 new LayoutSnippet
                 {
-                    Name = "ThemeDictionary Label",
-                    Description = "Label using DynamicResource for automatic theme updates (better than StaticResource).",
-                    Category = "Themed Elements",
-                    XamlTemplate =
-                        "<!-- ThemeDictionary Label: Uses DynamicResource for automatic theme updates -->\n" +
-                        "<Label Content=\"Themed Label\" FontSize=\"20\"\n" +
-                        "       Foreground=\"{DynamicResource RSValueColor}\"\n" +
-                        "       Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "       ToolTip=\"Uses DynamicResource - will update automatically when theme changes\" />"
+                    Name = "Menu",
+                    Description = "Wraps content in a Menu container.",
+                    Category = "Layout Containers", 
+                    XamlTemplate = "<Menu Height=\"22\" Name=\"menu1\" VerticalAlignment=\"Top\">\n    {content}\n</Menu>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
-                // ThemeDictionary TextBlock: Shows proper DynamicResource usage  
+
+                // Menu Container (also in Menus): Wraps content in a Menu layout
                 new LayoutSnippet
                 {
-                    Name = "ThemeDictionary TextBlock",
-                    Description = "TextBlock using DynamicResource for automatic theme updates (better than StaticResource).",
-                    Category = "Themed Elements",
-                    XamlTemplate =
-                        "<!-- ThemeDictionary TextBlock: Uses DynamicResource for automatic theme updates -->\n" +
-                        "<TextBlock Text=\"Themed Text\" FontSize=\"20\"\n" +
-                        "           Foreground=\"{DynamicResource RSLabelColor}\"\n" +
-                        "           Background=\"{DynamicResource RSTableCellBackground}\"\n" +
-                        "           ToolTip=\"Uses DynamicResource - will update automatically when theme changes\" />"
+                    Name = "Menu Container",
+                    Description = "Wraps content in a Menu container for organizing menu items.",
+                    Category = "Menus", 
+                    XamlTemplate = "<Menu Height=\"22\" Name=\"menu1\" VerticalAlignment=\"Top\">\n    {content}\n</Menu>",
+                    Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
-                // General Menu: Menu with placeholders for easy adaptation
+
+                // File Menu: Save, Save As, Export
                 new LayoutSnippet
                 {
-                    Name = "General Menu",
-                    Description = "Generalized Menu with placeholders for easy adaptation.",
+                    Name = "File Menu",
+                    Description = "File operations menu with Save, Save As, and Export options.",
                     Category = "Menus",
                     XamlTemplate =
-                        "<!-- General Menu: Menu with placeholders for easy adaptation -->\n" +
-                        GeneralMenuSnippet,
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "{menuName}", "menu1" },
-                        { "{fileHeader}", "File" },
-                        { "{saveName}", "Save_1" },
-                        { "{saveHeader}", "Save" },
-                        { "{saveKey}", "S" },
-                        { "{saveModifier}", "Alt" },
-                        { "{saveTooltip}", "ALT-S to save the race" },
-                        { "{saveAsName}", "SaveAs_1" },
-                        { "{saveAsHeader}", "Save As..." },
-                        { "{saveAsKey}", "A" },
-                        { "{saveAsModifier}", "Alt" },
-                        { "{saveAsTooltip}", "ALT-a to save the race with the specified file name" },
-                        { "{exportName}", "Export_1" },
-                        { "{exportHeader}", "Export Race" },
-                        { "{exportKey}", "X" },
-                        { "{exportModifier}", "Alt" },
-                        { "{exportTooltip}", "Alt-X to export current race progress" }
-                    }
+                        "<!-- File Menu: Standard file operations -->\n" +
+                        "<MenuItem Header=\"File\">\n" +
+                        "    <MenuItem Name=\"Save_1\" Header=\"Save\" DataContext=\"'key':'S','modifier':'Alt'\" ToolTip=\"ALT-S to save the race\" />\n" +
+                        "    <MenuItem Name=\"SaveAs_1\" Header=\"Save As...\" DataContext=\"'key':'A','modifier':'Alt'\" ToolTip=\"ALT-A to save the race with the specified file name\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem Name=\"Export_1\" Header=\"Export Race\" DataContext=\"'key':'X','modifier':'Alt'\" ToolTip=\"ALT-X to export current race progress\" />\n" +
+                        "</MenuItem>"
+                },
+
+                // Race Director Menu: Race control operations
+                new LayoutSnippet
+                {
+                    Name = "Race Director Menu",
+                    Description = "Race control menu with start, pause, heat management options.",
+                    Category = "Menus",
+                    XamlTemplate =
+                        "<!-- Race Director Menu: Race control operations -->\n" +
+                        "<MenuItem Header=\"Race Director\">\n" +
+                        "    <MenuItem Name=\"Start_1\" Header=\"Start/Resume Heat\" DataContext=\"'key':'S','modifier':'Control'\" ToolTip=\"CTRL-S to start or restart the heat\" />\n" +
+                        "    <MenuItem Name=\"Pause_1\" Header=\"Pause Heat\" DataContext=\"'key':'P','modifier':'Control'\" ToolTip=\"CTRL-P to pause the heat\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem Name=\"AddLaps_1\" Header=\"Add Laps/Sections\" DataContext=\"'key':'A','modifier':'Control'\" ToolTip=\"CTRL-A to add laps/sections\" />\n" +
+                        "    <MenuItem Name=\"NextHeat_1\" Header=\"Next Heat\" DataContext=\"'key':'N','modifier':'Control'\" ToolTip=\"CTRL-N to advance to the next heat\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem Name=\"RestartHeat_1\" Header=\"Restart Heat\" DataContext=\"'key':'R','modifier':'Control'\" ToolTip=\"CTRL-R to restart the current heat\" />\n" +
+                        "    <MenuItem Name=\"DeferHeat_1\" Header=\"Defer Heat\" DataContext=\"'key':'D','modifier':'Control'\" ToolTip=\"CTRL-D to defer this heat until the end of the race\" />\n" +
+                        "    <MenuItem Name=\"SkipHeat_1\" Header=\"Skip Heat\" DataContext=\"'key':'F5','modifier':'Alt'\" ToolTip=\"ALT-F5 to skip the remainder of this heat\" />\n" +
+                        "    <MenuItem Name=\"SkipRace_1\" Header=\"Skip Race\" DataContext=\"'key':'F4','modifier':'Alt'\" ToolTip=\"ALT-F4 to end this race\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem Name=\"ModifyHeats_1\" Header=\"Modify Heats\" DataContext=\"'key':'H','modifier':'Control'\" ToolTip=\"CTRL-H to modify heat rotations\" />\n" +
+                        "    <MenuItem Name=\"LapEditor_1\" Header=\"Edit Laps\" DataContext=\"'key':'E','modifier':'Control'\" ToolTip=\"CTRL-E to modify lap records\" />\n" +
+                        "</MenuItem>"
+                },
+
+                // Track Power Menu: Power control operations
+                new LayoutSnippet
+                {
+                    Name = "Track Power Menu",
+                    Description = "Track power control menu for master and lane power management.",
+                    Category = "Menus", 
+                    XamlTemplate =
+                        "<!-- Track Power Menu: Power control operations -->\n" +
+                        "<MenuItem Header=\"Track Power\">\n" +
+                        "    <MenuItem CommandParameter=\"0\" Name=\"PowerOn_1\" Header=\"Master Power On\" DataContext=\"'key':'0','modifier':'Control'\" ToolTip=\"CTRL-0 to force master power on\" />\n" +
+                        "    <MenuItem CommandParameter=\"0\" Name=\"PowerOff_1\" Header=\"Master Power Off\" DataContext=\"'key':'0','modifier':'Alt'\" ToolTip=\"ALT-0 to force master power off\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem CommandParameter=\"1\" Name=\"PowerOn_2\" Header=\"Lane 1 Power On\" DataContext=\"'key':'1','modifier':'Control'\" ToolTip=\"CTRL-1 to force lane 1 power on\" />\n" +
+                        "    <MenuItem CommandParameter=\"1\" Name=\"PowerOff_2\" Header=\"Lane 1 Power Off\" DataContext=\"'key':'1','modifier':'Alt'\" ToolTip=\"ALT-1 to force lane 1 power off\" />\n" +
+                        "</MenuItem>"
+                },
+
+                // Windows Menu: Window display operations
+                new LayoutSnippet
+                {
+                    Name = "Windows Menu",
+                    Description = "Windows menu for displaying various race information windows.",
+                    Category = "Menus",
+                    XamlTemplate =
+                        "<!-- Windows Menu: Window display operations -->\n" +
+                        "<MenuItem Header=\"Windows\">\n" +
+                        "    <MenuItem Name=\"Window_1\" Header=\"Leader Board\" CommandParameter=\"data/xaml/LeaderBoard.xaml\" DataContext=\"'key':'F1'\" ToolTip=\"F1 to display the Leader Board\" />\n" +
+                        "    <MenuItem Name=\"Window_2\" Header=\"Top 5\" CommandParameter=\"data/xaml/Top5.xaml\" DataContext=\"'key':'F1','modifier':'Control'\" ToolTip=\"CTRL-F1 to display the Top 5 Leader Board\" />\n" +
+                        "    <MenuItem Name=\"Window_3\" Header=\"Group Leader Board\" CommandParameter=\"data/xaml/GroupLeaderBoard.xaml\" DataContext=\"'key':'F3'\" ToolTip=\"F3 to display the Group Leader Board\" />\n" +
+                        "    <MenuItem Name=\"Window_4\" Header=\"Heat Results\" CommandParameter=\"data/xaml/HeatResults.xaml\" DataContext=\"'key':'F4'\" ToolTip=\"F4 to display the Heat Results window\" />\n" +
+                        "    <MenuItem Name=\"Window_5\" Header=\"Race Results\" CommandParameter=\"data/xaml/RaceResults.xaml\" DataContext=\"'key':'F5'\" ToolTip=\"F5 to display the Race Results window\" />\n" +
+                        "    <MenuItem Name=\"Window_6\" Header=\"Segment Times\" CommandParameter=\"data/xaml/SegmentTimeOnlyView_1L.xaml\" DataContext=\"'key':'F6','modifier':'Control'\" ToolTip=\"CTRL-F6 to display the Segment Timing window\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem Name=\"Window_7\" Header=\"Season Race Leader Board\" CommandParameter=\"data/xaml/SeasonRaceLeaderBoard.xaml\" DataContext=\"'key':'F1','modifier':'Alt'\" ToolTip=\"ALT-F1 to display the Season Race Leader Board\" />\n" +
+                        "    <MenuItem Name=\"Window_8\" Header=\"Season Leader Board\" CommandParameter=\"data/xaml/SeasonLeaderBoard.xaml\" ToolTip=\"Display the Season Leader Board\" />\n" +
+                        "    <Separator/>\n" +
+                        "    <MenuItem Name=\"Window_9\" Header=\"On Deck\" CommandParameter=\"data/xaml/OnDeck_1L.xaml\" DataContext=\"'key':'F6'\" ToolTip=\"F6 to display the On Deck window\" />\n" +
+                        "    <MenuItem Name=\"ViewHeats_1\" Header=\"Heat List\" DataContext=\"'key':'F7'\" ToolTip=\"F7 to display heat rotations\" />\n" +
+                        "    <MenuItem Name=\"Window_10\" Header=\"Next Heat\" CommandParameter=\"data/xaml/NextHeat_1L.xaml\" DataContext=\"'key':'F8'\" ToolTip=\"F8 to display all drivers in the next heat\" />\n" +
+                        "</MenuItem>"
                 },
                 // Upper DockPanel: Container for top-of-screen race info
                 new LayoutSnippet
@@ -351,20 +361,41 @@ namespace RCLayoutPreview.Helpers
                 new LayoutSnippet
                 {
                     Name = "Lower DockPanel",
-                    Description = "Simplified layout for bottom-of-screen race table.",
+                    Description = "Single lane layout for bottom-of-screen race table.",
                     Category = "Layout Shells",
-                    XamlTemplate = LowerDockPanelTemplate,
+                    XamlTemplate =
+                        "<!-- Single Lane Lower DockPanel: Clean layout for bottom-of-screen race table -->\n" +
+                        "<DockPanel Margin=\"0,222,0,0\" Name=\"dockPanel2\">\n" +
+                        "    <Grid>\n" +
+                        "        <!-- Column headers -->\n" +
+                        "        <Grid.RowDefinitions>\n" +
+                        "            <RowDefinition Height=\"40\"/> <!-- Headers -->\n" +
+                        "            <RowDefinition Height=\"Auto\"/> <!-- Lane 1 -->\n" +
+                        "        </Grid.RowDefinitions>\n" +
+                        "        <Grid.ColumnDefinitions>\n" +
+                        "            <ColumnDefinition Width=\"200\" /> <!-- Name -->\n" +
+                        "            <ColumnDefinition Width=\"100\" /> <!-- Lap -->\n" +
+                        "            <ColumnDefinition Width=\"150\" /> <!-- Lap Time -->\n" +
+                        "            <ColumnDefinition Width=\"150\" /> <!-- Median -->\n" +
+                        "            <ColumnDefinition Width=\"150\" /> <!-- Best -->\n" +
+                        "        </Grid.ColumnDefinitions>\n\n" +
+                        "        <!-- Column Labels -->\n" +
+                        "        <Label Grid.Row=\"0\" Grid.Column=\"0\" Content=\"Name\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"0\" Grid.Column=\"1\" Content=\"Lap\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"0\" Grid.Column=\"2\" Content=\"Lap Time\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n\n" +
+                        "        <!-- Lane 1 -->\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "    </Grid>\n" +
+                        "</DockPanel>",
                     RequiredFields = new List<string> { 
                         "Nickname_Lane1_2", "Lap_Lane1_2", "LapTime_Lane1_2", 
                         "MedianTime_Lane1_2", "BestLapTime_Lane1_2"
-                    },
-                    Placeholders = new Dictionary<string, string>
-                    {
-                        { "Placeholder1", "Nickname_Lane1_2 (racer name)" },
-                        { "Placeholder2", "Lap_Lane1_2 (lap count)" },
-                        { "Placeholder3", "LapTime_Lane1_2 (current lap)" },
-                        { "Placeholder4", "MedianTime_Lane1_2 (median time)" },
-                        { "Placeholder5", "BestLapTime_Lane1_2 (best time)" }
                     }
                 },
 
@@ -501,40 +532,7 @@ namespace RCLayoutPreview.Helpers
                         { "Placeholder1", "LapTime_{0}_1 (lap time)" }
                     }
                 },
-               new LayoutSnippet
-                {
-                    Name = "Lower DockPanel",
-                    Description = "Simplified layout for bottom-of-screen race table — 1 lane example.",
-                    Category = "Layout Shells",
-                    XamlTemplate =
-                        "<DockPanel Margin=\"0,222,0,0\" Name=\"dockPanel2\" Background=\"Transparent\">\n" +
-                        "  <Grid>\n" +
-                        "    <Grid.RowDefinitions>\n" +
-                        "      <RowDefinition Height=\"50\" />\n" +
-                        "      <RowDefinition Height=\"100\" />\n" +
-                        "    </Grid.RowDefinitions>\n" +
-                        "    <Grid.ColumnDefinitions>\n" +
-                        "      <ColumnDefinition Width=\"200\" />\n" +
-                        "      <ColumnDefinition Width=\"100\" />\n" +
-                        "      <ColumnDefinition Width=\"150\" />\n" +
-                        "      <ColumnDefinition Width=\"150\" />\n" +
-                        "      <ColumnDefinition Width=\"150\" />\n" +
-                        "    </Grid.ColumnDefinitions>\n\n" +
-                        "    <!-- Header labels -->\n" +
-                        "    <Label Grid.Row=\"0\" Grid.Column=\"0\" Content=\"Name\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-                        "    <Label Grid.Row=\"0\" Grid.Column=\"1\" Content=\"Lap\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-                        "    <Label Grid.Row=\"0\" Grid.Column=\"2\" Content=\"Lap Time\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-                        "    <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n" +
-                        "    <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" HorizontalContentAlignment=\"Center\" FontWeight=\"Bold\" />\n\n" +
-                        "    <!-- Lane 1 data row -->\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Placeholder1\" Content=\"Racer 1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Placeholder2\" Content=\"0\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"Placeholder3\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"Placeholder4\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "    <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"Placeholder5\" Content=\"00:00.000\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "  </Grid>\n" +
-                        "</DockPanel>"
-                },
+          
                 // Scaffolding: Full window scaffolding with updated menu, header, and racer layout
                 new LayoutSnippet
                 {
@@ -745,6 +743,15 @@ namespace RCLayoutPreview.Helpers
             else
             {
                 xaml = xaml.Replace("{styles}", "");
+            }
+
+            // CRITICAL FIX: Process all placeholders from the Placeholders dictionary
+            if (snippet.Placeholders != null && snippet.Placeholders.Count > 0)
+            {
+                foreach (var placeholder in snippet.Placeholders)
+                {
+                    xaml = xaml.Replace(placeholder.Key, placeholder.Value);
+                }
             }
 
             return xaml;
