@@ -22,7 +22,7 @@ namespace RCLayoutPreview
 {
     /// <summary>
     /// Simple RelayCommand implementation for keyboard shortcuts
-    /// </summary>
+    /// /// </summary>
     public class RelayCommand : ICommand
     {
         private readonly Action _execute;
@@ -65,6 +65,11 @@ namespace RCLayoutPreview
         private List<string> allCompletions;
         private FoldingManager foldingManager;
         private XmlFoldingStrategy foldingStrategy;
+
+        // Error navigation tracking
+        private int lastErrorPosition = -1;
+        private string lastErrorMessage = "";
+        private string lastErrorContext = "";
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -161,6 +166,11 @@ namespace RCLayoutPreview
             InputBindings.Add(new KeyBinding(
                 new RelayCommand(() => PreviewButton_Click(null, null)),
                 new KeyGesture(Key.F5)));
+                
+            // New shortcuts for error navigation
+            InputBindings.Add(new KeyBinding(
+                new RelayCommand(() => GoToLastError_Click(null, null)),
+                new KeyGesture(Key.F8)));
 
             // Handle Replace command
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Replace, Replace_Executed));
@@ -370,10 +380,13 @@ namespace RCLayoutPreview
                     // If we're editing, update immediately rather than waiting for the timer
                     if (autoUpdateEnabled)
                     {
-                        if (XamlValidationHelper.IsValidXml(content, out _))
+                        // Use enhanced validation for better error reporting
+                        var element = XamlValidationHelper.ParseXamlWithPosition(content, out string error, out int errorPosition);
+                        if (element != null)
                         {
                             XamlContentChanged?.Invoke(this, content);
                         }
+                        // Don't show errors here as this is called frequently during typing
                     }
                 }
             }
@@ -394,14 +407,33 @@ namespace RCLayoutPreview
                 string currentContent = Editor.Text;
                 if (!string.IsNullOrWhiteSpace(currentContent))
                 {
-                    if (XamlValidationHelper.IsValidXml(currentContent, out string error))
+                    // Use enhanced validation with position information
+                    var element = XamlValidationHelper.ParseXamlWithPosition(currentContent, out string error, out int errorPosition);
+                    if (element != null)
                     {
                         XamlContentChanged?.Invoke(this, currentContent);
                         UpdateStatus("Preview updated");
                     }
                     else
                     {
-                        UpdateStatus($"Invalid XAML: {error}");
+                        // Show enhanced error with position
+                        string enhancedError = XamlValidationHelper.CreateEnhancedErrorMessage(error, currentContent, errorPosition);
+                        UpdateStatus($"Invalid XAML: {enhancedError}");
+                        
+                        // Optionally navigate to error position during auto-preview (less intrusive)
+                        if (errorPosition >= 0)
+                        {
+                            try
+                            {
+                                var location = Editor.Document.GetLocation(errorPosition);
+                                // Just show the position in status, don't navigate automatically during auto-preview
+                                UpdateStatus($"Invalid XAML at Line {location.Line}, Column {location.Column}: {enhancedError}");
+                            }
+                            catch
+                            {
+                                UpdateStatus($"Invalid XAML: {enhancedError}");
+                            }
+                        }
                     }
                 }
             }
@@ -896,14 +928,27 @@ namespace RCLayoutPreview
             string currentContent = Editor.Text;
             if (!string.IsNullOrWhiteSpace(currentContent))
             {
-                if (XamlValidationHelper.IsValidXml(currentContent, out string error))
+                // Use enhanced validation with position information
+                var element = XamlValidationHelper.ParseXamlWithPosition(currentContent, out string error, out int errorPosition);
+                if (element != null)
                 {
                     XamlContentChanged?.Invoke(this, currentContent);
                     UpdateStatus("Preview refreshed manually");
                 }
                 else
                 {
-                    UpdateStatus($"Invalid XAML: {error}");
+                    // Show enhanced error and navigate to position for manual refresh
+                    string enhancedError = XamlValidationHelper.CreateEnhancedErrorMessage(error, currentContent, errorPosition);
+                    string context = XamlValidationHelper.GetErrorContext(currentContent, errorPosition);
+                    
+                    if (errorPosition >= 0)
+                    {
+                        NavigateToPosition(errorPosition, enhancedError, context);
+                    }
+                    else
+                    {
+                        ShowParsingError(enhancedError, context);
+                    }
                 }
             }
         }
@@ -1407,6 +1452,141 @@ namespace RCLayoutPreview
             };
 
             dialog.ShowDialog();
+        }
+
+        /// <summary>
+        /// Navigates to a specific position in the editor and shows error information
+        /// /// </summary>
+        /// <param name="position">Character position to navigate to</param>
+        /// <param name="errorMessage">Error message to display</param>
+        /// <param name="context">Error context to display</param>
+        public void NavigateToPosition(int position, string errorMessage, string context)
+        {
+            try
+            {
+                // Store error information for "Go to Last Error" functionality
+                lastErrorPosition = position;
+                lastErrorMessage = errorMessage;
+                lastErrorContext = context;
+
+                // Ensure position is within bounds
+                position = Math.Max(0, Math.Min(position, Editor.Document.TextLength - 1));
+
+                // Get line and column from position
+                var location = Editor.Document.GetLocation(position);
+                
+                // Navigate to the position
+                Editor.CaretOffset = position;
+                Editor.ScrollToLine(location.Line);
+                
+                // Select a small area around the error to highlight it
+                int selectionStart = Math.Max(0, position - 10);
+                int selectionEnd = Math.Min(Editor.Document.TextLength, position + 10);
+                Editor.Select(selectionStart, selectionEnd - selectionStart);
+
+                // Show error information
+                string positionInfo = $"Line {location.Line}, Column {location.Column}";
+                string fullMessage = $"XAML Parsing Error at {positionInfo}:\n{errorMessage}";
+                
+                if (!string.IsNullOrEmpty(context))
+                {
+                    fullMessage += $"\n\nContext: {context}";
+                }
+
+                UpdateStatus(fullMessage, true);
+
+                // Also show a message box for immediate attention
+                MessageBox.Show(fullMessage, "XAML Parsing Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // Focus the editor
+                Editor.Focus();
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error navigating to position {position}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Shows a parsing error when position mapping is not available
+        /// /// </summary>
+        /// <param name="errorMessage">Error message</param>
+        /// <param name="context">Error context</param>
+        public void ShowParsingError(string errorMessage, string context)
+        {
+            // Store error information even when position is unknown
+            lastErrorPosition = -1;
+            lastErrorMessage = errorMessage;
+            lastErrorContext = context;
+
+            string fullMessage = $"XAML Parsing Error:\n{errorMessage}";
+            
+            if (!string.IsNullOrEmpty(context))
+            {
+                fullMessage += $"\n\nContext: {context}";
+            }
+
+            UpdateStatus(fullMessage, true);
+
+            // Show message box
+            MessageBox.Show(fullMessage, "XAML Parsing Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        /// <summary>
+        /// Navigates to the last known error position
+        /// /// </summary>
+        private void GoToLastError_Click(object sender, RoutedEventArgs e)
+        {
+            if (lastErrorPosition >= 0 && lastErrorPosition < Editor.Document.TextLength)
+            {
+                try
+                {
+                    var location = Editor.Document.GetLocation(lastErrorPosition);
+                    
+                    // Navigate to the position
+                    Editor.CaretOffset = lastErrorPosition;
+                    Editor.ScrollToLine(location.Line);
+                    
+                    // Select a small area around the error
+                    int selectionStart = Math.Max(0, lastErrorPosition - 10);
+                    int selectionEnd = Math.Min(Editor.Document.TextLength, lastErrorPosition + 10);
+                    Editor.Select(selectionStart, selectionEnd - selectionStart);
+
+                    // Show error information
+                    string positionInfo = $"Line {location.Line}, Column {location.Column}";
+                    string message = $"Last Error Location: {positionInfo}";
+                    if (!string.IsNullOrEmpty(lastErrorMessage))
+                    {
+                        message += $"\nError: {lastErrorMessage}";
+                    }
+                    if (!string.IsNullOrEmpty(lastErrorContext))
+                    {
+                        message += $"\nContext: {lastErrorContext}";
+                    }
+
+                    UpdateStatus(message);
+                    Editor.Focus();
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatus($"Error navigating to last error: {ex.Message}");
+                }
+            }
+            else if (!string.IsNullOrEmpty(lastErrorMessage))
+            {
+                // Show last error message even if position is not available
+                UpdateStatus($"Last Error: {lastErrorMessage}");
+                MessageBox.Show($"Last Error:\n{lastErrorMessage}\n\n{lastErrorContext}", 
+                    "Last XAML Error", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                UpdateStatus("No recent errors to navigate to.");
+                MessageBox.Show("No recent XAML parsing errors found.", 
+                    "Go to Last Error", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
     }
 }

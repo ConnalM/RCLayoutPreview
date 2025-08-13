@@ -116,6 +116,12 @@
                 <MenuItem Name="Replace_1" Header="Find and Replace..." 
                           InputGestureText="Ctrl+H"
                           ToolTip="Find and replace text in the editor" />
+                          
+                <Separator/>
+                
+                <MenuItem Name="GoToError_1" Header="Go to Last Error" Click="GoToLastError_Click"
+                          InputGestureText="F8"
+                          ToolTip="Navigate to the last XAML parsing error location" />
             </MenuItem>
             
             <MenuItem Header="View">

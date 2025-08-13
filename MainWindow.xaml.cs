@@ -302,7 +302,7 @@ namespace RCLayoutPreview
 
         private object ParseXamlContent(string processedXaml)
         {
-            var element = XamlValidationHelper.ParseXaml(processedXaml, out string error);
+            var element = XamlValidationHelper.ParseXamlWithPosition(processedXaml, out string error, out int errorPosition);
             if (element != null)
             {
                 UpdateStatus("XAML parsed successfully");
@@ -310,8 +310,22 @@ namespace RCLayoutPreview
             }
             else
             {
-                UpdateStatus($"XAML parsing failed: {error}");
-                throw new XamlParseException($"Failed to parse XAML: {error}");
+                // Create enhanced error message with correct position
+                string enhancedError = XamlValidationHelper.CreateEnhancedErrorMessage(error, processedXaml, errorPosition);
+                
+                // Get context around the error
+                string context = XamlValidationHelper.GetErrorContext(processedXaml, errorPosition);
+                
+                UpdateStatus($"XAML parsing failed: {enhancedError}");
+                
+                // Navigate to error in editor if possible
+                if (editorWindow != null && errorPosition >= 0)
+                {
+                    // Map the error position back to the original editor content
+                    NavigateToErrorInEditor(editorWindow.Editor.Text, processedXaml, errorPosition, enhancedError, context);
+                }
+                
+                throw new XamlParseException($"Failed to parse XAML: {enhancedError}");
             }
         }
 
@@ -1260,6 +1274,103 @@ namespace RCLayoutPreview
             {
                 UpdateStatus($"[DEBUG] Error reloading ThemeDictionary: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Navigates to the error location in the editor and shows detailed error information
+        /// </summary>
+        /// <param name="originalXaml">Original XAML content from editor</param>
+        /// <param name="processedXaml">Processed XAML that was parsed</param>
+        /// <param name="errorPosition">Error position in processed XAML</param>
+        /// <param name="errorMessage">Enhanced error message</param>
+        /// <param name="context">Error context string</param>
+        private void NavigateToErrorInEditor(string originalXaml, string processedXaml, int errorPosition, string errorMessage, string context)
+        {
+            try
+            {
+                // Try to map the error position from processed XAML back to original XAML
+                int originalPosition = MapErrorPositionToOriginal(originalXaml, processedXaml, errorPosition);
+                
+                if (originalPosition >= 0)
+                {
+                    // Navigate to the error position in the editor
+                    editorWindow.NavigateToPosition(originalPosition, errorMessage, context);
+                }
+                else
+                {
+                    // If we can't map the position, show a general error
+                    editorWindow.ShowParsingError(errorMessage, context);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error navigating to error position: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Attempts to map an error position from processed XAML back to the original XAML
+        /// </summary>
+        /// <param name="originalXaml">Original XAML from editor</param>
+        /// <param name="processedXaml">Processed XAML that was parsed</param>
+        /// <param name="errorPosition">Position in processed XAML</param>
+        /// <returns>Corresponding position in original XAML or -1 if not found</returns>
+        private int MapErrorPositionToOriginal(string originalXaml, string processedXaml, int errorPosition)
+        {
+            // Simple mapping: if the processed XAML is very similar to original, use direct mapping
+            if (Math.Abs(originalXaml.Length - processedXaml.Length) < 100) // Allow some difference
+            {
+                return Math.Min(errorPosition, originalXaml.Length - 1);
+            }
+
+            // Try to find a context around the error position in processed XAML
+            // and locate it in the original XAML
+            const int contextSize = 20;
+            if (errorPosition >= contextSize && errorPosition + contextSize < processedXaml.Length)
+            {
+                // Get context before error
+                string beforeContext = processedXaml.Substring(errorPosition - contextSize, contextSize);
+                
+                // Find this context in original XAML
+                int contextIndex = originalXaml.IndexOf(beforeContext);
+                if (contextIndex >= 0)
+                {
+                    return contextIndex + contextSize; // Position after the context
+                }
+            }
+
+            // Try with a smaller context
+            const int smallContextSize = 10;
+            if (errorPosition >= smallContextSize && errorPosition + smallContextSize < processedXaml.Length)
+            {
+                string beforeContext = processedXaml.Substring(errorPosition - smallContextSize, smallContextSize);
+                int contextIndex = originalXaml.IndexOf(beforeContext);
+                if (contextIndex >= 0)
+                {
+                    return contextIndex + smallContextSize;
+                }
+            }
+
+            // If all else fails, try to find common patterns around the error
+            if (errorPosition > 0 && errorPosition < processedXaml.Length)
+            {
+                // Look for tag patterns around the error
+                var tagMatch = Regex.Match(processedXaml.Substring(Math.Max(0, errorPosition - 50), 
+                    Math.Min(100, processedXaml.Length - Math.Max(0, errorPosition - 50))), 
+                    @"<(\w+)[^>]*>");
+                    
+                if (tagMatch.Success)
+                {
+                    string tagPattern = tagMatch.Value;
+                    int tagIndex = originalXaml.IndexOf(tagPattern);
+                    if (tagIndex >= 0)
+                    {
+                        return tagIndex;
+                    }
+                }
+            }
+
+            return -1; // Couldn't map position
         }
     }
 }
