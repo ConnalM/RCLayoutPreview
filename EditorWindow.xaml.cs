@@ -128,6 +128,9 @@ namespace RCLayoutPreview
             
             // Initialize Recent Files menu
             PopulateRecentFilesMenu();
+            
+            // Initialize error button state
+            UpdateErrorButtonState();
         }
 
         /// <summary>
@@ -413,29 +416,131 @@ namespace RCLayoutPreview
                     {
                         XamlContentChanged?.Invoke(this, currentContent);
                         UpdateStatus("Preview updated");
+                        
+                        // Clear any previous error information on successful parsing
+                        ClearErrorState();
                     }
                     else
                     {
                         // Show enhanced error with position
                         string enhancedError = XamlValidationHelper.CreateEnhancedErrorMessage(error, currentContent, errorPosition);
-                        UpdateStatus($"Invalid XAML: {enhancedError}");
+                        string context = XamlValidationHelper.GetErrorContext(currentContent, errorPosition);
                         
-                        // Optionally navigate to error position during auto-preview (less intrusive)
+                        // Store error information for later navigation
+                        StoreErrorInformation(errorPosition, enhancedError, context);
+                        
                         if (errorPosition >= 0)
                         {
                             try
                             {
                                 var location = Editor.Document.GetLocation(errorPosition);
-                                // Just show the position in status, don't navigate automatically during auto-preview
-                                UpdateStatus($"Invalid XAML at Line {location.Line}, Column {location.Column}: {enhancedError}");
+                                // Show the error in status with line/column information
+                                string statusMessage = $"XAML Error at Line {location.Line}, Column {location.Column}: {enhancedError}";
+                                UpdateStatus(statusMessage, true);
+                                
+                                // Also show in preview window's error popup (less intrusive than message box)
+                                if (previewWindow != null)
+                                {
+                                    previewWindow.ShowErrorPopup($"XAML Error at Line {location.Line}, Column {location.Column}:\n{enhancedError}\n\nPress F8 to navigate to error location.");
+                                }
                             }
                             catch
                             {
-                                UpdateStatus($"Invalid XAML: {enhancedError}");
+                                UpdateStatus($"Invalid XAML: {enhancedError}", true);
+                                
+                                // Show in preview window's error popup
+                                if (previewWindow != null)
+                                {
+                                    previewWindow.ShowErrorPopup($"XAML Parsing Error:\n{enhancedError}\n\nPress F8 in editor to see more details.");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            UpdateStatus($"Invalid XAML: {enhancedError}", true);
+                            
+                            // Show in preview window's error popup
+                            if (previewWindow != null)
+                            {
+                                previewWindow.ShowErrorPopup($"XAML Parsing Error:\n{enhancedError}");
                             }
                         }
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Stores error information for later navigation without showing intrusive dialogs
+        /// /// </summary>
+        private void StoreErrorInformation(int errorPosition, string errorMessage, string context)
+        {
+            lastErrorPosition = errorPosition;
+            lastErrorMessage = errorMessage;
+            lastErrorContext = context;
+            
+            // Update the error button state
+            UpdateErrorButtonState();
+        }
+
+        /// <summary>
+        /// Clears error state when XAML parsing succeeds
+        /// /// </summary>
+        private void ClearErrorState()
+        {
+            // Don't clear the error information immediately, in case user wants to navigate to last error
+            // lastErrorPosition = -1;
+            // lastErrorMessage = "";
+            // lastErrorContext = "";
+            
+            // Update the error button state
+            UpdateErrorButtonState();
+        }
+
+        /// <summary>
+        /// Checks if there's a stored error position that can be navigated to
+        /// </summary>
+        /// <returns>True if there's an error that can be navigated to</returns>
+        public bool HasErrorToNavigate()
+        {
+            return lastErrorPosition >= 0 || !string.IsNullOrEmpty(lastErrorMessage);
+        }
+
+        /// <summary>
+        /// Updates the visual state of the error button based on available error information
+        /// /// </summary>
+        private void UpdateErrorButtonState()
+        {
+            try
+            {
+                var errorButton = FindName("GoToErrorButton") as Button;
+                if (errorButton != null)
+                {
+                    bool hasError = HasErrorToNavigate();
+                    if (hasError)
+                    {
+                        errorButton.IsEnabled = true;
+                        errorButton.Opacity = 1.0;
+                        if (lastErrorPosition >= 0)
+                        {
+                            errorButton.ToolTip = $"Go to Last Error - Line {Editor.Document.GetLocation(lastErrorPosition).Line} (F8)";
+                        }
+                        else
+                        {
+                            errorButton.ToolTip = "Show Last Error (F8)";
+                        }
+                    }
+                    else
+                    {
+                        errorButton.IsEnabled = false;
+                        errorButton.Opacity = 0.5;
+                        errorButton.ToolTip = "No recent errors (F8)";
+                    }
+                }
+            }
+            catch
+            {
+                // Error button state update is optional, don't crash if it fails
             }
         }
 
@@ -934,6 +1039,9 @@ namespace RCLayoutPreview
                 {
                     XamlContentChanged?.Invoke(this, currentContent);
                     UpdateStatus("Preview refreshed manually");
+                    
+                    // Clear any previous error information on successful parsing
+                    ClearErrorState();
                 }
                 else
                 {
@@ -941,15 +1049,31 @@ namespace RCLayoutPreview
                     string enhancedError = XamlValidationHelper.CreateEnhancedErrorMessage(error, currentContent, errorPosition);
                     string context = XamlValidationHelper.GetErrorContext(currentContent, errorPosition);
                     
+                    // Store error information
+                    StoreErrorInformation(errorPosition, enhancedError, context);
+                    
                     if (errorPosition >= 0)
                     {
+                        // For manual refresh, show detailed error with navigation
                         NavigateToPosition(errorPosition, enhancedError, context);
                     }
                     else
                     {
+                        // Show error without navigation
                         ShowParsingError(enhancedError, context);
                     }
+                    
+                    // Also show in preview window's error popup
+                    if (previewWindow != null)
+                    {
+                        var location = Editor.Document.GetLocation(Math.Max(0, errorPosition));
+                        previewWindow.ShowErrorPopup($"XAML Error at Line {location.Line}, Column {location.Column}:\n{enhancedError}");
+                    }
                 }
+            }
+            else
+            {
+                UpdateStatus("Cannot preview: Editor content is empty.");
             }
         }
 
@@ -1469,6 +1593,11 @@ namespace RCLayoutPreview
                 lastErrorMessage = errorMessage;
                 lastErrorContext = context;
 
+                // Focus the editor window first
+                this.Activate();
+                this.Focus();
+                Editor.Focus();
+
                 // Ensure position is within bounds
                 position = Math.Max(0, Math.Min(position, Editor.Document.TextLength - 1));
 
@@ -1479,28 +1608,24 @@ namespace RCLayoutPreview
                 Editor.CaretOffset = position;
                 Editor.ScrollToLine(location.Line);
                 
-                // Select a small area around the error to highlight it
-                int selectionStart = Math.Max(0, position - 10);
-                int selectionEnd = Math.Min(Editor.Document.TextLength, position + 10);
+                // Select a wider area around the error to make it more visible
+                int selectionStart = Math.Max(0, position - 15);
+                int selectionEnd = Math.Min(Editor.Document.TextLength, position + 30);
                 Editor.Select(selectionStart, selectionEnd - selectionStart);
 
-                // Show error information
+                // Show error information in status
                 string positionInfo = $"Line {location.Line}, Column {location.Column}";
-                string fullMessage = $"XAML Parsing Error at {positionInfo}:\n{errorMessage}";
+                string statusMessage = $"Error at {positionInfo}: {errorMessage}";
+                UpdateStatus(statusMessage, true);
+
+                // Update error button state
+                UpdateErrorButtonState();
                 
-                if (!string.IsNullOrEmpty(context))
-                {
-                    fullMessage += $"\n\nContext: {context}";
-                }
+                // Flash the error area to draw attention
+                FlashErrorSelection();
 
-                UpdateStatus(fullMessage, true);
-
-                // Also show a message box for immediate attention
-                MessageBox.Show(fullMessage, "XAML Parsing Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-
-                // Focus the editor
-                Editor.Focus();
+                // Show a less intrusive message (no popup during auto-navigation)
+                
             }
             catch (Exception ex)
             {
@@ -1532,42 +1657,48 @@ namespace RCLayoutPreview
             // Show message box
             MessageBox.Show(fullMessage, "XAML Parsing Error", 
                 MessageBoxButton.OK, MessageBoxImage.Error);
+
+            // Update error button state
+            UpdateErrorButtonState();
         }
 
         /// <summary>
         /// Navigates to the last known error position
-        /// /// </summary>
+        /// </summary>
         private void GoToLastError_Click(object sender, RoutedEventArgs e)
         {
             if (lastErrorPosition >= 0 && lastErrorPosition < Editor.Document.TextLength)
             {
                 try
                 {
+                    // Focus the editor window first
+                    this.Activate();
+                    this.Focus();
+                    Editor.Focus();
+
                     var location = Editor.Document.GetLocation(lastErrorPosition);
                     
                     // Navigate to the position
                     Editor.CaretOffset = lastErrorPosition;
                     Editor.ScrollToLine(location.Line);
                     
-                    // Select a small area around the error
+                    // Select a wider area around the error to make it more visible
                     int selectionStart = Math.Max(0, lastErrorPosition - 10);
-                    int selectionEnd = Math.Min(Editor.Document.TextLength, lastErrorPosition + 10);
+                    int selectionEnd = Math.Min(Editor.Document.TextLength, lastErrorPosition + 25);
                     Editor.Select(selectionStart, selectionEnd - selectionStart);
 
-                    // Show error information
+                    // Show error information in status
                     string positionInfo = $"Line {location.Line}, Column {location.Column}";
-                    string message = $"Last Error Location: {positionInfo}";
+                    string message = $"Navigated to Error at {positionInfo}";
                     if (!string.IsNullOrEmpty(lastErrorMessage))
                     {
-                        message += $"\nError: {lastErrorMessage}";
-                    }
-                    if (!string.IsNullOrEmpty(lastErrorContext))
-                    {
-                        message += $"\nContext: {lastErrorContext}";
+                        message += $": {lastErrorMessage}";
                     }
 
                     UpdateStatus(message);
-                    Editor.Focus();
+                    
+                    // Flash the error area to draw attention
+                    FlashErrorSelection();
                 }
                 catch (Exception ex)
                 {
@@ -1576,6 +1707,9 @@ namespace RCLayoutPreview
             }
             else if (!string.IsNullOrEmpty(lastErrorMessage))
             {
+                // Focus the window for dialog display
+                this.Activate();
+                
                 // Show last error message even if position is not available
                 UpdateStatus($"Last Error: {lastErrorMessage}");
                 MessageBox.Show($"Last Error:\n{lastErrorMessage}\n\n{lastErrorContext}", 
@@ -1583,9 +1717,125 @@ namespace RCLayoutPreview
             }
             else
             {
+                // Focus the window for dialog display
+                this.Activate();
+                
                 UpdateStatus("No recent errors to navigate to.");
                 MessageBox.Show("No recent XAML parsing errors found.", 
                     "Go to Last Error", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        /// <summary>
+        /// Shows a naming pattern warning in the editor at a specific position
+        /// </summary>
+        /// <param name="position">Position of the naming issue</param>
+        /// <param name="warningMessage">Warning message to display</param>
+        public void ShowNamingWarning(int position, string warningMessage)
+        {
+            try
+            {
+                // Focus the editor window first
+                this.Activate();
+                this.Focus();
+                Editor.Focus();
+
+                // Ensure position is within bounds
+                position = Math.Max(0, Math.Min(position, Editor.Document.TextLength - 1));
+
+                // Get line and column from position
+                var location = Editor.Document.GetLocation(position);
+                
+                // Navigate to the position
+                Editor.CaretOffset = position;
+                Editor.ScrollToLine(location.Line);
+                
+                // Select the Name attribute to highlight the issue
+                int selectionStart = position;
+                int selectionEnd = Math.Min(Editor.Document.TextLength, position + 20); // Select Name="..." part
+                
+                // Try to find the end of the Name attribute
+                string text = Editor.Document.GetText(position, Math.Min(50, Editor.Document.TextLength - position));
+                var nameMatch = Regex.Match(text, @"Name\s*=\s*""[^""]*""");
+                if (nameMatch.Success)
+                {
+                    selectionEnd = position + nameMatch.Length;
+                }
+                
+                Editor.Select(selectionStart, selectionEnd - selectionStart);
+
+                // Show warning information in status with orange coloring
+                string positionInfo = $"Line {location.Line}, Column {location.Column}";
+                string statusMessage = $"Naming Warning at {positionInfo}: {warningMessage}";
+                UpdateStatus(statusMessage);
+                
+                // Create a subtle flash effect for warnings (different from error flash)
+                FlashWarningSelection();
+
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error showing naming warning at position {position}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a subtle visual flash effect for warning highlights (orange)
+        /// </summary>
+        private void FlashWarningSelection()
+        {
+            try
+            {
+                var originalBackground = Editor.TextArea.Background;
+                var flashBrush = new SolidColorBrush(Colors.Orange) { Opacity = 0.15 }; // Orange and more subtle
+                
+                // Flash effect - use orange to indicate warning (not error)
+                Editor.TextArea.Background = flashBrush;
+                
+                var timer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(500)  // Shorter flash for warnings
+                };
+                timer.Tick += (s, e) =>
+                {
+                    Editor.TextArea.Background = originalBackground;
+                    timer.Stop();
+                };
+                timer.Start();
+            }
+            catch
+            {
+                // Flash effect is optional, don't crash if it fails
+            }
+        }
+
+        /// <summary>
+        /// Creates a visual flash effect on the selected error area
+        /// </summary>
+        private void FlashErrorSelection()
+        {
+            try
+            {
+                var originalBackground = Editor.TextArea.Background;
+                var flashBrush = new SolidColorBrush(Colors.Red) { Opacity = 0.2 };
+                
+                // Flash effect - use red to make it more noticeable
+                Editor.TextArea.Background = flashBrush;
+                
+                var timer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(800)  // Longer flash duration
+                };
+                timer.Tick += (s, e) =>
+                {
+                    Editor.TextArea.Background = originalBackground;
+                    timer.Stop();
+                };
+                timer.Start();
+            }
+            catch
+            {
+                // Flash effect is optional, don't crash if it fails
             }
         }
     }

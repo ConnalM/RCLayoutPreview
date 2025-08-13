@@ -47,6 +47,12 @@
               Fill="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(TextElement.Foreground)}"
               Stretch="Uniform" Width="16" Height="16"/>
         
+        <!-- Error icon -->
+        <Path x:Key="ErrorIcon" 
+              Data="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2M12,7A2,2 0 0,0 10,9A2,2 0 0,0 12,11A2,2 0 0,0 14,9A2,2 0 0,0 12,7Z"
+              Fill="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(TextElement.Foreground)}"
+              Stretch="Uniform" Width="16" Height="16"/>
+        
         <!-- Clock History Icon for Recent Files -->
         <Path x:Key="HistoryIcon" 
               Data="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"
@@ -185,6 +191,12 @@
                         Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}" 
                         Padding="4" Margin="2,1">
                     <ContentPresenter Content="{StaticResource PreviewIcon}"/>
+                </Button>
+                
+                <Button x:Name="GoToErrorButton" Click="GoToLastError_Click" ToolTip="Go to Last Error (F8)" 
+                        Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}" 
+                        Padding="4" Margin="2,1">
+                    <ContentPresenter Content="{StaticResource ErrorIcon}"/>
                 </Button>
             </ToolBar>
         </ToolBarTray>
