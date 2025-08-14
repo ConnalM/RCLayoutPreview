@@ -78,13 +78,8 @@
                                 CornerRadius="3"
                                 MouseEnter="SnippetItem_MouseEnter"
                                 MouseLeave="SnippetItem_MouseLeave"
-                                MouseDown="SnippetItem_MouseDown"
-                                ToolTipService.ShowDuration="60000">
-                            <Border.ToolTip>
-                                <ScrollViewer MinWidth="400" MinHeight="200" MaxHeight="600" MaxWidth="900" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                                    <TextBlock Text="{Binding XamlTemplate}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
-                                </ScrollViewer>
-                            </Border.ToolTip>
+                                MouseDown="SnippetItem_MouseDown">
+                            <!-- Restored content that was accidentally removed -->
                             <Border.Effect>
                                 <DropShadowEffect Color="Gray" 
                                                 BlurRadius="5" 

@@ -9,6 +9,8 @@ using System.ComponentModel;
 using System.Windows.Data;
 using System.Collections.ObjectModel;
 using ICSharpCode.AvalonEdit;
+using System.Windows.Controls.Primitives;
+using System.Windows.Threading;
 
 namespace RCLayoutPreview.Controls
 {
@@ -24,6 +26,12 @@ namespace RCLayoutPreview.Controls
         private TextBox searchBox;
         private ItemsControl snippetsList;
         private TextEditor editor;
+        
+        // Interactive tooltip popup system
+        private Popup detailPopup;
+        private DispatcherTimer showTimer;
+        private DispatcherTimer hideTimer;
+        private FrameworkElement currentHoverElement;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -45,6 +53,9 @@ namespace RCLayoutPreview.Controls
         {
             InitializeComponent();
             
+            // Initialize interactive popup system
+            InitializeInteractiveTooltips();
+            
             // Initialize controls after XAML loading
             Loaded += (s, e) => {
                 searchBox = FindName("SearchBox") as TextBox;
@@ -62,6 +73,46 @@ namespace RCLayoutPreview.Controls
                 LoadSnippets();
                 DataContext = this;
             };
+            
+            // Cleanup when unloading
+            Unloaded += (s, e) => {
+                showTimer?.Stop();
+                hideTimer?.Stop();
+                if (detailPopup != null)
+                {
+                    detailPopup.IsOpen = false;
+                }
+            };
+        }
+
+        /// <summary>
+        /// Initializes the interactive tooltip system using Popup instead of ToolTip
+        /// </summary>
+        private void InitializeInteractiveTooltips()
+        {
+            // Create popup for interactive tooltips
+            detailPopup = new Popup
+            {
+                AllowsTransparency = true,
+                PopupAnimation = PopupAnimation.Fade,
+                Placement = PlacementMode.Right,
+                StaysOpen = true, // This is key - allows interaction
+                HorizontalOffset = 10,
+                VerticalOffset = -50
+            };
+            
+            // Create timers for showing/hiding
+            showTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(800) // Show after 800ms hover
+            };
+            showTimer.Tick += ShowTimer_Tick;
+            
+            hideTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500) // Hide after 500ms outside
+            };
+            hideTimer.Tick += HideTimer_Tick;
         }
 
         private void LoadSnippets()
@@ -108,12 +159,161 @@ namespace RCLayoutPreview.Controls
         private void SnippetItem_MouseEnter(object sender, MouseEventArgs e)
         {
             if (sender is FrameworkElement element)
+            {
                 Mouse.OverrideCursor = Cursors.Hand;
+                
+                // Start interactive tooltip system
+                currentHoverElement = element;
+                hideTimer.Stop();
+                showTimer.Start();
+            }
         }
 
         private void SnippetItem_MouseLeave(object sender, MouseEventArgs e)
         {
             Mouse.OverrideCursor = null;
+            
+            // Handle tooltip hiding with delay
+            showTimer.Stop();
+            if (detailPopup.IsOpen)
+            {
+                hideTimer.Start();
+            }
+        }
+
+        /// <summary>
+        /// Shows the interactive tooltip popup after hover delay
+        /// </summary>
+        private void ShowTimer_Tick(object sender, EventArgs e)
+        {
+            showTimer.Stop();
+            
+            if (currentHoverElement?.DataContext is LayoutSnippet snippet)
+            {
+                ShowInteractiveTooltip(snippet, currentHoverElement);
+            }
+        }
+
+        /// <summary>
+        /// Hides the interactive tooltip popup after leave delay
+        /// </summary>
+        private void HideTimer_Tick(object sender, EventArgs e)
+        {
+            hideTimer.Stop();
+            
+            // Check if mouse is over the popup itself
+            if (detailPopup.Child is FrameworkElement popupContent)
+            {
+                var mousePosition = Mouse.GetPosition(popupContent);
+                var bounds = new Rect(0, 0, popupContent.ActualWidth, popupContent.ActualHeight);
+                
+                if (!bounds.Contains(mousePosition))
+                {
+                    detailPopup.IsOpen = false;
+                }
+                else
+                {
+                    // Mouse is over popup, check again later
+                    hideTimer.Start();
+                }
+            }
+            else
+            {
+                detailPopup.IsOpen = false;
+            }
+        }
+
+        /// <summary>
+        /// Creates and shows an interactive tooltip popup with scrollable XAML content
+        /// </summary>
+        /// <param name="snippet">Layout snippet to show details for</param>
+        /// <param name="targetElement">Element to position popup relative to</param>
+        private void ShowInteractiveTooltip(LayoutSnippet snippet, FrameworkElement targetElement)
+        {
+            // Create the popup content
+            var border = new Border
+            {
+                Background = System.Windows.Media.Brushes.White,
+                BorderBrush = System.Windows.Media.Brushes.Gray,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = System.Windows.Media.Colors.Black,
+                    BlurRadius = 8,
+                    ShadowDepth = 2,
+                    Opacity = 0.3
+                }
+            };
+            
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            
+            // Header with snippet name
+            var nameBlock = new TextBlock
+            {
+                Text = snippet.Name,
+                FontWeight = FontWeights.Bold,
+                FontSize = 14,
+                Margin = new Thickness(0, 0, 0, 5)
+            };
+            Grid.SetRow(nameBlock, 0);
+            
+            // Description
+            var descBlock = new TextBlock
+            {
+                Text = snippet.Description,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = System.Windows.Media.Brushes.Gray,
+                FontSize = 12,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            Grid.SetRow(descBlock, 1);
+            
+            // Scrollable XAML content - THIS IS THE KEY IMPROVEMENT
+            var scrollViewer = new ScrollViewer
+            {
+                MinWidth = 400,
+                MinHeight = 200,
+                MaxHeight = 400,
+                MaxWidth = 800,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Background = System.Windows.Media.Brushes.White,
+                BorderBrush = System.Windows.Media.Brushes.LightGray,
+                BorderThickness = new Thickness(1)
+            };
+            
+            var xamlText = new TextBlock
+            {
+                Text = snippet.XamlTemplate,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 11,
+                TextWrapping = TextWrapping.NoWrap,
+                Padding = new Thickness(8),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(250, 250, 250))
+            };
+            
+            scrollViewer.Content = xamlText;
+            Grid.SetRow(scrollViewer, 2);
+            
+            grid.Children.Add(nameBlock);
+            grid.Children.Add(descBlock);
+            grid.Children.Add(scrollViewer);
+            border.Child = grid;
+            
+            // Set up popup properties
+            detailPopup.PlacementTarget = targetElement;
+            detailPopup.Child = border;
+            
+            // Handle mouse events on the popup to keep it open
+            border.MouseEnter += (s, e) => hideTimer.Stop();
+            border.MouseLeave += (s, e) => hideTimer.Start();
+            
+            detailPopup.IsOpen = true;
         }
 
         private void SnippetItem_MouseDown(object sender, MouseButtonEventArgs e)
