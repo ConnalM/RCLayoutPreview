@@ -63,12 +63,29 @@ namespace RCLayoutPreview.Helpers
             if (debugMode)
             {
                 string displayText = normalizedFieldName;
+                
+                // Show field names without yellow background - use original colors
                 if (element is TextBlock tb2)
+                {
                     tb2.Text = displayText;
+                    // Don't change background or foreground - keep original styling
+                    tb2.FontWeight = FontWeights.Bold;
+                }
                 else if (element is Label lbl)
+                {
                     lbl.Content = displayText;
+                    // Don't change background or foreground - keep original styling  
+                    lbl.FontWeight = FontWeights.Bold;
+                }
                 else if (element is ContentControl contentControl)
+                {
                     contentControl.Content = displayText;
+                    // Don't change background or foreground - keep original styling
+                }
+                
+                Debug.WriteLine($"[StubDataFieldHandler] DEBUG MODE: Set '{normalizedFieldName}' with original styling");
+                UILogStatus?.Invoke($"DEBUG MODE: Displaying field name '{normalizedFieldName}' with original styling");
+                
                 return; // Prevent further processing in diagnostics mode
             }
             else if (value != null && element is Image imageElement)

@@ -333,7 +333,7 @@ namespace RCLayoutPreview
                 if (editorWindow != null && errorPosition >= 0)
                 {
                     // Map the error position back to the original editor content
-                    NavigateToErrorInEditor(editorWindow.Editor.Text, processedXaml, errorPosition, enhancedError, context);
+                    NavigateToErrorInEditor(editorWindow.Editor.Text, errorPosition, enhancedError, context);
                 }
                 
                 throw new XamlParseException($"Failed to parse XAML: {enhancedError}");
@@ -688,6 +688,9 @@ namespace RCLayoutPreview
                 if (statusLabel != null)
                 {
                     statusLabel.Text = message;
+                    // Ensure status text is visible with high contrast colors
+                    statusLabel.Foreground = new SolidColorBrush(Colors.DarkBlue);
+                    statusLabel.FontWeight = FontWeights.Normal;
                 }
             }
             catch { }
@@ -740,7 +743,7 @@ namespace RCLayoutPreview
         private string FixBindingExpressions(string xaml) { return xaml; }
         private string RemoveEmptyNameAttributes(string xaml) { return xaml; }
         private bool IsValidRootElement(string xaml) { return true; }
-        private void NavigateToErrorInEditor(string originalXaml, string processedXaml, int errorPosition, string enhancedError, string context) { }
+        private void NavigateToErrorInEditor(string originalXaml, int errorPosition, string enhancedError, string context) { }
         private void ApplyWindowProperties(Window window) { PreviewHost.Content = window.Content; }
         private void SetupPreviewHost(object element) { PreviewHost.Content = element; }
         public void SaveWindowPlacementFromEditor() { }
@@ -751,11 +754,20 @@ namespace RCLayoutPreview
         private void DebugModeToggle_Changed(object sender, RoutedEventArgs e)
         {
             var debugMode = (sender as CheckBox)?.IsChecked == true;
-            UpdateStatus(debugMode ? "Debug mode enabled" : "Debug mode disabled");
+            UpdateStatus(debugMode ? "Field Names view enabled" : "Field Names view disabled");
             
             if (editorWindow != null)
             {
                 editorWindow.SetAutoUpdateEnabled(!debugMode);
+            }
+            
+            // CRITICAL FIX: Force preview refresh when Field Names toggle changes
+            // This ensures the current preview immediately shows field names or data based on the toggle
+            if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
+            {
+                // Reprocess the current preview with the new debug mode setting
+                ProcessFieldsAndPlaceholders(frameworkElement, jsonData, debugMode);
+                UpdateStatus(debugMode ? "Field Names view enabled - preview refreshed" : "Field Names view disabled - preview refreshed");
             }
         }
 
