@@ -1663,6 +1663,14 @@ namespace RCLayoutPreview
         }
 
         /// <summary>
+        /// Navigates to the last known error position (public method for external calls)
+        /// </summary>
+        public void GoToLastError()
+        {
+            GoToLastError_Click(null, null);
+        }
+
+        /// <summary>
         /// Navigates to the last known error position
         /// </summary>
         private void GoToLastError_Click(object sender, RoutedEventArgs e)
@@ -1728,7 +1736,7 @@ namespace RCLayoutPreview
 
         /// <summary>
         /// Shows a naming pattern warning in the editor at a specific position
-        /// </summary>
+        /// /// </summary>
         /// <param name="position">Position of the naming issue</param>
         /// <param name="warningMessage">Warning message to display</param>
         public void ShowNamingWarning(int position, string warningMessage)

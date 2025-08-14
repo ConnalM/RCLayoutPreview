@@ -68,6 +68,9 @@ namespace RCLayoutPreview
             // Set up UI logging for stubdata field handler
             StubDataFieldHandler.UILogStatus = UpdateStatus;
 
+            // Add F8 keyboard shortcut for error navigation from preview window
+            this.KeyDown += MainWindow_KeyDown;
+            
             this.Loaded += MainWindow_Loaded;
         }
         
@@ -717,6 +720,52 @@ namespace RCLayoutPreview
                     popupOverlay.Visibility = Visibility.Collapsed;
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Handles keyboard shortcuts for the preview window, including F8 for error navigation
+        /// </summary>
+        private void MainWindow_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            // F8: Navigate to last error in editor
+            if (e.Key == System.Windows.Input.Key.F8)
+            {
+                GoToLastErrorInEditor();
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// Navigates to the last error in the editor window from the preview window
+        /// </summary>
+        private void GoToLastErrorInEditor()
+        {
+            if (editorWindow != null)
+            {
+                // Focus the editor window first
+                editorWindow.Activate();
+                editorWindow.Focus();
+                
+                // Check if the editor has an error to navigate to
+                if (editorWindow.HasErrorToNavigate())
+                {
+                    // Trigger the editor's go to error functionality
+                    editorWindow.GoToLastError();
+                    UpdateStatus("Navigated to last error in editor (F8 from preview)");
+                }
+                else
+                {
+                    // No error available, but still focus the editor
+                    UpdateStatus("No recent errors to navigate to (F8 from preview)");
+                    
+                    // Show a brief message in the preview window
+                    ShowErrorPopup("No recent XAML parsing errors found.\n\nPress F8 in the editor window to access more error navigation options.");
+                }
+            }
+            else
+            {
+                UpdateStatus("Editor window not available for error navigation");
+            }
         }
     }
 }
