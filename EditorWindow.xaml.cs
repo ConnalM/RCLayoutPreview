@@ -70,6 +70,10 @@ namespace RCLayoutPreview
         private int lastErrorPosition = -1;
         private string lastErrorMessage = "";
         private string lastErrorContext = "";
+        
+        // Naming warning tracking (stored but not immediately displayed)
+        private int lastNamingWarningPosition = -1;
+        private string lastNamingWarningMessage = "";
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
@@ -498,12 +502,13 @@ namespace RCLayoutPreview
         }
 
         /// <summary>
-        /// Checks if there's a stored error position that can be navigated to
+        /// Checks if there's a stored error position or naming warning that can be navigated to
         /// </summary>
-        /// <returns>True if there's an error that can be navigated to</returns>
+        /// <returns>True if there's an error or warning that can be navigated to</returns>
         public bool HasErrorToNavigate()
         {
-            return lastErrorPosition >= 0 || !string.IsNullOrEmpty(lastErrorMessage);
+            return lastErrorPosition >= 0 || !string.IsNullOrEmpty(lastErrorMessage) || 
+                   lastNamingWarningPosition >= 0 || !string.IsNullOrEmpty(lastNamingWarningMessage);
         }
 
         /// <summary>
@@ -521,20 +526,30 @@ namespace RCLayoutPreview
                     {
                         errorButton.IsEnabled = true;
                         errorButton.Opacity = 1.0;
+                        
+                        // Prioritize errors over warnings in the tooltip
                         if (lastErrorPosition >= 0)
                         {
                             errorButton.ToolTip = $"Go to Last Error - Line {Editor.Document.GetLocation(lastErrorPosition).Line} (F8)";
                         }
-                        else
+                        else if (lastNamingWarningPosition >= 0)
+                        {
+                            errorButton.ToolTip = $"Go to Naming Warning - Line {Editor.Document.GetLocation(lastNamingWarningPosition).Line} (F8)";
+                        }
+                        else if (!string.IsNullOrEmpty(lastErrorMessage))
                         {
                             errorButton.ToolTip = "Show Last Error (F8)";
+                        }
+                        else
+                        {
+                            errorButton.ToolTip = "Show Naming Warning (F8)";
                         }
                     }
                     else
                     {
                         errorButton.IsEnabled = false;
                         errorButton.Opacity = 0.5;
-                        errorButton.ToolTip = "No recent errors (F8)";
+                        errorButton.ToolTip = "No recent errors or warnings (F8)";
                     }
                 }
             }
@@ -1675,6 +1690,7 @@ namespace RCLayoutPreview
         /// </summary>
         private void GoToLastError_Click(object sender, RoutedEventArgs e)
         {
+            // Prioritize errors over warnings - errors are more critical
             if (lastErrorPosition >= 0 && lastErrorPosition < Editor.Document.TextLength)
             {
                 try
@@ -1713,6 +1729,11 @@ namespace RCLayoutPreview
                     UpdateStatus($"Error navigating to last error: {ex.Message}");
                 }
             }
+            else if (lastNamingWarningPosition >= 0 && lastNamingWarningPosition < Editor.Document.TextLength)
+            {
+                // Navigate to naming warning if no error is available
+                ShowNamingWarning(lastNamingWarningPosition, lastNamingWarningMessage);
+            }
             else if (!string.IsNullOrEmpty(lastErrorMessage))
             {
                 // Focus the window for dialog display
@@ -1723,13 +1744,23 @@ namespace RCLayoutPreview
                 MessageBox.Show($"Last Error:\n{lastErrorMessage}\n\n{lastErrorContext}", 
                     "Last XAML Error", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            else if (!string.IsNullOrEmpty(lastNamingWarningMessage))
+            {
+                // Focus the window for dialog display
+                this.Activate();
+                
+                // Show last naming warning
+                UpdateStatus($"Last Naming Warning: {lastNamingWarningMessage}");
+                MessageBox.Show($"Naming Pattern Suggestion:\n{lastNamingWarningMessage}\n\nThis is a suggestion to improve code consistency.", 
+                    "Naming Pattern Warning", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
             else
             {
                 // Focus the window for dialog display
                 this.Activate();
                 
-                UpdateStatus("No recent errors to navigate to.");
-                MessageBox.Show("No recent XAML parsing errors found.", 
+                UpdateStatus("No recent errors or warnings to navigate to.");
+                MessageBox.Show("No recent XAML parsing errors or naming warnings found.", 
                     "Go to Last Error", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
@@ -1785,6 +1816,21 @@ namespace RCLayoutPreview
             {
                 UpdateStatus($"Error showing naming warning at position {position}: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Stores a naming pattern warning for potential F8 navigation without immediately displaying it
+        /// This prevents workflow disruption while still allowing on-demand navigation
+        /// </summary>
+        /// <param name="position">Position of the naming issue</param>
+        /// <param name="warningMessage">Warning message</param>
+        public void StoreNamingWarning(int position, string warningMessage)
+        {
+            lastNamingWarningPosition = position;
+            lastNamingWarningMessage = warningMessage;
+            
+            // Update error button to show that there's something to navigate to
+            UpdateErrorButtonState();
         }
 
         /// <summary>

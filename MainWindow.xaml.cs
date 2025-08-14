@@ -196,6 +196,10 @@ namespace RCLayoutPreview
             if (!ValidateXamlContent(xamlContent)) return;
 
             xamlContent = CleanXamlPlaceholders(xamlContent);
+            
+            // Clear any existing popups before processing - if there are no new issues, the popup should disappear
+            ClearAnyExistingPopups();
+            
             if (CheckForDuplicateNames(xamlContent)) return;
 
             try
@@ -209,6 +213,10 @@ namespace RCLayoutPreview
                 object element = ParseXamlContent(processedXaml);
                 ApplyParsedElement(element);
                 PostProcessPreview();
+                
+                // If we reach here without issues being detected, ensure popups are hidden
+                // This handles the case where issues were fixed but detection didn't run
+                EnsurePopupsHiddenOnSuccess();
             }
             catch (XamlParseException ex)
             {
@@ -456,7 +464,8 @@ namespace RCLayoutPreview
                         XamlValidationHelper.GetLineAndColumnFromPosition(xamlContent, namePosition, out int line, out int column);
                         locationInfo = $" (Line {line}, Column {column})";
                         
-                        // Send warning to editor for inline display
+                        // Store warning info for potential F8 navigation, but don't auto-navigate
+                        // Only show the warning in status bar and popup - don't interrupt user's workflow
                         if (editorWindow != null)
                         {
                             string editorMessage = "";
@@ -473,7 +482,8 @@ namespace RCLayoutPreview
                                 editorMessage = $"Naming suggestion: '{name}' should probably be '{expectedNames[0]}' (found '{expectedNames[1]}')";
                             }
                             
-                            editorWindow.ShowNamingWarning(namePosition, editorMessage);
+                            // Store the warning for potential F8 navigation, but don't auto-navigate to avoid workflow disruption
+                            editorWindow.StoreNamingWarning(namePosition, editorMessage);
                         }
                     }
                     
@@ -604,6 +614,58 @@ namespace RCLayoutPreview
                 // Fallback to console if UI elements not found
                 Console.WriteLine($"Naming pattern warning: {warningMessage}");
                 Console.WriteLine($"Warning display error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Clears any existing error/warning popups at the start of preview refresh
+        /// This ensures outdated popups are removed when the preview is updated
+        /// </summary>
+        private void ClearAnyExistingPopups()
+        {
+            try
+            {
+                var popupOverlay = FindName("PopupOverlay") as FrameworkElement;
+                if (popupOverlay != null && popupOverlay.Visibility == Visibility.Visible)
+                {
+                    popupOverlay.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch
+            {
+                // Popup clearing is optional, don't crash if it fails
+            }
+        }
+
+        /// <summary>
+        /// Ensures popups are hidden when preview refresh completes successfully without new issues
+        /// This is a safety net in case the issue detection doesn't run but problems were fixed
+        /// </summary>
+        private void EnsurePopupsHiddenOnSuccess()
+        {
+            try
+            {
+                var popupOverlay = FindName("PopupOverlay") as FrameworkElement;
+                if (popupOverlay != null && popupOverlay.Visibility == Visibility.Visible)
+                {
+                    // Check if the popup is showing a warning (as opposed to a critical error)
+                    var popupMessage = FindName("PopupMessage") as TextBlock;
+                    if (popupMessage != null)
+                    {
+                        string popupText = popupMessage.Text ?? "";
+                        
+                        // Only auto-hide naming pattern warnings, not critical errors
+                        if (popupText.Contains("NAMING PATTERN ISSUES") || popupText.Contains("should probably be"))
+                        {
+                            popupOverlay.Visibility = Visibility.Collapsed;
+                            UpdateStatus("Outdated naming pattern warning cleared (issues may have been resolved)");
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Popup management is optional, don't crash if it fails
             }
         }
 
