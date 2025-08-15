@@ -930,29 +930,109 @@ namespace RCLayoutPreview
             }
         }
 
+        private void LogStatus(string message)
+        {
+            if (statusLabel != null)
+            {
+                statusLabel.Text = message;
+            }
+            Console.WriteLine($"Status: {message}");
+        }
+
         private void JsonFieldsTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             var treeView = sender as TreeView;
-            var clickedItem = e.OriginalSource as DependencyObject;
-            while (clickedItem != null && !(clickedItem is TreeViewItem))
-                clickedItem = VisualTreeHelper.GetParent(clickedItem);
-
-            if (clickedItem is TreeViewItem item)
+            var selectedItem = treeView?.SelectedItem as TreeViewItem;
+            if (selectedItem != null)
             {
-                // Toggle expansion for categories
-                if (item.Items.Count > 0)
+                // Get the field name that was clicked
+                string fieldName = selectedItem.Header.ToString();
+
+                // Get the current position in the editor
+                int caretOffset = Editor.CaretOffset;
+                string actualFieldName = FormatFieldNameWithSuffix(fieldName);
+
+                // If there is a selection, check if it matches a field name pattern
+                if (Editor.SelectionLength > 0)
                 {
-                    item.IsExpanded = !item.IsExpanded;
-                    e.Handled = true;
-                    return;
+                    string selectedText = Editor.SelectedText;
+                    // Regex for RC field name pattern
+                    var fieldNameRegex = new Regex(@"[A-Za-z0-9_]+_\d+");
+                    if (fieldNameRegex.IsMatch(selectedText))
+                    {
+                        // Replace the selected field name with the new field name (with suffix)
+                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
+                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
+                        LogStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
+                    }
+                    else
+                    {
+                        // If not a field name, just insert at selection
+                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
+                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
+                        LogStatus($"Inserted field name '{actualFieldName}' at selection");
+                    }
+                }
+                else
+                {
+                    // Look for a placeholder nearby
+                    string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
+                    if (!string.IsNullOrEmpty(placeholder))
+                    {
+                        // Replace the placeholder with the field name
+                        ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
+                        LogStatus($"Replaced {placeholder} with {actualFieldName}");
+                    }
+                    else
+                    {
+                        // No selection and no placeholder, insert at caret position
+                        Editor.Document.Insert(caretOffset, actualFieldName);
+                        Editor.CaretOffset = caretOffset + actualFieldName.Length;
+                        LogStatus($"Inserted field name '{actualFieldName}' at cursor");
+                    }
                 }
 
-                // Handle field name insertion for leaf nodes
-                string fieldName = item.Header.ToString();
-                int caretOffset = Editor.CaretOffset;
-                Editor.Document.Insert(caretOffset, fieldName);
-                Editor.CaretOffset = caretOffset + fieldName.Length;
+                // Check if this field triggers the placeholder removal
+                CheckForValidFields(Editor.Text);
             }
+        }
+
+        private string FindNearestPlaceholder(string text, int caretOffset)
+        {
+            return PlaceholderHelper.FindNearestPlaceholder(text, caretOffset);
+        }
+
+        private void ReplacePlaceholderWithFieldName(string placeholder, string fieldName)
+        {
+            string newText = PlaceholderHelper.ReplacePlaceholderWithFieldName(Editor.Text, placeholder, fieldName);
+            if (newText != Editor.Text)
+            {
+                int idx = newText.IndexOf($"Name=\"{fieldName}\"");
+                Editor.Text = newText;
+                if (idx >= 0)
+                    Editor.CaretOffset = idx + ($"Name=\"{fieldName}\"").Length;
+            }
+        }
+
+        private string FormatFieldNameWithSuffix(string fieldName)
+        {
+            // Scan the entire editor text for existing field names with suffixes
+            string text = Editor.Text;
+            // Regex to match fieldNam1e_1, fieldName1_2, etc.
+            var suffixRegex = new Regex($@"{Regex.Escape(fieldName)}_(\d+)");
+            var matches = suffixRegex.Matches(text);
+            int maxSuffix = 0;
+            foreach (Match match in matches)
+            {
+                if (int.TryParse(match.Groups[1].Value, out int suffix))
+                {
+                    if (suffix > maxSuffix)
+                        maxSuffix = suffix;
+                }
+            }
+            // Next available suffix
+            int nextSuffix = maxSuffix + 1;
+            return $"{fieldName}_{nextSuffix}";
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
