@@ -332,8 +332,8 @@ namespace RCLayoutPreview
                 // Navigate to error in editor if possible
                 if (editorWindow != null && errorPosition >= 0)
                 {
-                    // Map the error position back to the original editor content
-                    NavigateToErrorInEditor(editorWindow.Editor.Text, errorPosition, enhancedError, context);
+                    // Use the editor's enhanced navigation method
+                    editorWindow.NavigateToPosition(errorPosition, enhancedError, context);
                 }
                 
                 throw new XamlParseException($"Failed to parse XAML: {enhancedError}");
@@ -738,12 +738,147 @@ namespace RCLayoutPreview
         }
 
         private void AddHoverBehavior() { /* Implementation stub */ }
-        private void SynchronizeEchoFieldWidths(FrameworkElement rootElement) { /* Implementation stub */ }
-        private string EnsureUniqueElementNames(string xaml) { return xaml; }
-        private string FixBindingExpressions(string xaml) { return xaml; }
-        private string RemoveEmptyNameAttributes(string xaml) { return xaml; }
-        private bool IsValidRootElement(string xaml) { return true; }
-        private void NavigateToErrorInEditor(string originalXaml, int errorPosition, string enhancedError, string context) { }
+
+        /// <summary>
+        /// Synchronizes the widths of all TextBlocks in the same container that match the echo/real field pattern.
+        /// </summary>
+        private void SynchronizeEchoFieldWidths(FrameworkElement rootElement)
+        {
+            if (rootElement == null) return;
+            // Only process Panels (Grid, StackPanel, DockPanel, etc.)
+            if (rootElement is Panel panel)
+            {
+                // Find all descendant TextBlocks with Name matching pattern <base>_<num>_<suffix>
+                var allTextBlocks = new List<TextBlock>();
+                var queue = new Queue<DependencyObject>();
+                foreach (var child in panel.Children)
+                    queue.Enqueue(child as DependencyObject);
+                while (queue.Count > 0)
+                {
+                    var current = queue.Dequeue();
+                    if (current is TextBlock tb && !string.IsNullOrEmpty(tb.Name))
+                        allTextBlocks.Add(tb);
+                    int count = VisualTreeHelper.GetChildrenCount(current);
+                    for (int i = 0; i < count; i++)
+                        queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+                }
+                // Group by base name and number (e.g., OnDeckNickname6)
+                var groups = new Dictionary<string, List<TextBlock>>();
+                var regex = new System.Text.RegularExpressions.Regex(@"^(.*?)(\d+)_([12])$");
+                foreach (var tb in allTextBlocks)
+                {
+                    var match = regex.Match(tb.Name);
+                    if (match.Success)
+                    {
+                        string baseName = match.Groups[1].Value + match.Groups[2].Value; // e.g., OnDeckNickname6
+                        if (!groups.ContainsKey(baseName))
+                            groups[baseName] = new List<TextBlock>();
+                        groups[baseName].Add(tb);
+                    }
+                }
+                // For each group, set all widths to the max ActualWidth
+                foreach (var group in groups.Values)
+                {
+                    if (group.Count >= 2)
+                    {
+                        double maxWidth = group.Max(tb => tb.ActualWidth);
+                        foreach (var tb in group)
+                        {
+                            tb.Width = maxWidth;
+                        }
+                    }
+                }
+            }
+            // Recursively process children
+            foreach (var child in LogicalTreeHelper.GetChildren(rootElement))
+            {
+                if (child is FrameworkElement childElement)
+                {
+                    SynchronizeEchoFieldWidths(childElement);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ensures all element names in the XAML are unique by appending a suffix to duplicates.
+        /// </summary>
+        /// <param name="xaml">XAML string to process</param>
+        /// <returns>XAML string with unique element names</returns>
+        private string EnsureUniqueElementNames(string xaml)
+        {
+            var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            return nameRegex.Replace(xaml, match => {
+                string originalName = match.Groups[1].Value;
+                string uniqueName = originalName;
+                int counter = 1;
+                while (usedElementNames.Contains(uniqueName))
+                {
+                    uniqueName = $"{originalName}_{counter++}";
+                }
+                usedElementNames.Add(uniqueName);
+                return $"Name=\"{uniqueName}\"";
+            });
+        }
+
+        /// <summary>
+        /// Fixes binding expressions in the XAML that might be malformed or unescaped.
+        /// </summary>
+        /// <param name="xaml">XAML string to process</param>
+        /// <returns>XAML string with fixed binding expressions</returns>
+        private string FixBindingExpressions(string xaml)
+        {
+            xaml = Regex.Replace(xaml, "{Binding([^}]*)}", m =>
+            {
+                if (xaml.IndexOf(m.Value) > 0 && xaml[xaml.IndexOf(m.Value) - 1] == '{')
+                    return m.Value;
+                return "{Binding" + m.Groups[1].Value + "}";
+            });
+            return xaml;
+        }
+
+        private string RemoveEmptyNameAttributes(string processedXaml)
+        {
+            var emptyNameMatches = Regex.Matches(processedXaml, "Name\\s*=\\s*\"\\s*\"");
+            if (emptyNameMatches.Count > 0)
+            {
+                ShowErrorPopup($"Warning: {emptyNameMatches.Count} empty Name attribute(s) were found and removed from the XAML. Please check your layout for missing names.");
+                processedXaml = Regex.Replace(processedXaml, "Name\\s*=\\s*\"\\s*\"", "");
+            }
+            return processedXaml;
+        }
+
+        /// <summary>
+        /// Checks if the XAML string has a valid root element (e.g., Grid, StackPanel, Window).
+        /// </summary>
+        /// <param name="xaml">XAML string to check</param>
+        /// <returns>True if root element is valid, false otherwise</returns>
+        private bool IsValidRootElement(string xaml)
+        {
+            string pattern = @"^\s*<\s*([a-zA-Z0-9_]+)";
+            Match match = Regex.Match(xaml, pattern);
+            if (match.Success)
+            {
+                string rootElement = match.Groups[1].Value;
+                switch (rootElement.ToLower())
+                {
+                    case "grid":
+                    case "stackpanel":
+                    case "border":
+                    case "dockpanel":
+                    case "canvas":
+                    case "wrappanel":
+                    case "viewbox":
+                    case "window":
+                    case "page":
+                    case "usercontrol":
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            return false;
+        }
+
         private void ApplyWindowProperties(Window window) { PreviewHost.Content = window.Content; }
         private void SetupPreviewHost(object element) { PreviewHost.Content = element; }
         public void SaveWindowPlacementFromEditor() { }
