@@ -102,6 +102,10 @@ namespace RCLayoutPreview
             Editor.TextChanged += Editor_TextChanged;
             Editor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("XML");
 
+            // Initialize WordWrap state to match the checkbox (default is True)
+            Editor.WordWrap = true;
+            Editor.HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Hidden;
+
             // Add folding support
             foldingManager = FoldingManager.Install(Editor.TextArea);
             foldingStrategy = new XmlFoldingStrategy();
@@ -854,6 +858,29 @@ namespace RCLayoutPreview
             {
                 UpdateStatus("Invalid delay input. Please enter a valid number.");
             }
+        }
+
+        /// <summary>
+        /// Handles the Word Wrap toggle change to enable/disable horizontal scrolling
+        /// </summary>
+        private void WordWrapToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (Editor == null) return;
+
+            // Get the WordWrapToggle checkbox from the XAML
+            var wordWrapToggle = FindName("WordWrapToggle") as CheckBox;
+            bool wordWrapEnabled = wordWrapToggle?.IsChecked == true;
+            
+            // When word wrap is enabled, hide horizontal scroll bar
+            // When word wrap is disabled, show horizontal scroll bar
+            Editor.WordWrap = wordWrapEnabled;
+            Editor.HorizontalScrollBarVisibility = wordWrapEnabled ? 
+                System.Windows.Controls.ScrollBarVisibility.Hidden : 
+                System.Windows.Controls.ScrollBarVisibility.Auto;
+            
+            UpdateStatus(wordWrapEnabled ? 
+                "Word wrap enabled - horizontal scroll bar hidden" : 
+                "Word wrap disabled - horizontal scroll bar available");
         }
 
         private void JsonFieldsTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1901,7 +1928,7 @@ namespace RCLayoutPreview
         /// <summary>
         /// Stores a naming pattern warning for potential F8 navigation without immediately displaying it
         /// This prevents workflow disruption while still allowing on-demand navigation
-        /// </summary>
+        /// /// </summary>
         /// <param name="position">Position of the naming issue</param>
         /// <param name="warningMessage">Warning message</param>
         public void StoreNamingWarning(int position, string warningMessage)
