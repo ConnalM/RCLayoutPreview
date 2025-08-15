@@ -697,6 +697,20 @@ namespace RCLayoutPreview
             Console.WriteLine($"Status: {message}");
         }
 
+        /// <summary>
+        /// Logs a status message to the UI and console.
+        /// </summary>
+        /// <param name="message">Message to log</param>
+        private void LogStatus(string message)
+        {
+            var statusLabel = FindName("StatusLabel") as TextBlock;
+            if (statusLabel != null)
+            {
+                statusLabel.Text = message;
+            }
+            Console.WriteLine($"Status: {message}");
+        }
+
         // Add simple ShowErrorPopup method
         public void ShowErrorPopup(string errorMessage)
         {
@@ -879,10 +893,60 @@ namespace RCLayoutPreview
             return false;
         }
 
-        private void ApplyWindowProperties(Window window) { PreviewHost.Content = window.Content; }
-        private void SetupPreviewHost(object element) { PreviewHost.Content = element; }
-        public void SaveWindowPlacementFromEditor() { }
-        
+        private void ApplyWindowProperties(Window window)
+        {
+            LogStatus("XAML contains a Window element. Extracting content.");
+            PreviewHost.Content = null;
+            PreviewHost.Content = window.Content;
+            PreviewHost.IsHitTestVisible = true;
+            PreviewHost.IsEnabled = true;
+            if (window.Content is FrameworkElement fe)
+            {
+                fe.IsHitTestVisible = true;
+                fe.IsEnabled = true;
+            }
+            if (window.Title != null)
+            {
+                this.Title = window.Title;
+                LogStatus($"Window Title applied: {window.Title}");
+            }
+            if (ApplyWindowSizeToggle != null && ApplyWindowSizeToggle.IsChecked == true)
+            {
+                if (window.Width > 0)
+                {
+                    this.Width = window.Width;
+                    LogStatus($"Window Width applied: {window.Width}");
+                }
+                if (window.Height > 0)
+                {
+                    this.Height = window.Height;
+                    LogStatus($"Window Height applied: {window.Height}");
+                }
+            }
+            if (window.Background != null)
+            {
+                this.Background = window.Background;
+                LogStatus("Window Background applied.");
+            }
+        }
+
+        private void SetupPreviewHost(object element)
+        {
+            PreviewHost.Content = element;
+            LogStatus("Preview updated with parsed element.");
+            PreviewHost.IsHitTestVisible = true;
+            PreviewHost.IsEnabled = true;
+            if (element is FrameworkElement fe)
+            {
+                fe.IsHitTestVisible = true;
+                fe.IsEnabled = true;
+            }
+        }
+        public void SaveWindowPlacementFromEditor()
+        {
+            WindowPlacementHelper.SaveWindowPlacement(this, "PreviewWindow");
+        }
+
         /// <summary>
         /// Event handler for debug mode toggle. Refreshes preview with debug info if enabled.
         /// </summary>
