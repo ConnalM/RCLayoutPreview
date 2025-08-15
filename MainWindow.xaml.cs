@@ -751,7 +751,143 @@ namespace RCLayoutPreview
             return Regex.Replace(fieldName, "_\\d+$", "");
         }
 
-        private void AddHoverBehavior() { /* Implementation stub */ }
+        private void AddHoverBehavior()
+        {
+            if (PreviewHost != null)
+            {
+                PreviewHost.MouseMove -= PreviewHost_SafeMouseMove;
+                PreviewHost.MouseMove += PreviewHost_SafeMouseMove;
+                PreviewHost.MouseLeave -= PreviewHost_MouseLeave;
+                PreviewHost.MouseLeave += PreviewHost_MouseLeave;
+            }
+        }
+
+        /// <summary>
+        /// Mouse move handler for preview host. Highlights and shows tooltip for named elements under cursor.
+        /// </summary>
+        private void PreviewHost_SafeMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            var pt = e.GetPosition(PreviewHost);
+            FrameworkElement namedElement = DeepHitTestForNamedElement(pt);
+            if (namedElement != null)
+            {
+                if (namedElement != currentHighlightedElement)
+                {
+                    // Remove highlight from previous
+                    if (currentHighlightedElement != null)
+                        currentHighlightedElement.Effect = null;
+                    // Highlight
+                    currentHighlightedElement = namedElement;
+                    currentHighlightedElement.Effect = new DropShadowEffect
+                    {
+                        Color = Colors.Yellow,
+                        ShadowDepth = 0,
+                        BlurRadius = 12,
+                        Opacity = 0.7
+                    };
+                }
+                // Show tooltip and always update its position
+                ShowElementTooltip(namedElement, pt);
+                e.Handled = true;
+            }
+            else
+            {
+                // No named element found, hide tooltip and remove highlight
+                if (currentHighlightedElement != null)
+                    currentHighlightedElement.Effect = null;
+                currentHighlightedElement = null;
+                if (currentToolTip != null)
+                    currentToolTip.IsOpen = false;
+            }
+        }
+
+        /// <summary>
+        /// Performs a deep hit test to find the deepest named element at a given point in the preview.
+        /// </summary>
+        /// <param name="pt">Point to hit test</param>
+        /// <returns>Deepest named FrameworkElement at the point, or null</returns>
+        private FrameworkElement DeepHitTestForNamedElement(Point pt)
+        {
+            var results = new List<FrameworkElement>();
+            VisualTreeHelper.HitTest(PreviewHost, null,
+                new HitTestResultCallback(hit =>
+                {
+                    if (hit.VisualHit is FrameworkElement fe)
+                    {
+                        // Only consider visible, hit-testable, non-zero opacity elements
+                        if (!string.IsNullOrEmpty(fe.Name) && fe.IsHitTestVisible && fe.Opacity > 0)
+                            results.Add(fe);
+                    }
+                    return HitTestResultBehavior.Continue;
+                }),
+                new PointHitTestParameters(pt));
+            // Return the deepest (last) named element
+            return results.Count > 0 ? results[results.Count - 1] : null;
+        }
+
+        /// <summary>
+        /// Shows a tooltip for the given element at the specified mouse position.
+        /// </summary>
+        /// <param name="element">Element to show tooltip for</param>
+        /// <param name="mousePos">Mouse position relative to preview host</param>
+        private void ShowElementTooltip(FrameworkElement element, Point mousePos)
+        {
+            var info = BuildElementInfoSafe(element);
+            if (currentToolTip == null)
+            {
+                currentToolTip = new ToolTip
+                {
+                    Placement = System.Windows.Controls.Primitives.PlacementMode.Relative,
+                    PlacementTarget = PreviewHost,
+                    StaysOpen = true,
+                    Background = new SolidColorBrush(Color.FromRgb(255,255,220)),
+                    Foreground = Brushes.Black,
+                    BorderBrush = Brushes.Gray,
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(8)
+                };
+            }
+            currentToolTip.Content = info;
+            currentToolTip.HorizontalOffset = mousePos.X + 12;
+            currentToolTip.VerticalOffset = mousePos.Y + 12;
+            currentToolTip.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Mouse leave handler for preview host. Removes highlight and hides tooltip.
+        /// </summary>
+        private void PreviewHost_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (currentHighlightedElement != null)
+                currentHighlightedElement.Effect = null;
+            currentHighlightedElement = null;
+            if (currentToolTip != null)
+                currentToolTip.IsOpen = false;
+        }
+
+        /// <summary>
+        /// Builds a string with diagnostic info about the given element (type, name, size, position).
+        /// </summary>
+        /// <param name="element">Element to describe</param>
+        /// <returns>Diagnostic info string</returns>
+        private string BuildElementInfoSafe(FrameworkElement element)
+        {
+            var info = new StringBuilder();
+            info.AppendLine($"Type: {element.GetType().Name}");
+            if (!string.IsNullOrEmpty(element.Name))
+                info.AppendLine($"Name: {element.Name}");
+            info.AppendLine($"Size: {element.ActualWidth:F0} x {element.ActualHeight:F0}");
+            if (element.Parent is Panel parentPanel)
+            {
+                int idx = parentPanel.Children.IndexOf(element);
+                info.AppendLine($"Position in Parent: {idx + 1} of {parentPanel.Children.Count}");
+            }
+            if (Grid.GetRow(element) >= 0 || Grid.GetColumn(element) >= 0)
+                info.AppendLine($"Grid Position: Row {Grid.GetRow(element)}, Column {Grid.GetColumn(element)}");
+            return info.ToString().TrimEnd();
+        }
+
+        // --- Existing methods continue here ---
 
         /// <summary>
         /// Synchronizes the widths of all TextBlocks in the same container that match the echo/real field pattern.
