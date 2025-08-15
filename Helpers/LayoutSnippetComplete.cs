@@ -386,16 +386,16 @@ namespace RCLayoutPreview.Helpers
                         "        <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
                         "        <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n\n" +
                         "        <!-- Lane 1 -->\n" +
-                        "        <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "        <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "        <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "        <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "        <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "        <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
                         "    </Grid>\n" +
                         "</DockPanel>",
                     RequiredFields = new List<string> { 
-                        "Nickname_Lane1_2", "Lap_Lane1_2", "LapTime_Lane1_2", 
-                        "MedianTime_Lane1_2", "BestLapTime_Lane1_2"
+                        "Nickname_Lane1_1", "Lap_Lane1_1", "LapTime_Lane1_1", 
+                        "MedianTime_Lane1_1", "BestLapTime_Lane1_1"
                     }
                 },
 
@@ -625,17 +625,17 @@ namespace RCLayoutPreview.Helpers
                         "                        <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n\n" +
                         "                        <!-- ?? Lane 1 -->\n" +
                         "                        <!-- Use snippet: \"Racer Row\" + Lap Time Display -->\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_2\" HorizontalContentAlignment=\"Center\" />\n\n" +
+                        "                        <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n\n" +
                         "                        <!-- ?? Lane 2 (copy and update Lane1 ? Lane2) -->\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"0\" Name=\"Nickname_Lane2_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"1\" Name=\"Lap_Lane2_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"2\" Name=\"LapTime_Lane2_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"3\" Name=\"MedianTime_Lane2_2\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"4\" Name=\"BestLapTime_Lane2_2\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"2\" Grid.Column=\"0\" Name=\"Nickname_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"2\" Grid.Column=\"1\" Name=\"Lap_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"2\" Grid.Column=\"2\" Name=\"LapTime_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"2\" Grid.Column=\"3\" Name=\"MedianTime_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
+                        "                        <Label Grid.Row=\"2\" Grid.Column=\"4\" Name=\"BestLapTime_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
                         "                    </Grid>\n" +
                         "                </DockPanel>\n\n" +
                         "            </Grid>\n" +
