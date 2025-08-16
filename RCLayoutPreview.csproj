@@ -67,6 +67,9 @@
     <Page Include="EditorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="FindReplaceDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -81,6 +84,9 @@
     <Compile Include="Data\RaceData.cs" />
     <Compile Include="EditorWindow.xaml.cs">
       <DependentUpon>EditorWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="FindReplaceDialog.xaml.cs">
+      <DependentUpon>FindReplaceDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Helpers\AppConstants.cs" />
     <Compile Include="Helpers\LayoutSnippetComplete.cs" />

@@ -149,15 +149,20 @@ namespace RCLayoutPreview
         /// /// </summary>
         private void AddKeyboardShortcuts()
         {
-            // Existing shortcuts
+            // Remove any default Replace command bindings from Editor
+            Editor.InputBindings.Clear();
+            Editor.CommandBindings.Clear();
+
+            // Add Find and Replace shortcuts to Editor
             Editor.InputBindings.Add(new KeyBinding(
                 ApplicationCommands.Find,
                 new KeyGesture(Key.F, ModifierKeys.Control)));
-                
             Editor.InputBindings.Add(new KeyBinding(
                 ApplicationCommands.Replace,
                 new KeyGesture(Key.H, ModifierKeys.Control)));
-            
+            Editor.CommandBindings.Add(new CommandBinding(ApplicationCommands.Replace, Replace_Executed));
+            Editor.CommandBindings.Add(new CommandBinding(ApplicationCommands.Find, (s, e) => ShowSearchReplaceDialog()));
+
             // New shortcuts for File menu
             InputBindings.Add(new KeyBinding(
                 new RelayCommand(() => LoadLayout_Click(null, null)),
@@ -1545,66 +1550,67 @@ namespace RCLayoutPreview
             };
 
             var grid = new Grid { Margin = new Thickness(10) };
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Find row
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Find textbox row
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Replace row
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Replace textbox row
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Options row
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Button row
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Status row
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
 
-            // Find section
+            // Find label
             var findLabel = new Label { Content = "Find:", VerticalAlignment = VerticalAlignment.Center };
             Grid.SetRow(findLabel, 0); Grid.SetColumn(findLabel, 0);
             grid.Children.Add(findLabel);
 
-            var findTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetRow(findTextBox, 0); Grid.SetColumn(findTextBox, 1);
+            // Find textbox
+            var findTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center, Width = 220 };
+            Grid.SetRow(findTextBox, 1); Grid.SetColumn(findTextBox, 0);
             grid.Children.Add(findTextBox);
 
-            var findButton = new Button { Content = "Find Next", Margin = new Thickness(5), Height = 25 };
-            Grid.SetRow(findButton, 0); Grid.SetColumn(findButton, 2);
+            // Find Next button
+            var findButton = new Button { Content = "Find Next", Margin = new Thickness(5), Height = 25, MinWidth = 90 };
+            Grid.SetRow(findButton, 1); Grid.SetColumn(findButton, 1);
             grid.Children.Add(findButton);
 
-            // Replace section
+            // Replace label
             var replaceLabel = new Label { Content = "Replace:", VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetRow(replaceLabel, 1); Grid.SetColumn(replaceLabel, 0);
+            Grid.SetRow(replaceLabel, 2); Grid.SetColumn(replaceLabel, 0);
             grid.Children.Add(replaceLabel);
 
-            var replaceTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetRow(replaceTextBox, 1); Grid.SetColumn(replaceLabel, 1);
+            // Replace textbox
+            var replaceTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center, Width = 220 };
+            Grid.SetRow(replaceTextBox, 3); Grid.SetColumn(replaceTextBox, 0);
             grid.Children.Add(replaceTextBox);
 
-            var replaceButton = new Button { Content = "Replace", Margin = new Thickness(5), Height = 25 };
-            Grid.SetRow(replaceButton, 1); Grid.SetColumn(replaceButton, 2);
+            // Replace button
+            var replaceButton = new Button { Content = "Replace", Margin = new Thickness(5), Height = 25, MinWidth = 90 };
+            Grid.SetRow(replaceButton, 3); Grid.SetColumn(replaceButton, 1);
             grid.Children.Add(replaceButton);
 
             // Options section
             var optionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5) };
-            Grid.SetRow(optionsPanel, 2); Grid.SetColumn(optionsPanel, 1);
-            
             var matchCaseCheckBox = new CheckBox { Content = "Match case", Margin = new Thickness(0, 0, 15, 0), VerticalAlignment = VerticalAlignment.Center };
             var wholeWordCheckBox = new CheckBox { Content = "Whole word", VerticalAlignment = VerticalAlignment.Center };
-            
             optionsPanel.Children.Add(matchCaseCheckBox);
             optionsPanel.Children.Add(wholeWordCheckBox);
+            Grid.SetRow(optionsPanel, 4); Grid.SetColumn(optionsPanel, 0); Grid.SetColumnSpan(optionsPanel, 2);
             grid.Children.Add(optionsPanel);
 
             // Button section
             var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(5, 15, 5, 5) };
-            Grid.SetRow(buttonPanel, 3); Grid.SetColumn(buttonPanel, 1); Grid.SetColumnSpan(buttonPanel, 2);
-
             var replaceAllButton = new Button { Content = "Replace All", Width = 80, Margin = new Thickness(5, 0, 5, 0) };
             var closeButton = new Button { Content = "Close", Width = 80, Margin = new Thickness(5, 0, 0, 0) };
-
             buttonPanel.Children.Add(replaceAllButton);
             buttonPanel.Children.Add(closeButton);
+            Grid.SetRow(buttonPanel, 5); Grid.SetColumn(buttonPanel, 0); Grid.SetColumnSpan(buttonPanel, 2);
             grid.Children.Add(buttonPanel);
 
             // Status section
             var statusLabel = new Label { Content = "Ready", Foreground = Brushes.Gray, Margin = new Thickness(5, 0, 5, 0) };
-            Grid.SetRow(statusLabel, 4); Grid.SetColumn(statusLabel, 1);
+            Grid.SetRow(statusLabel, 6); Grid.SetColumn(statusLabel, 0); Grid.SetColumnSpan(statusLabel, 2);
             grid.Children.Add(statusLabel);
 
             dialog.Content = grid;
