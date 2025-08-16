@@ -31,6 +31,7 @@ namespace RCLayoutPreview
         // For UI hover highlighting
         private FrameworkElement currentHighlightedElement;
         private ToolTip currentToolTip;
+        private string lastSelectedElementName;
 
         /// <summary>
         /// Main window constructor. Initializes UI, loads stubdata, sets up editor window and event handlers.
@@ -63,6 +64,7 @@ namespace RCLayoutPreview
             }
             editorWindow.XamlContentChanged += EditorWindow_XamlContentChanged;
             editorWindow.JsonDataChanged += EditorWindow_JsonDataChanged;
+            editorWindow.SelectedElementChanged += EditorWindow_SelectedElementChanged;
             editorWindow.Show();
 
             // Set up UI logging for stubdata field handler
@@ -363,10 +365,14 @@ namespace RCLayoutPreview
             if (PreviewHost.Content is FrameworkElement frameworkElement && jsonData != null)
             {
                 frameworkElement.DataContext = jsonData;
-                // Always use the current value of DebugModeToggle.IsChecked
                 ProcessFieldsAndPlaceholders(frameworkElement, jsonData, DebugModeToggle.IsChecked == true);
             }
             AddHoverBehavior();
+            // Re-apply highlight after preview refresh
+            if (!string.IsNullOrEmpty(lastSelectedElementName))
+            {
+                HighlightPreviewElement(lastSelectedElementName);
+            }
         }
 
         // --- Helper methods for TryPreviewXaml refactor ---
@@ -413,7 +419,7 @@ namespace RCLayoutPreview
             {
                 // Remove duplicates from the issues list
                 var uniqueIssues = namingIssues.Distinct().ToList();
-                string issues = string.Join("; ", uniqueIssues);
+                string issues = string.Join(", ", uniqueIssues);
                 
                 // Show both status message and prominent popup warning
                 UpdateStatus($"WARNING - Naming pattern issues detected: {issues}");
@@ -771,34 +777,23 @@ namespace RCLayoutPreview
             FrameworkElement namedElement = DeepHitTestForNamedElement(pt);
             if (namedElement != null)
             {
-                if (namedElement != currentHighlightedElement)
-                {
-                    // Remove highlight from previous
-                    if (currentHighlightedElement != null)
-                        currentHighlightedElement.Effect = null;
-                    // Highlight
-                    currentHighlightedElement = namedElement;
-                    currentHighlightedElement.Effect = new DropShadowEffect
-                    {
-                        Color = Colors.Yellow,
-                        ShadowDepth = 0,
-                        BlurRadius = 12,
-                        Opacity = 0.7
-                    };
-                }
-                // Show tooltip and always update its position
+                // Only show tooltip, do not change highlight
                 ShowElementTooltip(namedElement, pt);
                 e.Handled = true;
             }
             else
             {
-                // No named element found, hide tooltip and remove highlight
-                if (currentHighlightedElement != null)
-                    currentHighlightedElement.Effect = null;
-                currentHighlightedElement = null;
+                // No named element found, hide tooltip only
                 if (currentToolTip != null)
                     currentToolTip.IsOpen = false;
             }
+        }
+
+        private void PreviewHost_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            // Only hide tooltip, do not clear highlight
+            if (currentToolTip != null)
+                currentToolTip.IsOpen = false;
         }
 
         /// <summary>
@@ -853,17 +848,7 @@ namespace RCLayoutPreview
             currentToolTip.IsOpen = true;
         }
 
-        /// <summary>
-        /// Mouse leave handler for preview host. Removes highlight and hides tooltip.
-        /// </summary>
-        private void PreviewHost_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            if (currentHighlightedElement != null)
-                currentHighlightedElement.Effect = null;
-            currentHighlightedElement = null;
-            if (currentToolTip != null)
-                currentToolTip.IsOpen = false;
-        }
+        
 
         /// <summary>
         /// Builds a string with diagnostic info about the given element (type, name, size, position).
@@ -1176,5 +1161,81 @@ namespace RCLayoutPreview
                 UpdateStatus("Editor window not available for error navigation");
             }
         }
+
+        private Brush previousBorderBrush;
+private Thickness previousBorderThickness;
+private Brush previousBackground;
+public void HighlightPreviewElement(string elementNameOrType)
+{
+    // Remove previous highlight only if a new selection is made
+    if (currentHighlightedElement != null && (string.IsNullOrEmpty(elementNameOrType) || currentHighlightedElement.Name != elementNameOrType))
+    {
+        currentHighlightedElement.Effect = null;
+        currentHighlightedElement = null;
+    }
+    if (string.IsNullOrEmpty(elementNameOrType) || PreviewHost?.Content == null)
+    {
+        UpdateStatus("No element selected for highlight.");
+        return;
+    }
+    FrameworkElement found = FindElementByName(PreviewHost.Content as FrameworkElement, elementNameOrType);
+    if (found == null)
+    {
+        // Try to find by type if not found by name
+        found = FindElementByType(PreviewHost.Content as FrameworkElement, elementNameOrType);
+    }
+    if (found != null)
+    {
+        currentHighlightedElement = found;
+        found.Effect = new DropShadowEffect
+        {
+            Color = Colors.Red,
+            ShadowDepth = 0,
+            BlurRadius = 24,
+            Opacity = 1.0
+        };
+        UpdateStatus($"Highlighted element: {elementNameOrType}");
+    }
+    else
+    {
+        UpdateStatus($"Element not found in preview: {elementNameOrType}");
+    }
+}
+
+private FrameworkElement FindElementByType(FrameworkElement root, string typeName)
+{
+    if (root == null) return null;
+    if (root.GetType().Name.Equals(typeName, StringComparison.OrdinalIgnoreCase)) return root;
+    foreach (var child in LogicalTreeHelper.GetChildren(root))
+    {
+        if (child is FrameworkElement fe)
+        {
+            var result = FindElementByType(fe, typeName);
+            if (result != null) return result;
+        }
+    }
+    return null;
+}
+
+private FrameworkElement FindElementByName(FrameworkElement root, string name)
+{
+    if (root == null) return null;
+    if (!string.IsNullOrEmpty(root.Name) && root.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) return root;
+    foreach (var child in LogicalTreeHelper.GetChildren(root))
+    {
+        if (child is FrameworkElement fe)
+        {
+            var result = FindElementByName(fe, name);
+            if (result != null) return result;
+        }
+    }
+    return null;
+}
+
+private void EditorWindow_SelectedElementChanged(object sender, string elementNameOrType)
+{
+    lastSelectedElementName = elementNameOrType;
+    HighlightPreviewElement(elementNameOrType);
+}
     }
 }

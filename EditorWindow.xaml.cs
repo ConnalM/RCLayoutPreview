@@ -77,6 +77,7 @@ namespace RCLayoutPreview
 
         public event EventHandler<string> XamlContentChanged;
         public event EventHandler<JObject> JsonDataChanged;
+        public event EventHandler<string> SelectedElementChanged;
 
         public EditorWindow(MainWindow previewWindow)
         {
@@ -139,6 +140,8 @@ namespace RCLayoutPreview
             
             // Initialize error button state
             UpdateErrorButtonState();
+
+            Editor.TextArea.SelectionChanged += Editor_SelectionChanged;
         }
 
         /// <summary>
@@ -507,7 +510,7 @@ namespace RCLayoutPreview
 
         /// <summary>
         /// Checks if there's a stored error position or naming warning that can be navigated to
-        /// </summary>
+        /// /// </summary>
         /// <returns>True if there's an error or warning that can be navigated to</returns>
         public bool HasErrorToNavigate()
         {
@@ -1998,6 +2001,43 @@ namespace RCLayoutPreview
             {
                 // Flash effect is optional, don't crash if it fails
             }
+        }
+
+        private void Editor_SelectionChanged(object sender, EventArgs e)
+        {
+            string selectedText = Editor.SelectedText;
+            string elementName = null;
+            // Try to extract Name="..." from selection
+            var nameMatch = Regex.Match(selectedText, "Name=\"([^\"]+)\"");
+            if (nameMatch.Success)
+            {
+                elementName = nameMatch.Groups[1].Value;
+            }
+            else
+            {
+                // Try to find the nearest Name attribute before the selection
+                int caret = Editor.CaretOffset;
+                string text = Editor.Text;
+                int searchStart = Math.Max(0, caret - 200);
+                int searchEnd = Math.Min(text.Length, caret + 200);
+                string context = text.Substring(searchStart, searchEnd - searchStart);
+                var contextMatch = Regex.Match(context, "Name=\"([^\"]+)\"");
+                if (contextMatch.Success)
+                {
+                    elementName = contextMatch.Groups[1].Value;
+                }
+                else
+                {
+                    // Fallback: try to extract tag name
+                    var tagMatch = Regex.Match(selectedText, "<([a-zA-Z0-9_]+)");
+                    if (tagMatch.Success)
+                    {
+                        elementName = tagMatch.Groups[1].Value;
+                    }
+                }
+            }
+            UpdateStatus($"Selection changed, extracted element name: {elementName}");
+            SelectedElementChanged?.Invoke(this, elementName);
         }
     }
 }
