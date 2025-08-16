@@ -58,6 +58,12 @@
               Data="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"
               Fill="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(TextElement.Foreground)}"
               Stretch="Uniform" Width="16" Height="16"/>
+        
+        <!-- Close Icon -->
+        <Path x:Key="CloseIcon" 
+              Data="M6,18L18,6M6,6L18,18" 
+              Stroke="Black" StrokeThickness="2" 
+              Stretch="Uniform" Width="16" Height="16"/>
     </Window.Resources>
     
     <Grid>
@@ -117,11 +123,13 @@
                 
                 <MenuItem Name="Find_1" Header="Find..." 
                           InputGestureText="Ctrl+F"
-                          ToolTip="Find text in the editor (built-in search)" />
+                          ToolTip="Find text in the editor (built-in search)"
+                          Click="ShowFindDialog" />
                           
                 <MenuItem Name="Replace_1" Header="Find and Replace..." 
                           InputGestureText="Ctrl+H"
-                          ToolTip="Find and replace text in the editor" />
+                          ToolTip="Find and replace text in the editor"
+                          Click="ShowSearchReplaceDialog" />
                           
                 <Separator/>
                 
@@ -150,7 +158,7 @@
         </Menu>
 
         <!-- Icon Toolbar -->
-        <ToolBarTray Grid.Row="1" Background="#F0F0F0">
+        <ToolBarTray Grid.Row="1" Background="#F0F0F0" IsLocked="True">
             <ToolBar Band="0" BandIndex="0" Background="Transparent" BorderThickness="0">
                 <!-- File operations -->
                 <Button Click="LoadLayout_Click" ToolTip="Load Layout (Ctrl+O)" 
@@ -201,6 +209,15 @@
                         Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}" 
                         Padding="4" Margin="2,1">
                     <ContentPresenter Content="{StaticResource ErrorIcon}"/>
+                </Button>
+                
+                <Separator Margin="3,0"/>
+                
+                <!-- Close operation -->
+                <Button Click="CloseEditor_Click" ToolTip="Close Editor (Alt+F4)" 
+                        Style="{DynamicResource {x:Static ToolBar.ButtonStyleKey}}" 
+                        Padding="4" Margin="2,1">
+                    <ContentPresenter Content="{StaticResource CloseIcon}"/>
                 </Button>
             </ToolBar>
         </ToolBarTray>

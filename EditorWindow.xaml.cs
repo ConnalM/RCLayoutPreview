@@ -1543,74 +1543,69 @@ namespace RCLayoutPreview
             {
                 Title = "Find and Replace",
                 Width = 450,
-                Height = 250,
+                Height = 210,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 ResizeMode = ResizeMode.NoResize
             };
 
-            var grid = new Grid { Margin = new Thickness(10) };
+            var grid = new Grid { Margin = new Thickness(10, 5, 10, 10) };
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Find row
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Find textbox row
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Replace row
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Replace textbox row
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Options row
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Button row
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Status row
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) }); // Label column
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // TextBox column
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) }); // Button column
 
-            // Find label
-            var findLabel = new Label { Content = "Find:", VerticalAlignment = VerticalAlignment.Center };
+            // Find row
+            var findLabel = new Label { Content = "Find:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0,0,0,0) };
             Grid.SetRow(findLabel, 0); Grid.SetColumn(findLabel, 0);
             grid.Children.Add(findLabel);
 
-            // Find textbox
-            var findTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center, Width = 220 };
-            Grid.SetRow(findTextBox, 1); Grid.SetColumn(findTextBox, 0);
+            var findTextBox = new TextBox { Margin = new Thickness(5, 2, 5, 2), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(findTextBox, 0); Grid.SetColumn(findTextBox, 1);
             grid.Children.Add(findTextBox);
 
-            // Find Next button
             var findButton = new Button { Content = "Find Next", Margin = new Thickness(5), Height = 25, MinWidth = 90 };
-            Grid.SetRow(findButton, 1); Grid.SetColumn(findButton, 1);
+            Grid.SetRow(findButton, 0); Grid.SetColumn(findButton, 2);
             grid.Children.Add(findButton);
 
-            // Replace label
-            var replaceLabel = new Label { Content = "Replace:", VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetRow(replaceLabel, 2); Grid.SetColumn(replaceLabel, 0);
+            // Replace row
+            var replaceLabel = new Label { Content = "Replace:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0,0,0,0) };
+            Grid.SetRow(replaceLabel, 1); Grid.SetColumn(replaceLabel, 0);
             grid.Children.Add(replaceLabel);
 
-            // Replace textbox
-            var replaceTextBox = new TextBox { Margin = new Thickness(5), VerticalAlignment = VerticalAlignment.Center, Width = 220 };
-            Grid.SetRow(replaceTextBox, 3); Grid.SetColumn(replaceTextBox, 0);
+            var replaceTextBox = new TextBox { Margin = new Thickness(5, 2, 5, 2), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(replaceTextBox, 1); Grid.SetColumn(replaceTextBox, 1);
             grid.Children.Add(replaceTextBox);
 
-            // Replace button
             var replaceButton = new Button { Content = "Replace", Margin = new Thickness(5), Height = 25, MinWidth = 90 };
-            Grid.SetRow(replaceButton, 3); Grid.SetColumn(replaceButton, 1);
+            Grid.SetRow(replaceButton, 1); Grid.SetColumn(replaceButton, 2);
             grid.Children.Add(replaceButton);
 
             // Options section
-            var optionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5) };
+            var optionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5, 8, 5, 8) };
             var matchCaseCheckBox = new CheckBox { Content = "Match case", Margin = new Thickness(0, 0, 15, 0), VerticalAlignment = VerticalAlignment.Center };
             var wholeWordCheckBox = new CheckBox { Content = "Whole word", VerticalAlignment = VerticalAlignment.Center };
             optionsPanel.Children.Add(matchCaseCheckBox);
             optionsPanel.Children.Add(wholeWordCheckBox);
-            Grid.SetRow(optionsPanel, 4); Grid.SetColumn(optionsPanel, 0); Grid.SetColumnSpan(optionsPanel, 2);
+            Grid.SetRow(optionsPanel, 2); Grid.SetColumn(optionsPanel, 0); Grid.SetColumnSpan(optionsPanel, 3);
             grid.Children.Add(optionsPanel);
 
             // Button section
-            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(5, 15, 5, 5) };
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(5, 10, 5, 5) };
             var replaceAllButton = new Button { Content = "Replace All", Width = 80, Margin = new Thickness(5, 0, 5, 0) };
             var closeButton = new Button { Content = "Close", Width = 80, Margin = new Thickness(5, 0, 0, 0) };
             buttonPanel.Children.Add(replaceAllButton);
             buttonPanel.Children.Add(closeButton);
-            Grid.SetRow(buttonPanel, 5); Grid.SetColumn(buttonPanel, 0); Grid.SetColumnSpan(buttonPanel, 2);
+            Grid.SetRow(buttonPanel, 3); Grid.SetColumn(buttonPanel, 0); Grid.SetColumnSpan(buttonPanel, 3);
             grid.Children.Add(buttonPanel);
 
             // Status section
             var statusLabel = new Label { Content = "Ready", Foreground = Brushes.Gray, Margin = new Thickness(5, 0, 5, 0) };
-            Grid.SetRow(statusLabel, 6); Grid.SetColumn(statusLabel, 0); Grid.SetColumnSpan(statusLabel, 2);
+            Grid.SetRow(statusLabel, 4); Grid.SetColumn(statusLabel, 0); Grid.SetColumnSpan(statusLabel, 3);
             grid.Children.Add(statusLabel);
 
             dialog.Content = grid;
@@ -2044,6 +2039,11 @@ namespace RCLayoutPreview
             }
             UpdateStatus($"Selection changed, extracted element name: {elementName}");
             SelectedElementChanged?.Invoke(this, elementName);
+        }
+
+        private void ShowSearchReplaceDialog(object sender, RoutedEventArgs e)
+        {
+            ShowSearchReplaceDialog();
         }
     }
 }
