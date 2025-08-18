@@ -140,108 +140,186 @@ namespace RCLayoutPreview.Helpers
                     Description = "Full window scaffolding for Race Coordinator layout, with clear regions for menu, info, and lanes.",
                     Category = "Documents",
                     XamlTemplate =
-                        "<!-- Scaffolding: Full window for Race Coordinator layout with clear regions for menu, info, and lanes -->\n" +
-                        "<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n" +
-                        "        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n" +
-                        "        Title=\"Race Coordinator Layout\"\n" +
-                        "        Height=\"720\" Width=\"1280\"\n" +
-                        "        Background=\"Black\">\n\n" +
-                        "    <!-- ?? Optional: Theme Dictionary for styling -->\n" +
-                        "    <!-- Use snippet: \"Theme Dictionary\" -->\n" +
-                        "    <!-- <Window.Resources>\n" +
-                        "         <ResourceDictionary Source=\"ThemeDictionary.xaml\"/>\n" +
-                        "     </Window.Resources> -->\n\n" +
-                        "    <!-- ?? Outer Border/Viewbox wrapper for scaling -->\n" +
-                        "    <Border Background=\"Transparent\">\n" +
-                        "        <Viewbox Stretch=\"Uniform\">\n" +
-                        "            <Grid Background=\"White\" Margin=\"10\">\n\n" +
-                        "                <!-- ?? Menu Bar goes here (if used) -->\n" +
-                        "                <!-- Use snippet: \"General Menu\" -->\n" +
-                        "                <Menu Height=\"22\" VerticalAlignment=\"Top\">\n" +
-                        "                    <MenuItem Header=\"File\">\n" +
-                        "                        <MenuItem Header=\"Save\"/>\n" +
-                        "                        <MenuItem Header=\"Export Race\"/>\n" +
-                        "                    </MenuItem>\n" +
-                        "                </Menu>\n\n" +
-                        "                <!-- ?? Upper Panel: Track + Race Info -->\n" +
-                        "                <!-- Use snippet: \"Upper DockPanel\" or build from pieces -->\n" +
-                        "                <DockPanel Height=\"200\" Margin=\"0,22,0,0\" Name=\"dockPanel1\">\n" +
-                        "                    <Grid>\n" +
-                        "                        <Grid.ColumnDefinitions>\n" +
-                        "                            <ColumnDefinition />\n" +
-                        "                            <ColumnDefinition />\n" +
-                        "                            <ColumnDefinition />\n" +
-                        "                        </Grid.ColumnDefinitions>\n\n" +
-                        "                        <!-- ?? Track Info Block -->\n" +
-                        "                        <!-- Use snippet: \"Track Info Panel\" -->\n" +
-                        "                        <StackPanel Grid.Column=\"0\" VerticalAlignment=\"Center\" Margin=\"5\">\n" +
-                        "                            <Image Name=\"TrackImage_1\" Height=\"115\" ToolTip=\"Track image from RC\" />\n" +
-                        "                            <Label Content=\"Track:\" FontSize=\"12\" Foreground=\"Gray\" />\n" +
-                        "                            <Label Name=\"TrackName_1\" FontSize=\"30\" FontWeight=\"Bold\"\n" +
-                        "                                   Foreground=\"DarkSlateBlue\" HorizontalAlignment=\"Center\" />\r\n" +
-                        "                        </StackPanel>\n\n" +
-                        "                        <!-- ?? Race Info Block -->\n" +
-                        "                        <!-- Use snippets: \"Race Name Label\", \"Race Time Label\", \"Heat Info DockPanel\" -->\n" +
-                        "                        <StackPanel Grid.Column=\"1\" VerticalAlignment=\"Center\" Margin=\"5\">\n" +
-                        "                            <Label Name=\"RaceName_1\" FontSize=\"28\" FontWeight=\"Bold\"\n" +
-                        "                                   Foreground=\"GreenYellow\" HorizontalAlignment=\"Center\" />\n" +
-                        "                            <Label Name=\"RaceTime_1\" FontSize=\"40\" FontWeight=\"Bold\"\n" +
-                        "                                   Foreground=\"DarkGreen\" HorizontalAlignment=\"Center\" />\n" +
-                        "                            <DockPanel HorizontalAlignment=\"Center\">\n" +
-                        "                                <TextBlock Text=\"Heat \" />\n" +
-                        "                                <TextBlock Name=\"HeatNumber_1\" FontWeight=\"Bold\" />\n" +
-                        "                                <TextBlock Text=\" of \" />\n" +
-                        "                                <TextBlock Name=\"NumHeats_1\" FontWeight=\"Bold\" />\n" +
-                        "                            </DockPanel>\n" +
-                        "                        </StackPanel>\n\n" +
-                        "                        <!-- ?? Race Flag Block -->\n" +
-                        "                        <!-- Use snippet: \"Race State Image\" -->\n" +
-                        "                        <Image Grid.Column=\"2\" Name=\"RaceStateImage_1\" Width=\"150\" Height=\"150\"\n" +
-                        "                               Stretch=\"Uniform\" ToolTip=\"Displays race state flag\" />\n" +
-                        "                    </Grid>\n" +
-                        "                </DockPanel>\n\n" +
-                        "                <!-- ?? Lower Panel: Racer lanes and stats -->\n" +
-                        "                <!-- Use snippet: \"Lower DockPanel\" (simplified) -->\n" +
-                        "                <DockPanel Margin=\"0,222,0,0\" Name=\"dockPanel2\">\n" +
-                        "                    <Grid>\n" +
-                        "                        <!-- ?? Column headers -->\n" +
-                        "                        <Grid.RowDefinitions>\n" +
-                        "                            <RowDefinition Height=\"40\"/> <!-- Headers -->\n" +
-                        "                            <RowDefinition Height=\"Auto\"/> <!-- Lane 1 -->\n" +
-                        "                            <RowDefinition Height=\"Auto\"/> <!-- Lane 2 -->\n" +
-                        "                        </Grid.RowDefinitions>\n" +
-                        "                        <Grid.ColumnDefinitions>\n" +
-                        "                            <ColumnDefinition Width=\"200\" /> <!-- Name -->\n" +
-                        "                            <ColumnDefinition Width=\"100\" /> <!-- Lap -->\n" +
-                        "                            <ColumnDefinition Width=\"150\" /> <!-- Lap Time -->\n" +
-                        "                            <ColumnDefinition Width=\"150\" /> <!-- Median -->\n" +
-                        "                            <ColumnDefinition Width=\"150\" /> <!-- Best -->\n" +
-                        "                        </Grid.ColumnDefinitions>\n\n" +
-                        "                        <!-- ?? Column Labels -->\n" +
-                        "                        <Label Grid.Row=\"0\" Grid.Column=\"0\" Content=\"Name\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"0\" Grid.Column=\"1\" Content=\"Lap\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"0\" Grid.Column=\"2\" Content=\"Lap Time\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"0\" Grid.Column=\"3\" Content=\"Median\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"0\" Grid.Column=\"4\" Content=\"Best\" FontWeight=\"Bold\" HorizontalContentAlignment=\"Center\" />\n\n" +
-                        "                        <!-- ?? Lane 1 -->\n" +
-                        "                        <!-- Use snippet: \"Racer Row\" + Lap Time Display -->\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"0\" Name=\"Nickname_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"1\" Name=\"Lap_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"2\" Name=\"LapTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"3\" Name=\"MedianTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"1\" Grid.Column=\"4\" Name=\"BestLapTime_Lane1_1\" HorizontalContentAlignment=\"Center\" />\n\n" +
-                        "                        <!-- ?? Lane 2 (copy and update Lane1 ? Lane2) -->\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"0\" Name=\"Nickname_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"1\" Name=\"Lap_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"2\" Name=\"LapTime_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"3\" Name=\"MedianTime_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                        <Label Grid.Row=\"2\" Grid.Column=\"4\" Name=\"BestLapTime_Lane2_1\" HorizontalContentAlignment=\"Center\" />\n" +
-                        "                    </Grid>\n" +
-                        "                </DockPanel>\n\n" +
-                        "            </Grid>\n" +
-                        "        </Viewbox>\n" +
-                        "    </Border>\n" +
-                        "</Window>"
+@"<!-- Scaffolding: Full window for Race Coordinator layout with clear regions for menu, info, and lanes -->
+<Window xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
+        xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml""
+        Title=""Race Coordinator Layout""
+        Height=""720"" Width=""1280""
+        Background=""Black"">
+
+    <!-- ?? Optional: Theme Dictionary for styling -->
+    <!-- Use snippet: ""Theme Dictionary"" -->
+    <!-- <Window.Resources>
+         <ResourceDictionary Source=""ThemeDictionary.xaml""/>
+     </Window.Resources> -->
+
+    <!-- ?? Outer Border/Viewbox wrapper for scaling -->
+    <Border Background=""Transparent"">
+        <Viewbox Stretch=""Uniform"">
+            <Grid Background=""White"" Margin=""10"">
+
+                <!-- ?? Menu Bar goes here (if used) -->
+                <!-- Use snippet: ""General Menu"" -->
+                <Menu Height=""22"" VerticalAlignment=""Top"">
+                    <MenuItem Header=""File"">
+                        <MenuItem Header=""Save""/>
+                        <MenuItem Header=""Export Race""/>
+                    </MenuItem>
+                </Menu>
+
+                <!-- ?? Upper Panel: Track + Race Info -->
+                <!-- Use snippet: ""Upper DockPanel"" or build from pieces -->
+                <DockPanel Height=""200"" Margin=""0,22,0,0"" Name=""dockPanel1"" VerticalAlignment=""Top"">
+    <Grid Name=""grid1"">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <!-- Track Info Block -->
+        <StackPanel Grid.Column=""0"" VerticalAlignment=""Bottom"" Margin=""0"" Height=""200"">
+            <Viewbox Margin=""5"" Stretch=""None"">
+                <Image Name=""TrackImage_1""
+                       VerticalAlignment=""Center""
+                       Margin=""5,0,0,0""
+                       Height=""115""
+                       StretchDirection=""Both""
+                       MaxWidth=""300"" />
+            </Viewbox>
+            <Label Margin=""6,5.716,0.569,0""
+                   VerticalAlignment=""Bottom""
+                   Foreground=""Linen""
+                   FontSize=""12""
+                   HorizontalContentAlignment=""Center""
+                   HorizontalAlignment=""Left""
+                   VerticalContentAlignment=""Bottom""
+                   Padding=""0""
+                   FontWeight=""Bold""
+                   FontStyle=""Italic""
+                   Content="" "" />
+            <Viewbox MaxWidth=""300"" MaxHeight=""50"" MinHeight=""50"">
+                <Label Margin=""6,5.716,0.569,0""
+                       Name=""TrackName_1""
+                       VerticalAlignment=""Top""
+                       Foreground=""DarkSlateBlue""
+                       FontSize=""30""
+                       HorizontalContentAlignment=""Center""
+                       HorizontalAlignment=""Stretch""
+                       VerticalContentAlignment=""Top""
+                       Padding=""2""
+                       FontWeight=""Bold""
+                       FontStyle=""Italic""
+                       Content="" "" />
+            </Viewbox>
+        </StackPanel>
+
+        <!-- Race Info Block -->
+        <StackPanel Grid.Column=""1"" Name=""stackPanel1"" Height=""200"" VerticalAlignment=""Top"" Margin=""0"">
+            <Viewbox MaxWidth=""320"" MaxHeight=""50"" MinHeight=""50"">
+                <Label Background=""Transparent""
+                       BorderBrush=""Transparent""
+                       BorderThickness=""2""
+                       FontSize=""28""
+                       HorizontalContentAlignment=""Center""
+                       VerticalContentAlignment=""Center""
+                       Name=""RaceName_1""
+                       Foreground=""GreenYellow""
+                       FontWeight=""Bold""
+                       Content="" "" />
+            </Viewbox>
+            <Label Margin=""0,-10,0,0""
+                   Background=""Transparent""
+                   BorderBrush=""Transparent""
+                   BorderThickness=""2""
+                   FontSize=""50""
+                   HorizontalContentAlignment=""Stretch""
+                   VerticalContentAlignment=""Center""
+                   Name=""RaceTime_1""
+                   Foreground=""DarkGreen""
+                   FontWeight=""Bold""
+                   HorizontalAlignment=""Center""
+                   Content="" "" />
+            <Label HorizontalAlignment=""Center"">
+                <DockPanel LastChildFill=""True"" HorizontalAlignment=""Center"">
+                    <TextBlock FontSize=""24""
+                               Foreground=""DarkSlateBlue""
+                               Text=""Heat ""
+                               FontWeight=""Bold"" />
+                    <TextBlock FontSize=""24""
+                               Name=""HeatNumber_1""
+                               Foreground=""DarkSlateBlue""
+                               FontWeight=""Bold""
+                               Text="" "" />
+                    <TextBlock FontSize=""24""
+                               Foreground=""DarkSlateBlue""
+                               Text="" of ""
+                               FontWeight=""Bold"" />
+                    <TextBlock FontSize=""24""
+                               Name=""NumHeats_1""
+                               Foreground=""DarkSlateBlue""
+                               FontWeight=""Bold""
+                               Text="" "" />
+                </DockPanel>
+            </Label>
+        </StackPanel>
+
+        <!-- Race Flag Block -->
+        <Image Grid.Column=""2""
+               Name=""RaceStateImage_1""
+               Stretch=""Uniform""
+               VerticalAlignment=""Center""
+               HorizontalAlignment=""Center""
+               Height=""200""
+               Width=""275"" />
+    </Grid>
+</DockPanel>
+                <!-- ?? Lower Panel: Racer lanes and stats -->
+                <!-- Use snippet: ""Lower DockPanel"" (simplified) -->
+                <DockPanel Margin=""0,222,0,0"" Name=""dockPanel2"">
+                    <Grid>
+                        <!-- ?? Column headers -->
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height=""40""/> <!-- Headers -->
+                            <RowDefinition Height=""Auto""/> <!-- Lane 1 -->
+                            <RowDefinition Height=""Auto""/> <!-- Lane 2 -->
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=""200"" /> <!-- Name -->
+                            <ColumnDefinition Width=""100"" /> <!-- Lap -->
+                            <ColumnDefinition Width=""150"" /> <!-- Lap Time -->
+                            <ColumnDefinition Width=""150"" /> <!-- Median -->
+                            <ColumnDefinition Width=""150"" /> <!-- Best -->
+                        </Grid.ColumnDefinitions>
+
+                        <!-- ?? Column Labels -->
+                        <Label Grid.Row=""0"" Grid.Column=""0"" Content=""Name"" FontWeight=""Bold"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""0"" Grid.Column=""1"" Content=""Lap"" FontWeight=""Bold"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""0"" Grid.Column=""2"" Content=""Lap Time"" FontWeight=""Bold"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""0"" Grid.Column=""3"" Content=""Median"" FontWeight=""Bold"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""0"" Grid.Column=""4"" Content=""Best"" FontWeight=""Bold"" HorizontalContentAlignment=""Center"" />
+
+                        <!-- ?? Lane 1 -->
+                        <!-- Use snippet: ""Racer Row"" + Lap Time Display -->
+                        <Label Grid.Row=""1"" Grid.Column=""0"" Name=""Nickname_Lane1_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""1"" Grid.Column=""1"" Name=""Lap_Lane1_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""1"" Grid.Column=""2"" Name=""LapTime_Lane1_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""1"" Grid.Column=""3"" Name=""MedianTime_Lane1_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""1"" Grid.Column=""4"" Name=""BestLapTime_Lane1_1"" HorizontalContentAlignment=""Center"" />
+
+                        <!-- ?? Lane 2 (copy and update Lane1 ? Lane2) -->
+                        <Label Grid.Row=""2"" Grid.Column=""0"" Name=""Nickname_Lane2_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""2"" Grid.Column=""1"" Name=""Lap_Lane2_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""2"" Grid.Column=""2"" Name=""LapTime_Lane2_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""2"" Grid.Column=""3"" Name=""MedianTime_Lane2_1"" HorizontalContentAlignment=""Center"" />
+                        <Label Grid.Row=""2"" Grid.Column=""4"" Name=""BestLapTime_Lane2_1"" HorizontalContentAlignment=""Center"" />
+                    </Grid>
+                </DockPanel>
+
+            </Grid>
+        </Viewbox>
+    </Border>
+</Window>"
                 },
                 // Theme Dictionary: Merged resource dictionary for theming
                 new LayoutSnippet
