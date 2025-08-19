@@ -72,10 +72,10 @@ namespace RCLayoutPreview
 
             // Add F8 keyboard shortcut for error navigation from preview window
             this.KeyDown += MainWindow_KeyDown;
-            
+
             this.Loaded += MainWindow_Loaded;
         }
-        
+
         /// <summary>
         /// Called when the main window is loaded. Used for initial status logging.
         /// </summary>
@@ -198,10 +198,10 @@ namespace RCLayoutPreview
             if (!ValidateXamlContent(xamlContent)) return;
 
             xamlContent = CleanXamlPlaceholders(xamlContent);
-            
+
             // Clear any existing popups before processing - if there are no new issues, the popup should disappear
             ClearAnyExistingPopups();
-            
+
             if (CheckForDuplicateNames(xamlContent)) return;
 
             try
@@ -215,7 +215,7 @@ namespace RCLayoutPreview
                 object element = ParseXamlContent(processedXaml);
                 ApplyParsedElement(element);
                 PostProcessPreview();
-                
+
                 // If we reach here without issues being detected, ensure popups are hidden
                 // This handles the case where issues were fixed but detection didn't run
                 EnsurePopupsHiddenOnSuccess();
@@ -325,19 +325,19 @@ namespace RCLayoutPreview
             {
                 // Create enhanced error message with correct position
                 string enhancedError = XamlValidationHelper.CreateEnhancedErrorMessage(error, processedXaml, errorPosition);
-                
+
                 // Get context around the error
                 string context = XamlValidationHelper.GetErrorContext(processedXaml, errorPosition);
-                
+
                 UpdateStatus($"XAML parsing failed: {enhancedError}");
-                
+
                 // Navigate to error in editor if possible
                 if (editorWindow != null && errorPosition >= 0)
                 {
                     // Use the editor's enhanced navigation method
                     editorWindow.NavigateToPosition(errorPosition, enhancedError, context);
                 }
-                
+
                 throw new XamlParseException($"Failed to parse XAML: {enhancedError}");
             }
         }
@@ -393,7 +393,7 @@ namespace RCLayoutPreview
             var nameMatches = nameRegex.Matches(xamlContent);
             var nameSet = new HashSet<string>();
             var duplicateNames = new List<string>();
-            
+
             // First pass: collect all names and detect exact duplicates
             var allNames = new List<string>();
             foreach (Match match in nameMatches)
@@ -403,16 +403,16 @@ namespace RCLayoutPreview
                 {
                     if (name.StartsWith("Placeholder"))
                         continue;
-                        
+
                     allNames.Add(name);
-                    
+
                     if (nameSet.Contains(name))
                         duplicateNames.Add(name);
                     else
                         nameSet.Add(name);
                 }
             }
-            
+
             // Second pass: detect naming pattern inconsistencies
             var namingIssues = DetectNamingPatternIssues(allNames);
             if (namingIssues.Count > 0)
@@ -420,12 +420,12 @@ namespace RCLayoutPreview
                 // Remove duplicates from the issues list
                 var uniqueIssues = namingIssues.Distinct().ToList();
                 string issues = string.Join(", ", uniqueIssues);
-                
+
                 // Show both status message and prominent popup warning
                 UpdateStatus($"WARNING - Naming pattern issues detected: {issues}");
                 ShowNamingPatternWarning($"⚠️ NAMING PATTERN ISSUES DETECTED\n\n{string.Join("\n\n", uniqueIssues)}\n\nThese issues may cause confusion. Consider using consistent naming patterns like 'dockPanel1', 'dockPanel2', etc.");
             }
-            
+
             return duplicateNames;
         }
 
@@ -437,7 +437,7 @@ namespace RCLayoutPreview
         private List<string> DetectNamingPatternIssues(List<string> allNames)
         {
             var issues = new List<string>();
-            
+
             // Known patterns from snippet templates - if we see these base names without numbers, suggest the expected pattern
             var expectedNumberedPatterns = new Dictionary<string, string[]>
             {
@@ -445,10 +445,10 @@ namespace RCLayoutPreview
                 { "menu", new[] { "menu1" } },                         // From menu snippets
                 { "Window", new[] { "Window_1", "Window_2" } }         // From window menu items
             };
-            
+
             // Get the current XAML content for line/column calculation
             string xamlContent = editorWindow?.Editor?.Text ?? "";
-            
+
             // Check for context-aware naming patterns
             foreach (string name in allNames)
             {
@@ -456,20 +456,20 @@ namespace RCLayoutPreview
                 if (expectedNumberedPatterns.ContainsKey(name))
                 {
                     string[] expectedNames = expectedNumberedPatterns[name];
-                    
+
                     // Check if this is likely the first or second in sequence based on other clues
                     bool hasFirstPattern = allNames.Exists(n => n == expectedNames[0]);
                     bool hasSecondPattern = expectedNames.Length > 1 && allNames.Exists(n => n == expectedNames[1]);
-                    
+
                     // Find the position of this problematic name in the XAML
                     int namePosition = FindNamePositionInXaml(xamlContent, name);
                     string locationInfo = "";
-                    
+
                     if (namePosition >= 0)
                     {
                         XamlValidationHelper.GetLineAndColumnFromPosition(xamlContent, namePosition, out int line, out int column);
                         locationInfo = $" (Line {line}, Column {column})";
-                        
+
                         // Store warning info for potential F8 navigation, but don't auto-navigate
                         // Only show the warning in status bar and popup - don't interrupt user's workflow
                         if (editorWindow != null)
@@ -487,12 +487,12 @@ namespace RCLayoutPreview
                             {
                                 editorMessage = $"Naming suggestion: '{name}' should probably be '{expectedNames[0]}' (found '{expectedNames[1]}')";
                             }
-                            
+
                             // Store the warning for potential F8 navigation, but don't auto-navigate to avoid workflow disruption
                             editorWindow.StoreNamingWarning(namePosition, editorMessage);
                         }
                     }
-                    
+
                     if (!hasFirstPattern && !hasSecondPattern)
                     {
                         // Neither exists, suggest the first one
@@ -510,15 +510,15 @@ namespace RCLayoutPreview
                     }
                 }
             }
-            
+
             // Group names by their base (e.g., "dockPanel" from "dockPanel1", "dockPanel2")  
             var nameGroups = new Dictionary<string, List<string>>();
-            
+
             foreach (string name in allNames)
             {
                 // Extract base name by removing trailing digits
                 string baseName = Regex.Replace(name, @"\d+$", "");
-                
+
                 if (baseName != name) // Only if it had digits
                 {
                     if (!nameGroups.ContainsKey(baseName))
@@ -526,7 +526,7 @@ namespace RCLayoutPreview
                     nameGroups[baseName].Add(name);
                 }
             }
-            
+
             // Check for gaps in numbered sequences
             foreach (var group in nameGroups)
             {
@@ -541,19 +541,19 @@ namespace RCLayoutPreview
                             numbers.Add(int.Parse(numberMatch.Groups[1].Value));
                         }
                     }
-                    
+
                     numbers.Sort();
-                    
+
                     // Check for gaps (e.g., dockPanel1, dockPanel3 - missing dockPanel2)
                     for (int i = 1; i < numbers.Count; i++)
                     {
-                        if (numbers[i] - numbers[i-1] > 1)
+                        if (numbers[i] - numbers[i - 1] > 1)
                         {
-                            int missing = numbers[i-1] + 1;
+                            int missing = numbers[i - 1] + 1;
                             issues.Add($"Missing '{group.Key}{missing}' in sequence");
                         }
                     }
-                    
+
                     // Check if sequence should start from 1 instead of 0
                     if (numbers.Count > 0 && numbers[0] == 0)
                     {
@@ -561,7 +561,7 @@ namespace RCLayoutPreview
                     }
                 }
             }
-            
+
             return issues;
         }
 
@@ -579,7 +579,7 @@ namespace RCLayoutPreview
             // Look for Name="nameValue" pattern
             string pattern = $@"Name\s*=\s*""{Regex.Escape(nameValue)}""";
             var match = Regex.Match(xaml, pattern, RegexOptions.IgnoreCase);
-            
+
             if (match.Success)
             {
                 // Return the position of the Name attribute start
@@ -600,12 +600,12 @@ namespace RCLayoutPreview
             {
                 var popupMessage = FindName("PopupMessage") as TextBlock;
                 var popupOverlay = FindName("PopupOverlay") as FrameworkElement;
-                
+
                 if (popupMessage != null && popupOverlay != null)
                 {
                     popupMessage.Text = warningMessage;
                     popupOverlay.Visibility = Visibility.Visible;
-                    
+
                     // Change styling to indicate this is a warning (yellow/orange) rather than error (red)
                     if (popupMessage.Parent is Border border)
                     {
@@ -659,7 +659,7 @@ namespace RCLayoutPreview
                     if (popupMessage != null)
                     {
                         string popupText = popupMessage.Text ?? "";
-                        
+
                         // Only auto-hide naming pattern warnings, not critical errors
                         if (popupText.Contains("NAMING PATTERN ISSUES") || popupText.Contains("should probably be"))
                         {
@@ -724,12 +724,12 @@ namespace RCLayoutPreview
             {
                 var popupMessage = FindName("PopupMessage") as TextBlock;
                 var popupOverlay = FindName("PopupOverlay") as FrameworkElement;
-                
+
                 if (popupMessage != null && popupOverlay != null)
                 {
                     popupMessage.Text = errorMessage;
                     popupOverlay.Visibility = Visibility.Visible;
-                    
+
                     // Reset styling to error colors (red) in case it was previously a warning
                     if (popupMessage.Parent is Border border)
                     {
@@ -835,7 +835,7 @@ namespace RCLayoutPreview
                     Placement = System.Windows.Controls.Primitives.PlacementMode.Relative,
                     PlacementTarget = PreviewHost,
                     StaysOpen = true,
-                    Background = new SolidColorBrush(Color.FromRgb(255,255,220)),
+                    Background = new SolidColorBrush(Color.FromRgb(255, 255, 220)),
                     Foreground = Brushes.Black,
                     BorderBrush = Brushes.Gray,
                     BorderThickness = new Thickness(1),
@@ -848,7 +848,7 @@ namespace RCLayoutPreview
             currentToolTip.IsOpen = true;
         }
 
-        
+
 
         /// <summary>
         /// Builds a string with diagnostic info about the given element (type, name, size, position).
@@ -1075,12 +1075,12 @@ namespace RCLayoutPreview
         {
             var debugMode = (sender as CheckBox)?.IsChecked == true;
             UpdateStatus(debugMode ? "Field Names view enabled" : "Field Names view disabled");
-            
+
             if (editorWindow != null)
             {
                 editorWindow.SetAutoUpdateEnabled(!debugMode);
             }
-            
+
             // CRITICAL FIX: Force preview refresh when Field Names toggle changes
             // This ensures the current preview immediately shows field names or data based on the toggle
             if (PreviewHost?.Content is FrameworkElement frameworkElement && jsonData != null)
@@ -1139,7 +1139,7 @@ namespace RCLayoutPreview
                 // Focus the editor window first
                 editorWindow.Activate();
                 editorWindow.Focus();
-                
+
                 // Check if the editor has an error to navigate to
                 if (editorWindow.HasErrorToNavigate())
                 {
@@ -1151,7 +1151,7 @@ namespace RCLayoutPreview
                 {
                     // No error available, but still focus the editor
                     UpdateStatus("No recent errors to navigate to (F8 from preview)");
-                    
+
                     // Show a brief message in the preview window
                     ShowErrorPopup("No recent XAML parsing errors found.\n\nPress F8 in the editor window to access more error navigation options.");
                 }
@@ -1163,79 +1163,79 @@ namespace RCLayoutPreview
         }
 
         private Brush previousBorderBrush;
-private Thickness previousBorderThickness;
-private Brush previousBackground;
-public void HighlightPreviewElement(string elementNameOrType)
-{
-    // Remove previous highlight only if a new selection is made
-    if (currentHighlightedElement != null && (string.IsNullOrEmpty(elementNameOrType) || currentHighlightedElement.Name != elementNameOrType))
-    {
-        currentHighlightedElement.Effect = null;
-        currentHighlightedElement = null;
-    }
-    if (string.IsNullOrEmpty(elementNameOrType) || PreviewHost?.Content == null)
-    {
-        UpdateStatus("No element selected for highlight.");
-        return;
-    }
-    FrameworkElement found = FindElementByName(PreviewHost.Content as FrameworkElement, elementNameOrType);
-    if (found == null)
-    {
-        // Try to find by type if not found by name
-        found = FindElementByType(PreviewHost.Content as FrameworkElement, elementNameOrType);
-    }
-    if (found != null)
-    {
-        currentHighlightedElement = found;
-        found.Effect = new DropShadowEffect
+        private Thickness previousBorderThickness;
+        private Brush previousBackground;
+        public void HighlightPreviewElement(string elementNameOrType)
         {
-            Color = Colors.Red,
-            ShadowDepth = 0,
-            BlurRadius = 24,
-            Opacity = 1.0
-        };
-        UpdateStatus($"Highlighted element: {elementNameOrType}");
-    }
-    else
-    {
-        UpdateStatus($"Element not found in preview: {elementNameOrType}");
-    }
-}
-
-private FrameworkElement FindElementByType(FrameworkElement root, string typeName)
-{
-    if (root == null) return null;
-    if (root.GetType().Name.Equals(typeName, StringComparison.OrdinalIgnoreCase)) return root;
-    foreach (var child in LogicalTreeHelper.GetChildren(root))
-    {
-        if (child is FrameworkElement fe)
-        {
-            var result = FindElementByType(fe, typeName);
-            if (result != null) return result;
+            // Remove previous highlight only if a new selection is made
+            if (currentHighlightedElement != null && (string.IsNullOrEmpty(elementNameOrType) || currentHighlightedElement.Name != elementNameOrType))
+            {
+                currentHighlightedElement.Effect = null;
+                currentHighlightedElement = null;
+            }
+            if (string.IsNullOrEmpty(elementNameOrType) || PreviewHost?.Content == null)
+            {
+                UpdateStatus("No element selected for highlight.");
+                return;
+            }
+            FrameworkElement found = FindElementByName(PreviewHost.Content as FrameworkElement, elementNameOrType);
+            if (found == null)
+            {
+                // Try to find by type if not found by name
+                found = FindElementByType(PreviewHost.Content as FrameworkElement, elementNameOrType);
+            }
+            if (found != null)
+            {
+                currentHighlightedElement = found;
+                found.Effect = new DropShadowEffect
+                {
+                    Color = Colors.Red,
+                    ShadowDepth = 0,
+                    BlurRadius = 24,
+                    Opacity = 1.0
+                };
+                UpdateStatus($"Highlighted element: {elementNameOrType}");
+            }
+            else
+            {
+                UpdateStatus($"Element not found in preview: {elementNameOrType}");
+            }
         }
-    }
-    return null;
-}
 
-private FrameworkElement FindElementByName(FrameworkElement root, string name)
-{
-    if (root == null) return null;
-    if (!string.IsNullOrEmpty(root.Name) && root.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) return root;
-    foreach (var child in LogicalTreeHelper.GetChildren(root))
-    {
-        if (child is FrameworkElement fe)
+        private FrameworkElement FindElementByType(FrameworkElement root, string typeName)
         {
-            var result = FindElementByName(fe, name);
-            if (result != null) return result;
+            if (root == null) return null;
+            if (root.GetType().Name.Equals(typeName, StringComparison.OrdinalIgnoreCase)) return root;
+            foreach (var child in LogicalTreeHelper.GetChildren(root))
+            {
+                if (child is FrameworkElement fe)
+                {
+                    var result = FindElementByType(fe, typeName);
+                    if (result != null) return result;
+                }
+            }
+            return null;
         }
-    }
-    return null;
-}
 
-private void EditorWindow_SelectedElementChanged(object sender, string elementNameOrType)
-{
-    lastSelectedElementName = elementNameOrType;
-    HighlightPreviewElement(elementNameOrType);
-}
+        private FrameworkElement FindElementByName(FrameworkElement root, string name)
+        {
+            if (root == null) return null;
+            if (!string.IsNullOrEmpty(root.Name) && root.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) return root;
+            foreach (var child in LogicalTreeHelper.GetChildren(root))
+            {
+                if (child is FrameworkElement fe)
+                {
+                    var result = FindElementByName(fe, name);
+                    if (result != null) return result;
+                }
+            }
+            return null;
+        }
+
+        private void EditorWindow_SelectedElementChanged(object sender, string elementNameOrType)
+        {
+            lastSelectedElementName = elementNameOrType;
+            HighlightPreviewElement(elementNameOrType);
+        }
     }
 }

@@ -129,6 +129,8 @@ namespace RCLayoutPreview
             // Set up drag and drop for snippets
             Editor.AllowDrop = true;
             Editor.Drop += Editor_Drop;
+            Editor.PreviewDrop += Editor_PreviewDrop;
+            Editor.DragEnter += (s, e) => LogStatus("Editor_DragEnter triggered");
 
             // Predictive text setup
             SetupPredictiveText();
@@ -276,10 +278,11 @@ namespace RCLayoutPreview
                 completionPopup.IsOpen = false;
                 return;
             }
-            // Show suggestions that contain the word anywhere (not just at the start)
+
             var matches = allCompletions
                 .Where(s => s.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
                 .ToList();
+
             if (matches.Count > 0)
             {
                 completionListBox.ItemsSource = matches;
@@ -289,45 +292,10 @@ namespace RCLayoutPreview
                 completionPopup.HorizontalOffset = loc.X;
                 completionPopup.VerticalOffset = loc.Y;
                 completionPopup.IsOpen = true;
-                // Do not steal focus from the editor
             }
             else
             {
                 completionPopup.IsOpen = false;
-            }
-        }
-
-        private void Editor_TextArea_TextEntering(object sender, System.Windows.Input.TextCompositionEventArgs e)
-        {
-            if (completionPopup.IsOpen && (e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0])))
-            {
-                // Accept completion on non-word character
-                InsertSelectedCompletion();
-                completionPopup.IsOpen = false;
-            }
-        }
-
-        private void CompletionListBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            InsertSelectedCompletion();
-            completionPopup.IsOpen = false;
-            Editor.TextArea.Focus();
-        }
-
-        private void CompletionListBox_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter || e.Key == Key.Tab)
-            {
-                InsertSelectedCompletion();
-                completionPopup.IsOpen = false;
-                Editor.TextArea.Focus();
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Escape)
-            {
-                completionPopup.IsOpen = false;
-                Editor.TextArea.Focus();
-                e.Handled = true;
             }
         }
 
@@ -340,8 +308,9 @@ namespace RCLayoutPreview
                 {
                     int offset = Editor.CaretOffset;
                     int start = offset - word.Length;
-                    Editor.Document.Replace(start, word.Length, selected);
-                    Editor.CaretOffset = start + selected.Length;
+                    string formattedFieldName = FormatFieldNameWithSuffix(selected);
+                    Editor.Document.Replace(start, word.Length, formattedFieldName);
+                    Editor.CaretOffset = start + formattedFieldName.Length;
                 }
             }
         }
@@ -621,9 +590,49 @@ namespace RCLayoutPreview
                 Title = "Select Layout XAML"
             };
 
-            if (dlg.ShowDialog() == true)
+            int retries = 3;
+            bool success = false;
+            string errorMsg = string.Empty;
+
+            while (retries > 0 && !success)
             {
-                LoadLayoutFile(dlg.FileName);
+                try
+                {
+                    if (dlg.ShowDialog() == true)
+                    {
+                        LoadLayoutFile(dlg.FileName);
+                        success = true; // If load is successful, set success to true
+                    }
+                    else
+                    {
+                        success = true; // If dialog is canceled, consider it successful (do nothing)
+                    }
+                }
+                catch (IOException ioEx)
+                {
+                    retries--;
+                    errorMsg = $"I/O error while opening file: {ioEx.Message}.\nRetries left: {retries}";
+                    UpdateStatus(errorMsg, true);
+                    System.Threading.Thread.Sleep(1000); // Wait before retrying
+                }
+                catch (UnauthorizedAccessException uaEx)
+                {
+                    retries = 0; // Do not retry on permission errors
+                    errorMsg = $"Access denied: {uaEx.Message}";
+                    UpdateStatus(errorMsg, true);
+                }
+                catch (Exception ex)
+                {
+                    retries = 0;
+                    errorMsg = $"Unexpected error: {ex.Message}";
+                    UpdateStatus(errorMsg, true);
+                }
+            }
+
+            // If still unsuccessful after retries, show error message
+            if (!success && !string.IsNullOrEmpty(errorMsg))
+            {
+                MessageBox.Show(errorMsg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -976,21 +985,29 @@ namespace RCLayoutPreview
 
         private void JsonFieldsTree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            LogStatus("JsonFieldsTree_MouseDoubleClick triggered");
+
             var treeView = sender as TreeView;
             var selectedItem = treeView?.SelectedItem as TreeViewItem;
             if (selectedItem != null)
             {
                 // Get the field name that was clicked
                 string fieldName = selectedItem.Header.ToString();
+                LogStatus($"Double-clicked field name: {fieldName}");
 
                 // Get the current position in the editor
                 int caretOffset = Editor.CaretOffset;
+                LogStatus($"Caret offset: {caretOffset}");
+
                 string actualFieldName = FormatFieldNameWithSuffix(fieldName);
+                LogStatus($"Formatted field name: {actualFieldName}");
 
                 // If there is a selection, check if it matches a field name pattern
                 if (Editor.SelectionLength > 0)
                 {
                     string selectedText = Editor.SelectedText;
+                    LogStatus($"Selected text: {selectedText}");
+
                     // Regex for RC field name pattern
                     var fieldNameRegex = new Regex(@"[A-Za-z0-9_]+_\d+");
                     if (fieldNameRegex.IsMatch(selectedText))
@@ -1012,6 +1029,8 @@ namespace RCLayoutPreview
                 {
                     // Look for a placeholder nearby
                     string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
+                    LogStatus($"Nearest placeholder: {placeholder}");
+
                     if (!string.IsNullOrEmpty(placeholder))
                     {
                         // Replace the placeholder with the field name
@@ -1029,6 +1048,11 @@ namespace RCLayoutPreview
 
                 // Check if this field triggers the placeholder removal
                 CheckForValidFields(Editor.Text);
+                LogStatus("Editor content validated for fields");
+            }
+            else
+            {
+                LogStatus("No valid item selected in TreeView");
             }
         }
 
@@ -1051,88 +1075,88 @@ namespace RCLayoutPreview
 
         private string FormatFieldNameWithSuffix(string fieldName)
         {
+            LogStatus($"FormatFieldNameWithSuffix triggered for field name: {fieldName}");
+
             // Scan the entire editor text for existing field names with suffixes
             string text = Editor.Text;
-            // Regex to match fieldNam1e_1, fieldName1_2, etc.
-            var suffixRegex = new Regex($@"{Regex.Escape(fieldName)}_(\d+)");
+            LogStatus($"Editor text length: {text.Length}");
+
+            // Regex to match fieldName_1, fieldName_2, etc.
+            var suffixRegex = new Regex($"{Regex.Escape(fieldName)}_(\\d+)");
             var matches = suffixRegex.Matches(text);
+            LogStatus($"Number of matches found: {matches.Count}");
+
             int maxSuffix = 0;
             foreach (Match match in matches)
             {
                 if (int.TryParse(match.Groups[1].Value, out int suffix))
                 {
+                    LogStatus($"Found suffix: {suffix}");
                     if (suffix > maxSuffix)
                         maxSuffix = suffix;
                 }
             }
+
             // Next available suffix
             int nextSuffix = maxSuffix + 1;
-            return $"{fieldName}_{nextSuffix}";
+            string formattedFieldName = $"{fieldName}_{nextSuffix}";
+            LogStatus($"Formatted field name with suffix: {formattedFieldName}");
+
+            return formattedFieldName;
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
         {
-            // Handle dropping layout snippets
-            if (e.Data.GetDataPresent("LayoutSnippet"))
-            {
-                var snippet = e.Data.GetData("LayoutSnippet") as LayoutSnippet;
-                if (snippet != null && SnippetGallery != null)
-                {
-                    // Process the snippet
-                    string processedSnippet = SnippetGallery.ProcessSnippet(snippet);
+            LogStatus("Editor_Drop triggered");
 
-                    // Get drop position
-                    var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
-                    int offset = pos.HasValue
-                        ? Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column)
-                        : Editor.CaretOffset;
-
-                    // Get the current indentation
-                    string indentation = GetCurrentIndentation();
-
-                    // Apply indentation to the snippet
-                    if (!string.IsNullOrEmpty(indentation))
-                    {
-                        processedSnippet = ApplyIndentation(processedSnippet, indentation);
-                    }
-
-                    // Check if there's selected text to replace
-                    if (Editor.SelectionLength > 0 && processedSnippet.Contains("{content}"))
-                    {
-                        string selectedText = Editor.SelectedText;
-                        processedSnippet = processedSnippet.Replace("{content}", selectedText);
-                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, processedSnippet);
-                    }
-                    else
-                    {
-                        Editor.Document.Insert(offset, processedSnippet);
-                    }
-
-                    UpdateStatus($"Inserted {snippet.Name} snippet");
-
-                    // Check if this snippet triggers the placeholder removal
-                    CheckForValidFields(Editor.Text);
-                }
-                return;
-            }
-
-            // Handle dropping regular strings
             if (e.Data.GetDataPresent(DataFormats.StringFormat))
             {
                 var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;
+                LogStatus($"Dropped text: {droppedText}");
+
                 var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
-                if (pos.HasValue)
+                int offset = pos.HasValue
+                    ? Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column)
+                    : Editor.CaretOffset;
+                LogStatus($"Drop position offset: {offset}");
+
+                // Format the dropped text with the instance number suffix
+                string formattedFieldName = FormatFieldNameWithSuffix(droppedText);
+                LogStatus($"Formatted field name: {formattedFieldName}");
+
+                // Look for a placeholder nearby
+                string placeholder = FindNearestPlaceholder(Editor.Text, offset);
+                LogStatus($"Nearest placeholder: {placeholder}");
+
+                if (!string.IsNullOrEmpty(placeholder))
                 {
-                    var offset = Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column);
-                    Editor.Document.Insert(offset, droppedText);
+                    // Replace the placeholder with the field name
+                    ReplacePlaceholderWithFieldName(placeholder, formattedFieldName);
+                    LogStatus($"Replaced {placeholder} with {formattedFieldName}");
                 }
                 else
                 {
-                    Editor.Document.Insert(Editor.CaretOffset, droppedText);
+                    // No placeholder, insert at drop position
+                    Editor.Document.Insert(offset, formattedFieldName);
+                    Editor.CaretOffset = offset + formattedFieldName.Length;
+                    LogStatus($"Inserted field name '{formattedFieldName}' at drop position");
                 }
 
-                // Check if this dropped text triggers the placeholder removal
+                // Validate the editor content for fields
                 CheckForValidFields(Editor.Text);
+                LogStatus("Editor content validated for fields");
+
+                // Refresh preview
+                XamlContentChanged?.Invoke(this, Editor.Text);
+                // Queue highlight after UI update
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    previewWindow.HighlightPreviewElement(formattedFieldName);
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            }
+            else
+            {
+                LogStatus("No valid data present in drag event");
             }
         }
 
@@ -2006,34 +2030,57 @@ namespace RCLayoutPreview
 
         private void Editor_SelectionChanged(object sender, EventArgs e)
         {
-            string selectedText = Editor.SelectedText;
             string elementName = null;
-            // Try to extract Name="..." from selection
-            var nameMatch = Regex.Match(selectedText, "Name=\"([^\"]+)\"");
-            if (nameMatch.Success)
+            int caret = Editor.CaretOffset;
+            string text = Editor.Text;
+
+            // Ensure caret is within bounds
+            if (caret < 0 || caret > text.Length)
             {
-                elementName = nameMatch.Groups[1].Value;
+                UpdateStatus("Caret position is out of bounds.");
+                return;
             }
-            else
+
+            // Find the start of the tag containing the caret
+            int tagStart = caret > 0 ? text.LastIndexOf('<', caret - 1) : -1;
+            int tagEnd = caret < text.Length ? text.IndexOf('>', caret) : -1;
+
+            if (tagStart >= 0 && tagEnd > tagStart)
             {
-                // Try to find the nearest Name attribute before the selection
-                int caret = Editor.CaretOffset;
-                string text = Editor.Text;
-                int searchStart = Math.Max(0, caret - 200);
-                int searchEnd = Math.Min(text.Length, caret + 200);
-                string context = text.Substring(searchStart, searchEnd - searchStart);
-                var contextMatch = Regex.Match(context, "Name=\"([^\"]+)\"");
-                if (contextMatch.Success)
+                string tagText = text.Substring(tagStart, tagEnd - tagStart + 1);
+                var nameMatch = Regex.Match(tagText, "Name=\"([^\"]+)\"");
+                if (nameMatch.Success)
                 {
-                    elementName = contextMatch.Groups[1].Value;
+                    elementName = nameMatch.Groups[1].Value;
+                }
+            }
+
+            // Fallback: use previous logic if not found
+            if (elementName == null)
+            {
+                string selectedText = Editor.SelectedText;
+                var nameMatch = Regex.Match(selectedText, "Name=\"([^\"]+)\"");
+                if (nameMatch.Success)
+                {
+                    elementName = nameMatch.Groups[1].Value;
                 }
                 else
                 {
-                    // Fallback: try to extract tag name
-                    var tagMatch = Regex.Match(selectedText, "<([a-zA-Z0-9_]+)");
-                    if (tagMatch.Success)
+                    int searchStart = Math.Max(0, caret - 200);
+                    int searchEnd = Math.Min(text.Length, caret + 200);
+                    string context = text.Substring(searchStart, searchEnd - searchStart);
+                    var contextMatch = Regex.Match(context, "Name=\"([^\"]+)\"");
+                    if (contextMatch.Success)
                     {
-                        elementName = tagMatch.Groups[1].Value;
+                        elementName = contextMatch.Groups[1].Value;
+                    }
+                    else
+                    {
+                        var tagMatch = Regex.Match(selectedText, "<([a-zA-Z0-9_]+)");
+                        if (tagMatch.Success)
+                        {
+                            elementName = tagMatch.Groups[1].Value;
+                        }
                     }
                 }
             }
@@ -2044,6 +2091,95 @@ namespace RCLayoutPreview
         private void ShowSearchReplaceDialog(object sender, RoutedEventArgs e)
         {
             ShowSearchReplaceDialog();
+        }
+
+        private void CompletionListBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            InsertSelectedCompletion();
+            completionPopup.IsOpen = false;
+            Editor.TextArea.Focus();
+        }
+
+        private void CompletionListBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Tab)
+            {
+                InsertSelectedCompletion();
+                completionPopup.IsOpen = false;
+                Editor.TextArea.Focus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                completionPopup.IsOpen = false;
+                Editor.TextArea.Focus();
+                e.Handled = true;
+            }
+        }
+
+        private void Editor_TextArea_TextEntering(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            if (completionPopup.IsOpen && (e.Text.Length > 0 && !char.IsLetterOrDigit(e.Text[0])))
+            {
+                InsertSelectedCompletion();
+                completionPopup.IsOpen = false;
+            }
+        }
+
+        private void Editor_PreviewDrop(object sender, DragEventArgs e)
+        {
+            LogStatus("Editor_PreviewDrop logic executing");
+            if (e.Data.GetDataPresent(DataFormats.StringFormat))
+            {
+                var droppedText = e.Data.GetData(DataFormats.StringFormat) as string;
+                LogStatus($"PreviewDrop: Dropped text: {droppedText}");
+
+                var pos = Editor.GetPositionFromPoint(e.GetPosition(Editor));
+                int offset = pos.HasValue
+                    ? Editor.Document.GetOffset(pos.Value.Line, pos.Value.Column)
+                    : Editor.CaretOffset;
+                LogStatus($"PreviewDrop: Drop position offset: {offset}");
+
+                string formattedFieldName = FormatFieldNameWithSuffix(droppedText);
+                LogStatus($"PreviewDrop: Formatted field name: {formattedFieldName}");
+
+                string placeholder = FindNearestPlaceholder(Editor.Text, offset);
+                LogStatus($"PreviewDrop: Nearest placeholder: {placeholder}");
+
+                if (!string.IsNullOrEmpty(placeholder))
+                {
+                    // Replace the placeholder with the field name
+                    ReplacePlaceholderWithFieldName(placeholder, formattedFieldName);
+                    LogStatus($"PreviewDrop: Replaced {placeholder} with {formattedFieldName}");
+                    Dispatcher.BeginInvoke(new Action(() => {
+                        Editor.Select(Editor.CaretOffset, 0); // Clear selection after drop
+                    }), DispatcherPriority.ApplicationIdle);
+                }
+                else
+                {
+                    Editor.Document.Insert(offset, formattedFieldName);
+                    Editor.CaretOffset = offset + formattedFieldName.Length;
+                    Dispatcher.BeginInvoke(new Action(() => {
+                        Editor.Select(Editor.CaretOffset, 0); // Clear selection after drop
+                    }), DispatcherPriority.ApplicationIdle);
+                    LogStatus($"PreviewDrop: Inserted field name '{formattedFieldName}' at drop position");
+                }
+
+                // Validate the editor content for fields
+                CheckForValidFields(Editor.Text);
+                LogStatus("PreviewDrop: Editor content validated for fields");
+
+                XamlContentChanged?.Invoke(this, Editor.Text);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    previewWindow.HighlightPreviewElement(formattedFieldName);
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                e.Handled = true;
+            }
+            else
+            {
+                LogStatus("PreviewDrop: No valid data present in drag event");
+            }
         }
     }
 }
