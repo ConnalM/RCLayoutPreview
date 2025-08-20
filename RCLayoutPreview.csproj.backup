@@ -6,6 +6,10 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>RCLayoutPreview</AssemblyName>
     <RootNamespace>RCLayoutPreview</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>Connal</Authors>
+    <Company>Connal</Company>
+    <Description>Reliable layout preview tool for WPF developers. Built with clarity, safety, and simplicity in mind.</Description>
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
