@@ -14,12 +14,12 @@
         </Grid.RowDefinitions>
 
         <!-- Top toolbar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top" Background="Black">
             <CheckBox x:Name="DebugModeToggle" Content="Field Names" Margin="10,0,0,0" VerticalAlignment="Center" 
                       Checked="DebugModeToggle_Changed" Unchecked="DebugModeToggle_Changed" Foreground="White"/>
             <CheckBox x:Name="ApplyWindowSizeToggle" Content="Apply XAML Window Size" Margin="10,0,0,0" VerticalAlignment="Center" IsChecked="False" Foreground="White"/>
-            <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="White" Background="White" 
-                       Margin="10,4,0,4" VerticalAlignment="Center" Padding="5,2" FontWeight="SemiBold"/>
+            <TextBlock x:Name="StatusLabel" Text="Ready" Foreground="White" Background="Transparent" 
+                       Margin="10,4,0,4" VerticalAlignment="Center" Padding="5,2" FontWeight="SemiBold" HorizontalAlignment="Stretch" Width="400"/>
         </StackPanel>
 
         <!-- Preview Panel -->

@@ -77,6 +77,9 @@ namespace RCLayoutPreview
             this.Loaded += MainWindow_Loaded;
 
             SetVersionMenuItem();
+
+            SetToolbarBackground(false); // White at startup
+            UpdateToolbarContrast();
         }
 
         private void SetVersionMenuItem()
@@ -95,6 +98,7 @@ namespace RCLayoutPreview
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateStatus("Layout initialized.");
+            UpdateToolbarContrast();
         }
 
         /// <summary>
@@ -228,6 +232,10 @@ namespace RCLayoutPreview
                 object element = ParseXamlContent(processedXaml);
                 ApplyParsedElement(element);
                 PostProcessPreview();
+
+                // After loading a snippet/XAML, set toolbar background to black and update contrast
+                SetToolbarBackground(true);
+                UpdateToolbarContrast();
 
                 // If we reach here without issues being detected, ensure popups are hidden
                 // This handles the case where issues were fixed but detection didn't run
@@ -707,9 +715,16 @@ namespace RCLayoutPreview
                 if (statusLabel != null)
                 {
                     statusLabel.Text = message;
-                    // Ensure status text is visible with high contrast colors
-                    statusLabel.Foreground = new SolidColorBrush(Colors.DarkBlue);
-                    statusLabel.FontWeight = FontWeights.Normal;
+                    // Set contrast based on toolbar background
+                    var debugToggle = FindName("DebugModeToggle") as CheckBox;
+                    var stackPanel = VisualTreeHelper.GetParent(debugToggle) as StackPanel;
+                    if (stackPanel != null)
+                    {
+                        var bgBrush = stackPanel.Background as SolidColorBrush;
+                        Color bgColor = bgBrush != null ? bgBrush.Color : Colors.White;
+                        bool isDark = (bgColor.R + bgColor.G + bgColor.B) / 3 < 128;
+                        statusLabel.Foreground = new SolidColorBrush(isDark ? Colors.White : Colors.Black);
+                    }
                 }
             }
             catch { }
@@ -1255,6 +1270,35 @@ namespace RCLayoutPreview
         {
             var version = Assembly.GetExecutingAssembly().GetName().Version;
             MessageBox.Show($"Application Version: {version}", "Version", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void UpdateToolbarContrast()
+        {
+            var debugToggle = FindName("DebugModeToggle") as CheckBox;
+            var windowSizeToggle = FindName("ApplyWindowSizeToggle") as CheckBox;
+            var statusLabel = FindName("StatusLabel") as TextBlock;
+            var stackPanel = VisualTreeHelper.GetParent(debugToggle) as StackPanel;
+            if (stackPanel != null)
+            {
+                var bgBrush = stackPanel.Background as SolidColorBrush;
+                Color bgColor = bgBrush != null ? bgBrush.Color : Colors.White;
+                // Simple luminance check: treat as dark if average RGB < 128
+                bool isDark = (bgColor.R + bgColor.G + bgColor.B) / 3 < 128;
+                var fgBrush = new SolidColorBrush(isDark ? Colors.White : Colors.Black);
+                debugToggle.Foreground = fgBrush;
+                windowSizeToggle.Foreground = fgBrush;
+                statusLabel.Foreground = fgBrush;
+            }
+        }
+
+        private void SetToolbarBackground(bool isDark)
+        {
+            var debugToggle = FindName("DebugModeToggle") as CheckBox;
+            var stackPanel = VisualTreeHelper.GetParent(debugToggle) as StackPanel;
+            if (stackPanel != null)
+            {
+                stackPanel.Background = new SolidColorBrush(isDark ? Colors.Black : Colors.White);
+            }
         }
     }
 }
