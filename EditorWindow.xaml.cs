@@ -17,6 +17,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml;
 using System.Windows.Controls.Primitives;
+using ICSharpCode.AvalonEdit.Rendering;
 
 namespace RCLayoutPreview
 {
@@ -144,6 +145,15 @@ namespace RCLayoutPreview
             UpdateErrorButtonState();
 
             Editor.TextArea.SelectionChanged += Editor_SelectionChanged;
+            Editor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
+        }
+
+        private void Caret_PositionChanged(object sender, EventArgs e)
+        {
+            if (completionPopup != null && completionPopup.IsOpen)
+            {
+                PositionCompletionPopup();
+            }
         }
 
         /// <summary>
@@ -270,33 +280,99 @@ namespace RCLayoutPreview
             }
         }
 
-        private void Editor_TextArea_TextEntered(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        private void ShowCompletionPopupAtCaret()
         {
-            string word = GetCurrentWord();
-            if (string.IsNullOrEmpty(word) || word.Length < 2)
+            var caret = Editor.TextArea.Caret;
+            var textView = Editor.TextArea.TextView;
+            if (!textView.IsLoaded || !textView.IsArrangeValid)
             {
-                completionPopup.IsOpen = false;
+                textView.VisualLinesChanged += TextView_VisualLinesChanged_ShowCompletion;
                 return;
             }
-
-            var matches = allCompletions
-                .Where(s => s.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                .ToList();
-
-            if (matches.Count > 0)
+            PositionCompletionPopup();
+            if (!completionPopup.IsOpen)
             {
-                completionListBox.ItemsSource = matches;
-                completionListBox.SelectedIndex = 0;
-                var caret = Editor.TextArea.Caret;
-                var loc = Editor.TextArea.TextView.GetVisualPosition(caret.Position, ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineBottom) + new System.Windows.Vector(0, 5);
-                completionPopup.HorizontalOffset = loc.X;
-                completionPopup.VerticalOffset = loc.Y;
                 completionPopup.IsOpen = true;
+                textView.VisualLinesChanged += TextView_VisualLinesChanged_RepositionCompletion;
+            }
+            // Debug logging
+            UpdateStatus($"[CompletionPopup] Show at caret: Offset={Editor.CaretOffset} IsOpen={completionPopup.IsOpen}");
+            Console.WriteLine($"[CompletionPopup] Show at caret: Offset={Editor.CaretOffset} IsOpen={completionPopup.IsOpen}");
+        }
+
+        private void PositionCompletionPopup()
+{
+    var caret = Editor.TextArea.Caret;
+    var textView = Editor.TextArea.TextView;
+
+    var visualLoc = textView.GetVisualPosition(caret.Position, VisualYPosition.LineBottom);
+    var screenLoc = textView.PointToScreen(visualLoc);
+    var relativeLoc = completionPopup.PlacementTarget.PointFromScreen(screenLoc);
+
+    completionPopup.PlacementTarget = Editor.TextArea; // or Editor
+    completionPopup.Placement = PlacementMode.RelativePoint;
+    completionPopup.HorizontalOffset = relativeLoc.X;
+    completionPopup.VerticalOffset = relativeLoc.Y;
+
+    // Debug logging
+    UpdateStatus($"[CompletionPopup] Position: Visual=({visualLoc.X},{visualLoc.Y}) Screen=({screenLoc.X},{screenLoc.Y}) Relative=({relativeLoc.X},{relativeLoc.Y}) IsOpen={completionPopup.IsOpen}");
+    Console.WriteLine($"[CompletionPopup] Position: Visual=({visualLoc.X},{visualLoc.Y}) Screen=({screenLoc.X},{screenLoc.Y}) Relative=({relativeLoc.X},{relativeLoc.Y}) IsOpen={completionPopup.IsOpen}");
+}
+
+        private void TextView_VisualLinesChanged_ShowCompletion(object sender, EventArgs e)
+        {
+            var textView = Editor.TextArea.TextView;
+            textView.VisualLinesChanged -= TextView_VisualLinesChanged_ShowCompletion;
+            ShowCompletionPopupAtCaret();
+        }
+
+        private void TextView_VisualLinesChanged_RepositionCompletion(object sender, EventArgs e)
+        {
+            if (completionPopup.IsOpen)
+            {
+                PositionCompletionPopup();
             }
             else
             {
-                completionPopup.IsOpen = false;
+                var textView = Editor.TextArea.TextView;
+                textView.VisualLinesChanged -= TextView_VisualLinesChanged_RepositionCompletion;
             }
+        }
+
+        private void CloseCompletionPopup()
+        {
+            if (completionPopup.IsOpen)
+            {
+                completionPopup.IsOpen = false;
+                var textView = Editor.TextArea.TextView;
+                textView.VisualLinesChanged -= TextView_VisualLinesChanged_RepositionCompletion;
+            }
+        }
+
+        private void Editor_TextArea_TextEntered(object sender, TextCompositionEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                string word = GetCurrentWord();
+                if (string.IsNullOrEmpty(word) || word.Length < 2)
+                {
+                    CloseCompletionPopup();
+                }
+                else
+                {
+                    // Filter completions by current word
+                    var filtered = allCompletions.Where(s => s.StartsWith(word, StringComparison.OrdinalIgnoreCase)).ToList();
+                    completionListBox.ItemsSource = filtered;
+                    if (filtered.Count > 0)
+                    {
+                        ShowCompletionPopupAtCaret();
+                    }
+                    else
+                    {
+                        CloseCompletionPopup();
+                    }
+                }
+            }), DispatcherPriority.Input);
         }
 
         private void InsertSelectedCompletion()
@@ -988,72 +1064,83 @@ namespace RCLayoutPreview
             LogStatus("JsonFieldsTree_MouseDoubleClick triggered");
 
             var treeView = sender as TreeView;
-            var selectedItem = treeView?.SelectedItem as TreeViewItem;
-            if (selectedItem != null)
+            if (treeView == null) return;
+
+            // Get the mouse position relative to the TreeView
+            Point mousePos = e.GetPosition(treeView);
+            // Get the element under the mouse
+            var hitTestResult = treeView.InputHitTest(mousePos) as DependencyObject;
+            while (hitTestResult != null && !(hitTestResult is TreeViewItem))
+                hitTestResult = VisualTreeHelper.GetParent(hitTestResult);
+
+            var treeViewItem = hitTestResult as TreeViewItem;
+            if (treeViewItem != null)
             {
-                // Get the field name that was clicked
-                string fieldName = selectedItem.Header.ToString();
-                LogStatus($"Double-clicked field name: {fieldName}");
-
-                // Get the current position in the editor
-                int caretOffset = Editor.CaretOffset;
-                LogStatus($"Caret offset: {caretOffset}");
-
-                string actualFieldName = FormatFieldNameWithSuffix(fieldName);
-                LogStatus($"Formatted field name: {actualFieldName}");
-
-                // If there is a selection, check if it matches a field name pattern
-                if (Editor.SelectionLength > 0)
+                // Only insert if this is a leaf node (no children)
+                if (treeViewItem.Items.Count == 0)
                 {
-                    string selectedText = Editor.SelectedText;
-                    LogStatus($"Selected text: {selectedText}");
+                    string fieldName = treeViewItem.Header.ToString();
+                    LogStatus($"Double-clicked field name: {fieldName}");
 
-                    // Regex for RC field name pattern
-                    var fieldNameRegex = new Regex(@"[A-Za-z0-9_]+_\d+");
-                    if (fieldNameRegex.IsMatch(selectedText))
+                    int caretOffset = Editor.CaretOffset;
+                    LogStatus($"Caret offset: {caretOffset}");
+
+                    string actualFieldName = FormatFieldNameWithSuffix(fieldName);
+                    LogStatus($"Formatted field name: {actualFieldName}");
+
+                    if (Editor.SelectionLength > 0)
                     {
-                        // Replace the selected field name with the new field name (with suffix)
-                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
-                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
-                        LogStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
+                        string selectedText = Editor.SelectedText;
+                        LogStatus($"Selected text: {selectedText}");
+
+                        var fieldNameRegex = new Regex(@"[A-Za-z0-9_]+_\d+");
+                        if (fieldNameRegex.IsMatch(selectedText))
+                        {
+                            Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
+                            Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
+                            LogStatus($"Replaced field name '{selectedText}' with '{actualFieldName}'");
+                        }
+                        else
+                        {
+                            Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
+                            Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
+                            LogStatus($"Inserted field name '{actualFieldName}' at selection");
+                        }
                     }
                     else
                     {
-                        // If not a field name, just insert at selection
-                        Editor.Document.Replace(Editor.SelectionStart, Editor.SelectionLength, actualFieldName);
-                        Editor.CaretOffset = Editor.SelectionStart + actualFieldName.Length;
-                        LogStatus($"Inserted field name '{actualFieldName}' at selection");
+                        string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
+                        LogStatus($"Nearest placeholder: {placeholder}");
+
+                        if (!string.IsNullOrEmpty(placeholder))
+                        {
+                            ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
+                            LogStatus($"Replaced {placeholder} with {actualFieldName}");
+                        }
+                        else
+                        {
+                            Editor.Document.Insert(caretOffset, actualFieldName);
+                            Editor.CaretOffset = caretOffset + actualFieldName.Length;
+                            LogStatus($"Inserted field name '{actualFieldName}' at cursor");
+                        }
                     }
+
+                    // Check if this field triggers the placeholder removal
+                    CheckForValidFields(Editor.Text);
+                    LogStatus("Editor content validated for fields");
                 }
                 else
                 {
-                    // Look for a placeholder nearby
-                    string placeholder = FindNearestPlaceholder(Editor.Text, caretOffset);
-                    LogStatus($"Nearest placeholder: {placeholder}");
-
-                    if (!string.IsNullOrEmpty(placeholder))
-                    {
-                        // Replace the placeholder with the field name
-                        ReplacePlaceholderWithFieldName(placeholder, actualFieldName);
-                        LogStatus($"Replaced {placeholder} with {actualFieldName}");
-                    }
-                    else
-                    {
-                        // No selection and no placeholder, insert at caret position
-                        Editor.Document.Insert(caretOffset, actualFieldName);
-                        Editor.CaretOffset = caretOffset + actualFieldName.Length;
-                        LogStatus($"Inserted field name '{actualFieldName}' at cursor");
-                    }
+                    // If it's a group header, just expand/collapse, do not insert anything
+                    treeViewItem.IsExpanded = !treeViewItem.IsExpanded;
+                    LogStatus("Double-clicked group header, toggled expand/collapse");
                 }
-
-                // Check if this field triggers the placeholder removal
-                CheckForValidFields(Editor.Text);
-                LogStatus("Editor content validated for fields");
             }
             else
             {
                 LogStatus("No valid item selected in TreeView");
             }
+            e.Handled = true;
         }
 
         private string FindNearestPlaceholder(string text, int caretOffset)
@@ -2151,9 +2238,6 @@ namespace RCLayoutPreview
                     // Replace the placeholder with the field name
                     ReplacePlaceholderWithFieldName(placeholder, formattedFieldName);
                     LogStatus($"PreviewDrop: Replaced {placeholder} with {formattedFieldName}");
-                    Dispatcher.BeginInvoke(new Action(() => {
-                        Editor.Select(Editor.CaretOffset, 0); // Clear selection after drop
-                    }), DispatcherPriority.ApplicationIdle);
                 }
                 else
                 {
@@ -2180,6 +2264,12 @@ namespace RCLayoutPreview
             {
                 LogStatus("PreviewDrop: No valid data present in drag event");
             }
+        }
+
+        private void VersionMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            MessageBox.Show($"Application Version: {version}", "Version", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }

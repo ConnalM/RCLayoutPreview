@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using System.Text;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace RCLayoutPreview
 {
@@ -74,6 +75,18 @@ namespace RCLayoutPreview
             this.KeyDown += MainWindow_KeyDown;
 
             this.Loaded += MainWindow_Loaded;
+
+            SetVersionMenuItem();
+        }
+
+        private void SetVersionMenuItem()
+        {
+            var versionMenuItem = FindName("VersionMenuItem") as MenuItem;
+            if (versionMenuItem != null)
+            {
+                var version = Assembly.GetExecutingAssembly().GetName().Version;
+                versionMenuItem.Header = $"Version {version}";
+            }
         }
 
         /// <summary>
@@ -1236,6 +1249,12 @@ namespace RCLayoutPreview
         {
             lastSelectedElementName = elementNameOrType;
             HighlightPreviewElement(elementNameOrType);
+        }
+
+        private void VersionMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            MessageBox.Show($"Application Version: {version}", "Version", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }

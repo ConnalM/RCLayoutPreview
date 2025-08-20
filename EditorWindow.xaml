@@ -199,6 +199,10 @@
                 <MenuItem Name="WordWrap_1" Header="Word Wrap" 
                           IsCheckable="True" IsChecked="{Binding ElementName=WordWrapToggle, Path=IsChecked}"
                           ToolTip="Enable/disable word wrap (when disabled, shows horizontal scroll bar)" />
+                
+                <Separator/>
+                
+                <MenuItem Header="Version" Name="VersionMenuItem" Click="VersionMenuItem_Click"/>
             </MenuItem>
             
         </Menu>
@@ -347,7 +351,14 @@
                         <TreeView x:Name="JsonFieldsTree"
                                   AllowDrop="True"
                                   PreviewMouseLeftButtonDown="JsonFieldsTree_PreviewMouseLeftButtonDown"
-                                  MouseDoubleClick="JsonFieldsTree_MouseDoubleClick"/>
+                                  MouseDoubleClick="JsonFieldsTree_MouseDoubleClick">
+                            <TreeView.Resources>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Width" Value="30"/>
+                                    <Setter Property="Height" Value="30"/>
+                                </Style>
+                            </TreeView.Resources>
+                        </TreeView>
                     </Border>
                 </Grid>
 

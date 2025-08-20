@@ -9,11 +9,12 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Top toolbar -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Top">
             <CheckBox x:Name="DebugModeToggle" Content="Field Names" Margin="10,0,0,0" VerticalAlignment="Center" 
                       Checked="DebugModeToggle_Changed" Unchecked="DebugModeToggle_Changed" Foreground="White"/>
             <CheckBox x:Name="ApplyWindowSizeToggle" Content="Apply XAML Window Size" Margin="10,0,0,0" VerticalAlignment="Center" IsChecked="False" Foreground="White"/>
@@ -22,7 +23,7 @@
         </StackPanel>
 
         <!-- Preview Panel -->
-        <ScrollViewer Grid.Row="1" x:Name="PreviewScrollViewer" VerticalScrollBarVisibility="Auto" Margin="10">
+        <ScrollViewer Grid.Row="2" x:Name="PreviewScrollViewer" VerticalScrollBarVisibility="Auto" Margin="10">
             <Border x:Name="PreviewPanel" BorderBrush="#FFD0D0D0" BorderThickness="1" Padding="10">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -35,10 +36,10 @@
         </ScrollViewer>
 
         <!-- Image Control to display FuelImage_Position1 dynamically from DataContext -->
-        <Image Grid.Row="1" Source="{Binding FuelImage_Position1}" Height="100" Width="100" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+        <Image Grid.Row="2" Source="{Binding FuelImage_Position1}" Height="100" Width="100" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 
         <!-- Popup overlay -->
-        <Grid x:Name="PopupOverlay" Grid.RowSpan="2" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
+        <Grid x:Name="PopupOverlay" Grid.RowSpan="3" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400" Background="White" Margin="10">
                 <TextBlock x:Name="PopupMessage" Text="" TextWrapping="Wrap" Margin="10" FontSize="14" Foreground="Red"/>
                 <Button Content="OK" Width="100" HorizontalAlignment="Center" Click="PopupOkButton_Click"/>
