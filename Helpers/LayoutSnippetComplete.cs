@@ -740,6 +740,58 @@ namespace RCLayoutPreview.Helpers
                     XamlTemplate = "<UniformGrid Rows=\"2\" Columns=\"2\">\n    {content}\n</UniformGrid>",
                     Placeholders = new Dictionary<string, string> { { "{content}", "" } }
                 },
+                new LayoutSnippet
+                {
+                    Name = "Base Framework",
+                    Description = "Starter window XAML with grid layout and optional regions for menu, content, and footer.",
+                    Category = "Documents",
+                    XamlTemplate = @"<Window xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation""
+        xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml""
+        Title=""Starter Window"" Height=""400"" Width=""600"">
+
+    <!-- Optional: ThemeDictionary snippet goes here -->
+    <!-- Example: <Window.Resources>
+                   <ResourceDictionary Source=""Themes/LightTheme.xaml"" />
+                 </Window.Resources> -->
+
+    <!-- Root layout container -->
+    <Grid>
+
+        <!-- Example grid structure:
+             <Grid.RowDefinitions>
+                 <RowDefinition Height=""Auto"" />
+                 <RowDefinition Height=""*"" />
+                 <RowDefinition Height=""Auto"" />
+             </Grid.RowDefinitions>
+             <Grid.ColumnDefinitions>
+                 <ColumnDefinition Width=""*"" />
+             </Grid.ColumnDefinitions>
+        -->
+
+        <!-- Example menu:
+             <Menu Grid.Row=""0"">
+                 <MenuItem Header=""File"" />
+                 <MenuItem Header=""Edit"" />
+             </Menu>
+        -->
+
+        <!-- Example main content:
+             <ContentControl Grid.Row=""1"" Content=""{Binding CurrentView}"" />
+        -->
+
+        <!-- Example footer/navigation:
+             <StackPanel Grid.Row=""2"" Orientation=""Horizontal"" HorizontalAlignment=""Right""
+                         Margin=""5,0,0,0""
+                         Background=""Transparent"">
+                 <Button Content=""Back"" />
+                 <Button Content=""Next"" />
+             </StackPanel>
+        -->
+
+
+    </Grid>
+</Window>"
+                },
             };
         }
 
