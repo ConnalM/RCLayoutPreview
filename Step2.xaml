@@ -1,0 +1,10 @@
+<UserControl x:Class="RCLayoutPreview.Step2"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="10">
+        <TextBlock Text="Step 2: Confirm Details" FontSize="16" Foreground="White" />
+        <TextBlock Text="Heat Number: [123]" Margin="5" Foreground="White" />
+        <TextBlock Text="Nickname 1: [Rocket]" Margin="5" Foreground="White" />
+        <TextBlock Text="Nickname 2: [Blaze]" Margin="5" Foreground="White" />
+    </StackPanel>
+</UserControl>

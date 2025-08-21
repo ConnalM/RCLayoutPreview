@@ -286,6 +286,8 @@
             <TextBox x:Name="DelayInput" Width="50" Text="3000" VerticalAlignment="Center" 
                      TextChanged="DelayInput_TextChanged" 
                      ToolTip="Delay in milliseconds before auto-preview triggers"/>
+            <!-- Add Launch Wizard button to the settings panel -->
+            <Button x:Name="LaunchWizardButton" Content="Launch Wizard" Margin="10,0,0,0" VerticalAlignment="Center" Click="LaunchWizard_Click"/>
         </StackPanel>
 
         <!-- Main Content -->

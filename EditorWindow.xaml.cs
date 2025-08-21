@@ -2271,5 +2271,11 @@ namespace RCLayoutPreview
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
             MessageBox.Show($"Application Version: {version}", "Version", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+
+        private void LaunchWizard_Click(object sender, RoutedEventArgs e)
+        {
+            var wizard = new WizardShell();
+            wizard.ShowDialog();
+        }
     }
 }
