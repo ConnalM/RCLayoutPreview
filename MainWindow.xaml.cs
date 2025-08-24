@@ -407,6 +407,25 @@ namespace RCLayoutPreview
             var nameSet = new HashSet<string>();
             var duplicateNames = new List<string>();
 
+            // Find all comment regions
+            var commentRegions = new List<(int start, int end)>();
+            var commentRegex = new Regex("<!--(.*?)-->", RegexOptions.Singleline);
+            foreach (Match commentMatch in commentRegex.Matches(xamlContent))
+            {
+                commentRegions.Add((commentMatch.Index, commentMatch.Index + commentMatch.Length));
+            }
+
+            // Helper to check if a position is inside a comment
+            bool IsInsideComment(int pos)
+            {
+                foreach (var region in commentRegions)
+                {
+                    if (pos >= region.start && pos < region.end)
+                        return true;
+                }
+                return false;
+            }
+
             // First pass: collect all names and detect exact duplicates
             var allNames = new List<string>();
             foreach (Match match in nameMatches)
@@ -415,6 +434,10 @@ namespace RCLayoutPreview
                 if (!string.IsNullOrWhiteSpace(name))
                 {
                     if (name.StartsWith("Placeholder"))
+                        continue;
+
+                    // Only consider names NOT inside comments
+                    if (IsInsideComment(match.Index))
                         continue;
 
                     allNames.Add(name);
