@@ -32,8 +32,8 @@ namespace RCLayoutPreview.Helpers
             // Use all 8 available colors in rotation
             switch ((playerIndex - 1) % 8)
             {
-                case 0: return new SolidColorBrush(Color.FromRgb(255, 0, 0));       // Bright Red
-                case 1: return new SolidColorBrush(Color.FromRgb(0, 120, 255));     // Bright Blue
+                case 0: return new SolidColorBrush(Color.FromRgb(255, 0, 200));       // Bright Red
+                case 1: return new SolidColorBrush(Color.FromRgb(200, 120, 255));     // Bright Blue
                 case 2: return new SolidColorBrush(Color.FromRgb(0, 255, 0));       // Bright Green
                 case 3: return new SolidColorBrush(Color.FromRgb(153, 50, 204));    // Bright Purple (Orchid)
                 case 4: return new SolidColorBrush(Color.FromRgb(255, 215, 0));     // Bright Gold (Goldenrod)
