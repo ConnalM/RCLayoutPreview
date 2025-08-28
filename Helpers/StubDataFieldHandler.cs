@@ -53,6 +53,14 @@ namespace RCLayoutPreview.Helpers
                     }
                 }
             }
+            // If not found in any group, check at the root level
+            if (!found && jsonData.TryGetValue(normalizedFieldName, out value))
+            {
+                foundGroup = "Root";
+                found = true;
+                Debug.WriteLine($"[StubDataFieldHandler] Found field '{normalizedFieldName}' at root level.");
+                UILogStatus?.Invoke($"Found field '{normalizedFieldName}' at root level.");
+            }
 
             if (!found)
             {
@@ -159,7 +167,67 @@ namespace RCLayoutPreview.Helpers
 
                 // Apply player-specific background color if field is in RacerData group and ends with a number NOT preceded by underscore
                 // This works independently of ThemeDictionary (which handles foreground colors and global themes)
-                if (foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$"))
+                // Only apply player color background if NOT in a list row (e.g., not ending with _1)
+                // Only apply player color background if NOT explicitly set to Transparent
+                bool isListRow = false;
+                if (element.Name != null && Regex.IsMatch(element.Name, @"_\d+$"))
+                {
+                    // If the field name ends with _1, treat as list row (do not color)
+                    isListRow = element.Name.EndsWith("_1");
+                }
+                // Only apply player color background if NOT explicitly set to Transparent or null
+                bool isTransparent = false;
+                if (element is Control ctrl)
+                {
+                    if (ctrl.Background == null)
+                        isTransparent = true;
+                    else if (ctrl.Background is SolidColorBrush bg && bg.Color.A == 0)
+                        isTransparent = true;
+                }
+                else if (element is TextBlock tb)
+                {
+                    if (tb.Background == null)
+                        isTransparent = true;
+                    else if (tb.Background is SolidColorBrush bg2 && bg2.Color.A == 0)
+                        isTransparent = true;
+                }
+                // Determine if background should be rendered based on control type and styling
+                bool shouldApplyColor = false;
+                // Layout containers: StackPanel, DockPanel, Grid, Canvas
+                if (element is StackPanel || element is DockPanel || element is Grid || element is Canvas)
+                {
+                    var bgProp = element.GetType().GetProperty("Background");
+                    if (bgProp != null)
+                    {
+                        var bgValue = bgProp.GetValue(element);
+                        if (bgValue != null && !(bgValue is SolidColorBrush brush && brush.Color.A == 0))
+                        {
+                            shouldApplyColor = true;
+                        }
+                    }
+                }
+                // Visual controls: Label, Border, Button, etc.
+                else if (element is Control || element is Border)
+                {
+                    Brush visualBg = null;
+                    if (element is Control ctrl2)
+                        visualBg = ctrl2.Background;
+                    else if (element is Border border)
+                        visualBg = border.Background;
+                    // Apply color if Background is not null/transparent or is set via StaticResource
+                    if (visualBg != null && (!(visualBg is SolidColorBrush brush2) || brush2.Color.A != 0))
+                    {
+                        shouldApplyColor = true;
+                    }
+                    // Check for StaticResource binding
+                    var bgSource = System.Windows.DependencyPropertyHelper.GetValueSource(element, Control.BackgroundProperty);
+                    if (bgSource.BaseValueSource == System.Windows.BaseValueSource.Local && visualBg is System.Windows.Media.Brush)
+                    {
+                        shouldApplyColor = true;
+                    }
+                }
+                // Only apply color if shouldApplyColor is true
+                if (foundGroup == "RacerData" && Regex.IsMatch(normalizedFieldName, @"(?<!_)\d+$") && shouldApplyColor)
                 {
                     int playerIndex = RCLayoutPreview.Helpers.XamlFixer.GetPlayerIndex(normalizedFieldName);
                     Debug.WriteLine($"[StubDataFieldHandler] XamlFixer.GetPlayerIndex('{normalizedFieldName}') returned {playerIndex}");
