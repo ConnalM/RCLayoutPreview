@@ -976,8 +976,28 @@ namespace RCLayoutPreview
         private string EnsureUniqueElementNames(string xaml)
         {
             var nameRegex = new Regex("Name=\"([^\"]+)\"");
+            // Find all comment regions
+            var commentRegions = new List<(int start, int end)>();
+            var commentRegex = new Regex("<!--(.*?)-->", RegexOptions.Singleline);
+            foreach (Match commentMatch in commentRegex.Matches(xaml))
+            {
+                commentRegions.Add((commentMatch.Index, commentMatch.Index + commentMatch.Length));
+            }
+            // Helper to check if a position is inside a comment
+            bool IsInsideComment(int pos)
+            {
+                foreach (var region in commentRegions)
+                {
+                    if (pos >= region.start && pos < region.end)
+                        return true;
+                }
+                return false;
+            }
             return nameRegex.Replace(xaml, match => {
                 string originalName = match.Groups[1].Value;
+                // Only consider names NOT inside comments
+                if (IsInsideComment(match.Index))
+                    return match.Value;
                 string uniqueName = originalName;
                 int counter = 1;
                 while (usedElementNames.Contains(uniqueName))

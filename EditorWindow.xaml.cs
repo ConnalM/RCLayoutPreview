@@ -1164,32 +1164,40 @@ namespace RCLayoutPreview
         {
             LogStatus($"FormatFieldNameWithSuffix triggered for field name: {fieldName}");
 
-            // Scan the entire editor text for existing field names with suffixes
-            string text = Editor.Text;
-            LogStatus($"Editor text length: {text.Length}");
-
-            // Regex to match fieldName_1, fieldName_2, etc.
-            var suffixRegex = new Regex($"{Regex.Escape(fieldName)}_(\\d+)");
-            var matches = suffixRegex.Matches(text);
-            LogStatus($"Number of matches found: {matches.Count}");
-
-            int maxSuffix = 0;
-            foreach (Match match in matches)
+            // Only add suffix if this is a stubdata field name
+            if (fieldNames.Contains(fieldName))
             {
-                if (int.TryParse(match.Groups[1].Value, out int suffix))
+                // Scan the entire editor text for existing field names with suffixes
+                string text = Editor.Text;
+                LogStatus($"Editor text length: {text.Length}");
+
+                // Regex to match fieldName_1, fieldName_2, etc.
+                var suffixRegex = new Regex($"{Regex.Escape(fieldName)}_(\\d+)");
+                var matches = suffixRegex.Matches(text);
+                LogStatus($"Number of matches found: {matches.Count}");
+
+                int maxSuffix = 0;
+                foreach (Match match in matches)
                 {
-                    LogStatus($"Found suffix: {suffix}");
-                    if (suffix > maxSuffix)
-                        maxSuffix = suffix;
+                    if (int.TryParse(match.Groups[1].Value, out int suffix))
+                    {
+                        LogStatus($"Found suffix: {suffix}");
+                        if (suffix > maxSuffix)
+                            maxSuffix = suffix;
+                    }
                 }
+
+                // Next available suffix
+                int nextSuffix = maxSuffix + 1;
+                string formattedFieldName = $"{fieldName}_{nextSuffix}";
+                LogStatus($"Formatted field name with suffix: {formattedFieldName}");
+                return formattedFieldName;
             }
-
-            // Next available suffix
-            int nextSuffix = maxSuffix + 1;
-            string formattedFieldName = $"{fieldName}_{nextSuffix}";
-            LogStatus($"Formatted field name with suffix: {formattedFieldName}");
-
-            return formattedFieldName;
+            else
+            {
+                // For XAML keywords/tags, return as-is
+                return fieldName;
+            }
         }
 
         private void Editor_Drop(object sender, DragEventArgs e)
