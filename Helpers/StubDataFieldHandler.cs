@@ -60,6 +60,27 @@ namespace RCLayoutPreview.Helpers
                 UILogStatus?.Invoke($"Field '{normalizedFieldName}' not found in any stubdata group.");
             }
 
+            int decimals = -1;
+            // Try DataContext as JObject
+            if (element.DataContext is JObject dc && dc["decimals"] != null && int.TryParse(dc["decimals"].ToString(), out int dcDecimals))
+            {
+                decimals = dcDecimals;
+            }
+            // Try Tag property (sometimes used for metadata)
+            else if (element.Tag != null && int.TryParse(element.Tag.ToString(), out int tagDecimals))
+            {
+                decimals = tagDecimals;
+            }
+            // Try DataContext as string (e.g. DataContext="'decimals':2")
+            else if (element.DataContext is string dcStr)
+            {
+                var match = Regex.Match(dcStr, @"'decimals'\s*:\s*(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int strDecimals))
+                {
+                    decimals = strDecimals;
+                }
+            }
+
             if (debugMode)
             {
                 string displayText = normalizedFieldName;
@@ -124,10 +145,16 @@ namespace RCLayoutPreview.Helpers
             }
             else if (value != null)
             {
+                string displayText = value.ToString();
+                // Apply decimals formatting if needed
+                if (decimals >= 0 && double.TryParse(displayText, out double num))
+                {
+                    displayText = num.ToString($"F{decimals}");
+                }
+
                 Debug.WriteLine($"[StubDataFieldHandler] Retrieved value for '{normalizedFieldName}': {value}");
                 UILogStatus?.Invoke($"Value for '{normalizedFieldName}': {value}");
 
-                string displayText = value.ToString();
                 SolidColorBrush colorBrush = null;
 
                 // Apply player-specific background color if field is in RacerData group and ends with a number NOT preceded by underscore
